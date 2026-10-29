@@ -117,15 +117,22 @@ const TOOLS: Record<string, Tool> = {
   evening_events: {
     description: "What's on in NYC on a date and time window, any time of day (NYC Parks, the city's events calendar, permitted events in parks and streets: races, parades, street fairs, markets; Ticketmaster shows, Eventbrite, NYC for FREE, museum free hours): title, time, venue, price, kind, outdoors with rain chance, source link. Optionally near a place. alsoOn lists what is already going on during the window: all-day and citywide events such as the marathon or a parade, which close park drives and streets and bring crowds.",
     parameters: { date: { type: "string", description: "YYYY-MM-DD (default today, New York)" }, from: { type: "string", description: "HH:MM, default 17:00" }, to: { type: "string", description: "HH:MM, default 23:30" }, budget: { type: "string", description: "free, or a max ticket price in dollars like 20" }, kind: { type: "string", description: "music, theater, comedy, sports, family, outdoors, arts, food, talks, community, popups (comma-separated)" }, place: { type: "string", description: "Near this NYC place" }, km: { type: "number", description: "Within this many km of the place" } },
-    run: async ({ date, from, to, budget, kind, place, km }) => {
-      const at = place ? await pointOf(undefined, undefined, place) : null;
-      const r = await eveningEvents({ date, from: from ?? "17:00", to: to ?? "23:30", budget, cat: kind, near: at ? `${at.lat},${at.lon}` : undefined, km: Number(km) || undefined });
-      const card = (e: any) => ({ id: e.id, time: e.all_day ? "all day" : e.start.slice(11), until: e.end?.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url, mapLink: e.lat ? mapAt(e.lat, e.lon, e.venue || e.title) : undefined });
-      // big things that change any plan that day: races, parades, all-day and citywide events
-      const big = r.events.filter((e: any) => e.all_day || /marathon|race|\b(5|10)k\b|parade|half marathon|triathlon|street festival|open streets?/i.test(e.title)).slice(0, 5);
-      return { ...(big.length ? { headsUp: `On ${r.date}: ${big.map((e: any) => `${e.title} (${e.all_day ? "all day" : `${e.start.slice(11)}${e.end ? `–${e.end.slice(11)}` : ""}`}, ${e.venue || "citywide"})`).join("; ")}. Expect closed drives, paths and streets, crowds and busy subways nearby; tell the visitor first and plan around it.` } : {}),
-        // alsoOn before events: a long answer is cut at 8,000 characters, and the cut should take the tail of the list
-        date: r.date, total: r.total, page: "/nyc/tonight.html", alsoOn: r.events.filter((e: any) => e.ongoing).slice(0, 8).map(card), events: r.events.filter((e: any) => !e.ongoing).slice(0, 15).map(card) };
+    run: async ({ date, from, to, budget, kind, place, km }) => whatsOn({ date, from: from ?? "17:00", to: to ?? "23:30", budget, kind, km, at: place ? await pointOf(undefined, undefined, place) : null }),
+  },
+  plan_outing: {
+    description: "Plan a visit to one NYC place on a date and hours (\"Sunday 2 PM in Central Park\", \"Saturday afternoon in DUMBO\"), in one call: headsUp (races, parades, citywide events that close drives, paths and streets that day), alsoOn (what's already going on there), the hourly forecast there (temperature, rain chance, sky) and sunset, rightNow when the date is today (incidents and closures around it), and events within 1.5 km in those hours. Call it before suggesting what to do.",
+    parameters: { place: { type: "string", description: "The NYC place" }, date: { type: "string", description: "YYYY-MM-DD (take it from the week list; default today)" }, from: { type: "string", description: "HH:MM, default 10:00" }, to: { type: "string", description: "HH:MM, default 18:00" } }, required: ["place"],
+    run: async ({ place, date, from, to }) => {
+      const at = await pointOf(undefined, undefined, place);
+      if (!at) return { error: "I couldn't find that place in NYC." };
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date ?? "")) ? String(date) : nyDate(), f = /^\d{2}:\d{2}$/.test(String(from ?? "")) ? String(from) : "10:00", t = /^\d{2}:\d{2}$/.test(String(to ?? "")) ? String(to) : "18:00";
+      const [on, sky] = await Promise.all([whatsOn({ date: day, from: f, to: t, km: 1.5, at }), forecastAt(at.lat, at.lon, day).catch(() => null)]);
+      const now = day === nyDate() ? around(at.lat, at.lon, 0.8) : null;
+      // the heads-up first: a long answer is cut at 8,000 characters
+      return { place: at.label, date: day, from: f, to: t, headsUp: on.headsUp, alsoOn: on.alsoOn,
+        weather: sky && { sunset: sky.sunset, hours: sky.hours.filter((h) => h.time >= f.slice(0, 2) + ":00" && h.time <= t) },
+        rightNow: now && { incidents: now.incidents.slice(0, 6).map((c) => ({ title: c.title, sources: c.sources.length, mapLink: mapAt(c.lat, c.lon, c.title) })), closuresAndPermits: now.planned.slice(0, 8).map((e) => e.title) },
+        events: on.events.slice(0, 10), moreEvents: on.total > 10 ? "/nyc/tonight.html" : undefined, mapLink: mapAt(at.lat, at.lon, at.label) };
     },
   },
   evening_plan: {
@@ -489,6 +496,24 @@ async function pointAnywhere(lat: unknown, lon: unknown, place: unknown) {
   return placeAnywhere(String(place)).catch(() => null); // worldwide: NYC's geocoder would find "Boston" on a Brooklyn street
 }
 /** A point from lat/lon, or by looking up a place. */
+/** What's on (evening_events, plan_outing): big things that day first, then what's already on, then what starts in the window. */
+async function whatsOn({ date, from, to, budget, kind, km, at }: { date?: string; from: string; to: string; budget?: string; kind?: string; km?: unknown; at: { lat: number; lon: number } | null }) {
+  const r = await eveningEvents({ date, from, to, budget, cat: kind, near: at ? `${at.lat},${at.lon}` : undefined, km: Number(km) || undefined });
+  const card = (e: any) => ({ id: e.id, time: e.all_day ? "all day" : e.start.slice(11), until: e.end?.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url, mapLink: e.lat ? mapAt(e.lat, e.lon, e.venue || e.title) : undefined });
+  // big things that change any plan that day: races, parades, all-day and citywide events
+  const big = r.events.filter((e: any) => e.all_day || /marathon|race|\b(5|10)k\b|parade|half marathon|triathlon|street festival|open streets?/i.test(e.title)).slice(0, 5);
+  return { ...(big.length ? { headsUp: `On ${r.date}: ${big.map((e: any) => `${e.title} (${e.all_day ? "all day" : `${e.start.slice(11)}${e.end ? `–${e.end.slice(11)}` : ""}`}, ${e.venue || "citywide"})`).join("; ")}. Expect closed drives, paths and streets, crowds and busy subways nearby; tell the visitor first and plan around it.` } : {}),
+    // alsoOn before events: a long answer is cut at 8,000 characters, and the cut should take the tail of the list
+    date: r.date, total: r.total, page: "/nyc/tonight.html", alsoOn: r.events.filter((e: any) => e.ongoing).slice(0, 8).map(card), events: r.events.filter((e: any) => !e.ongoing).slice(0, 15).map(card) };
+}
+const SKY: [number, string][] = [[0, "clear"], [3, "partly cloudy"], [48, "fog"], [57, "drizzle"], [67, "rain"], [77, "snow"], [82, "showers"], [86, "snow showers"], [99, "thunderstorms"]];
+/** Open-Meteo's hourly forecast at a point for one New York date (up to 16 days out), and that day's sunset. */
+async function forecastAt(lat: number, lon: number, day: string) {
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=temperature_2m,precipitation_probability,weather_code&daily=sunset&temperature_unit=fahrenheit&timezone=America/New_York&start_date=${day}&end_date=${day}`, { signal: AbortSignal.timeout(15_000) });
+  if (!r.ok) throw new Error(`forecast ${r.status}`);
+  const d: any = await r.json();
+  return { sunset: String(d.daily?.sunset?.[0] ?? "").slice(11), hours: (d.hourly?.time ?? []).map((t: string, i: number) => ({ time: t.slice(11), tempF: Math.round(d.hourly.temperature_2m[i]), rainChance: d.hourly.precipitation_probability[i], sky: SKY.find(([c]) => d.hourly.weather_code[i] <= c)?.[1] ?? "" })) as { time: string; tempF: number; rainChance: number; sky: string }[] };
+}
 async function pointOf(lat: unknown, lon: unknown, place: unknown) {
   const la = Number(lat), lo = Number(lon);
   if (la > 40.3 && la < 41.2 && lo > -74.5 && lo < -73.4) return { lat: la, lon: lo, label: "the given point" };
@@ -519,7 +544,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Where something is on this site, which page or chapter covers a topic, "is there a tool for…": site_search, then link the page.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
-- Planning a day, an afternoon or an outing at a place on a date ("Sunday 2 PM in Central Park"): call evening_events for that date, hours and place first (from/to around the visit, km 2), and read its alsoOn: a race, parade or festival there or citywide changes the plan (closed drives and paths, crowds, detours, busy subways), so say so first and plan around it. Today's live picture is whats_happening_here.
+- Planning a day, an afternoon or an outing at a place ("Sunday 2 PM in Central Park"): plan_outing first (the date from the week list, from/to around the visit). Read headsUp and alsoOn before anything else: a race, parade or festival there or citywide changes the plan (closed drives and paths, crowds, detours, busy subways), so say so first and plan around it; use the hourly weather and sunset, and rightNow when it is today. Then suggest specific things from its events, with their links.
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
 - Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over), heard_on_air (what our receiver is captioning on a repeater right now, and the callsigns in it). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - What's going on in the city (the command post's live picture): whats_happening_here (everything around a place or the visitor now: incidents with how many sources agree, closures, alerts, 311, news, anything unusual), area_report (one area in depth: now, the last 24 h, 311's week against usual, news, cameras), explore_city_data (search and count everything stored: alerts, incidents, Waze, closures, flooding, 311 for 35 days, news; group by kind, hour, day, borough), local_news (today's stories from 15 NYC newsrooms, placed where they happen), city_brief (the situation brief and vital signs, citywide or a borough), public_safety_record (an area's official NYPD and FDNY record, weeks to months late), emergency_alerts (Notify NYC and weather alerts), flood_sensors (street flooding now, harbor surge), film_shoots, inspect_traffic_camera (the local vision model reads one camera's picture), watch_area_cameras (it looks at up to 5 cameras around a place at once and sums them up). On the NYC map, put what you found on the map with the page action mark_places (several labeled pins), and analyze_area opens the area panel. Numbers come from the tools, never estimate them; say what the sources are, how fresh they are, and when only one source reports something; link news stories to their outlet.
