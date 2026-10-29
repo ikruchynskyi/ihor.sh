@@ -81,7 +81,7 @@ export const active = (at = now()) => activeQ.all(at, at) as Ev[];
 
 // Places named in the feeds, geocoded once (NYC Geoclient for cross streets, see nycapi.geocode); misses are kept too.
 const placeGet = db.prepare("select lat, lon from places where text = ?"), placePut = db.prepare("insert or replace into places values (?, ?, ?)");
-async function place(q: string) {
+export async function place(q: string) {
   const hit = placeGet.get(q) as { lat: number | null; lon: number | null } | undefined;
   if (hit) return hit.lat == null ? null : { lat: hit.lat, lon: hit.lon! };
   const g = await geocode(q).catch(() => undefined);

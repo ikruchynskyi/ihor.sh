@@ -9,12 +9,13 @@ import path from "node:path";
 import { cityEvents, restaurantsNear, tripPlan } from "./nycapi.ts";
 import { annotateTrip } from "./transit.ts";
 import { currentEvents } from "./events.ts";
+import { corner, place } from "./city.ts";
 // @ts-ignore: plain JS shared with the Free NYC page
 import { onDay, onDate } from "../nyc/free.js";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
-const db = new DatabaseSync(path.join(dir, "evening.db"));
+const db = new DatabaseSync(process.env.EVENING_DB ?? path.join(dir, "evening.db"));
 db.exec(`
   create table if not exists ev (id text primary key, source text, title text, start text, "end" text, all_day int, venue text, address text, lat real, lon real,
     borough text, price_min real, price_max real, free int, category text, url text, image text, status text, outdoor int, summary text, first_seen int, last_seen int, missed int default 0, dup_of text);
@@ -44,7 +45,7 @@ const put = db.prepare(`insert into ev (id, source, title, start, "end", all_day
   values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) on conflict(id) do update set title=excluded.title, start=excluded.start, "end"=excluded."end", all_day=excluded.all_day, venue=excluded.venue,
   address=excluded.address, lat=excluded.lat, lon=excluded.lon, price_min=excluded.price_min, price_max=excluded.price_max, free=excluded.free, category=excluded.category, url=excluded.url,
   image=excluded.image, status=excluded.status, outdoor=excluded.outdoor, summary=excluded.summary, last_seen=excluded.last_seen, missed=0`);
-function save(e: E) {
+export function save(e: E) {
   if (!e.title || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(e.start)) return false; // no clear date and time: not trustworthy
   const t = now();
   put.run(e.id, e.source, e.title.slice(0, 200), e.start, e.end ?? null, e.allDay ? 1 : 0, (e.venue ?? "").slice(0, 160), (e.address ?? "").slice(0, 200), e.lat ?? null, e.lon ?? null, e.borough ?? "",
@@ -103,13 +104,20 @@ export async function fromCity(days = 7) {
   }
   sweep("city", seen, today, addDays(today, Math.min(days, 3))); run("city", seen.size); return seen.size;
 }
+// Permits that are private gatherings or upkeep, not events anyone can go to: "Celebration", "Picnic", a lawn closure, a wedding
+export const PRIVATE = /^(celebration|picnic|party|barbecue|bbq|gathering|reunion|meeting|event|family (day|gathering|reunion)|get together|picnic house)s?$|private|rehearsal|filming|construction|wedding|birthday|bday|shower|anniversary|engagement|quincea|memorial service|funeral|proposal|lawn closure|meadow closure|work ?days?|\bMUTS\b/i;
+const TYPES = ["Parade", "Street Event", "Street Festival", "Farmers Market", "Plaza Event", "Plaza Partner Event", "Open Street Partner Event", "Open Culture", "Single Block Festival", "Block Party", "Special Event", "Athletic Race / Tour", "Religious Event", "Sidewalk Sale"];
+/** "Central Park: West Drive ,Central Park: Bow Bridge" → "Central Park, Manhattan"; a street → its first corner. */
+export const permitPlace = (loc: string, boro: string) => { const first = String(loc ?? "").split(",")[0].trim(); return /:/.test(first) ? `${first.split(":")[0].trim()}, ${boro}` : corner(first, boro); };
 export async function fromPermits() {
   const today = nyDate(), to = addDays(today, 14), seen = new Set<string>();
-  const rows = await getJson(`https://data.cityofnewyork.us/resource/tvpp-9vvx.json?$limit=2000&$where=${encodeURIComponent(`start_date_time between '${today}T00:00:00' and '${to}T23:59:59' and event_type in ('Parade','Street Event','Street Festival','Farmers Market','Plaza Event','Single Block Festival','Block Party')`)}`);
+  const rows = await getJson(`https://data.cityofnewyork.us/resource/tvpp-9vvx.json?$limit=5000&$where=${encodeURIComponent(`start_date_time between '${today}T00:00:00' and '${to}T23:59:59' and event_type in (${TYPES.map((t) => `'${t}'`).join(",")})`)}`);
   for (const r of rows) {
-    if (/private|rehearsal|filming|construction|wedding|birthday|memorial service|funeral|proposal/i.test(r.event_name ?? "")) continue; // permits, not public events
-    const id = `permit:${r.event_id}`, ok = save({ id, source: "permits", title: unent(r.event_name), start: String(r.start_date_time).slice(0, 16).replace("T", " "), end: String(r.end_date_time ?? "").slice(0, 16).replace("T", " ") || null,
-      venue: r.event_location, borough: r.event_borough, free: true, priceMin: 0, category: category(r.event_type, r.event_name), url: "https://www.nyc.gov/site/cecm/permitting/permitted-events/permitted-event-information.page", outdoor: true, summary: `${r.event_type}${r.street_closure_type && r.street_closure_type !== "N/A" ? ` · street closure: ${r.street_closure_type}` : ""}` });
+    if (PRIVATE.test(String(r.event_name ?? "").trim())) continue;
+    const pt = await place(permitPlace(r.event_location, r.event_borough)), id = `permit:${r.event_id}`;
+    const ok = save({ id, source: "permits", title: unent(r.event_name), start: String(r.start_date_time).slice(0, 16).replace("T", " "), end: String(r.end_date_time ?? "").slice(0, 16).replace("T", " ") || null,
+      venue: String(r.event_location ?? "").replace(/\s+/g, " ").slice(0, 160), borough: r.event_borough, lat: pt?.lat ?? null, lon: pt?.lon ?? null, free: true, priceMin: 0, category: category(r.event_type, r.event_name),
+      url: "https://www.nyc.gov/site/cecm/permitting/permitted-event-information.page", outdoor: true, summary: `${r.event_type}${r.street_closure_type && r.street_closure_type !== "N/A" ? ` · street closure: ${r.street_closure_type}` : ""}` });
     if (ok) seen.add(id);
   }
   sweep("permits", seen, today, addDays(today, 3)); run("permits", seen.size); return seen.size;
@@ -132,17 +140,20 @@ export function fromFree(days = 7) {
   sweep("nycforfree", seen, today, addDays(today, 3)); run("free", seen.size); return seen.size;
 }
 
+const kmTo = (a: number, b: number, c: number, d: number) => { const r = Math.PI / 180, h = Math.sin(((c - a) * r) / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
 /** The same event from two sources (same day, nearly the same title, same place): keep one, the most specific source. */
 export function dedupe() {
   db.exec("update ev set dup_of = null");
   const rank: Record<string, number> = { ticketmaster: 0, city: 1, parks: 1, nycforfree: 2, freehours: 2, permits: 3 };
   const key = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 2).slice(0, 4).join(" ");
-  const rows = db.prepare("select id, source, title, start, lat, lon from ev where status = 'ok' and start >= ?").all(nyDate()) as any[], best = new Map<string, any>();
+  const rows = db.prepare("select id, source, title, start, lat, lon from ev where status = 'ok' and start >= ?").all(nyDate()) as any[], best = new Map<string, any[]>();
   let n = 0;
-  for (const r of rows.sort((a, b) => rank[a.source] - rank[b.source])) {
-    const k = `${r.start.slice(0, 10)}|${key(r.title)}|${r.lat != null && r.lon != null ? `${r.lat.toFixed(2)},${r.lon.toFixed(2)}` : ""}`, b = best.get(k);
-    // one source listing the same title twice that day is two showings (matinee and evening), not a duplicate
-    if (b && (b.source !== r.source || b.start === r.start)) { db.prepare("update ev set dup_of = ? where id = ?").run(b.id, r.id); n++; } else if (!b) best.set(k, r);
+  for (const r of rows.sort((a, b) => (rank[a.source] ?? 9) - (rank[b.source] ?? 9))) {
+    const k = `${r.start.slice(0, 10)}|${key(r.title)}`, list = best.get(k) ?? [];
+    // one source listing the same title twice that day is two showings (matinee and evening), not a duplicate;
+    // "Halloween Party" in two parks is two parties
+    const b = list.find((b) => (b.source !== r.source || b.start === r.start) && (b.lat == null || r.lat == null || kmTo(b.lat, b.lon, r.lat, r.lon) < 1.5));
+    if (b) { db.prepare("update ev set dup_of = ? where id = ?").run(b.id, r.id); n++; } else best.set(k, [...list, r]);
   }
   return n;
 }
@@ -160,12 +171,11 @@ async function rainChance() {
 
 // ---------- asking ----------
 export type EvQuery = { date?: string; from?: string; to?: string; budget?: string; cat?: string; near?: string; km?: number; source?: string; q?: string };
-const kmTo = (a: number, b: number, c: number, d: number) => { const r = Math.PI / 180, h = Math.sin(((c - a) * r) / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
 export async function events(qy: EvQuery) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(qy.date ?? "") ? qy.date! : nyDate(), from = /^\d{2}:\d{2}$/.test(qy.from ?? "") ? qy.from! : "00:00", to = /^\d{2}:\d{2}$/.test(qy.to ?? "") ? qy.to! : "23:59";
   const where = ["status in ('ok','postponed','rescheduled')", "dup_of is null", "substr(start, 1, 10) = ?", "substr(start, 12, 5) between ? and ?"], args: any[] = [date, from, to];
   // also events that started earlier and are still on during the window (a festival from noon to 6 pm)
-  where.splice(2, 2, `(substr(start, 1, 10) = ? and (substr(start, 12, 5) between ? and ? or (substr(start, 12, 5) < ? and "end" is not null and substr("end", 12, 5) > ?)))`); args.splice(0, 3, date, from, to, from, from);
+  where.splice(2, 2, `(substr(start, 1, 10) = ? and (substr(start, 12, 5) between ? and ? or (substr(start, 12, 5) < ? and "end" is not null and substr("end", 12, 5) > ?) or all_day = 1))`); args.splice(0, 3, date, from, to, from, from);
   if (qy.budget === "free") where.push("free = 1");
   else if (qy.budget && /^\d+$/.test(qy.budget)) { where.push("(free = 1 or (price_min is not null and price_min <= ?))"); args.push(+qy.budget); }
   const cats = (qy.cat ?? "").split(",").filter(Boolean); if (cats.length) { where.push(`category in (${cats.map(() => "?").join(",")})`); args.push(...cats); }
@@ -174,11 +184,11 @@ export async function events(qy: EvQuery) {
   // things that start in the window first, then the ones already going (a fair that runs all afternoon)
   let rows = db.prepare(`select *, case when substr(start, 12, 5) >= ? then 0 else 1 end ongoing from ev where ${where.join(" and ")} order by ongoing, start limit 600`).all(from, ...args) as any[];
   const [nla, nlo] = (qy.near ?? "").split(",").map(Number), hasNear = Number.isFinite(nla) && Number.isFinite(nlo);
-  if (hasNear) { rows = rows.map((r) => ({ ...r, km: r.lat ? +kmTo(nla, nlo, r.lat, r.lon).toFixed(1) : null })); if (qy.km) rows = rows.filter((r) => r.km != null && r.km <= qy.km!); }
+  if (hasNear) { rows = rows.map((r) => ({ ...r, km: r.lat ? +kmTo(nla, nlo, r.lat, r.lon).toFixed(1) : null })); if (qy.km) rows = rows.filter((r) => (r.km != null && r.km <= qy.km!) || (r.lat == null && /all boroughs|citywide/i.test(`${r.venue} ${r.address}`))); }
   // timed-entry attractions (a museum with a slot every 15 minutes) become one entry with its times
   const groups = new Map<string, any>();
   const venueKey = (v: string) => String(v ?? "").toLowerCase().replace(/\s*-\s*(ny|nyc|new york)$/, "").replace(/[^a-z0-9]/g, "");
-  for (const r of rows) { const k = `${r.source}|${r.title}|${venueKey(r.venue)}`, g = groups.get(k); if (g) g.times.push(r.start.slice(11)); else groups.set(k, { ...r, times: [r.start.slice(11)] }); }
+  for (const r of rows) { const k = `${r.source}|${r.title}|${venueKey(r.venue)}|${r.lat?.toFixed(3)},${r.lon?.toFixed(3)}`, g = groups.get(k); if (g) g.times.push(r.start.slice(11)); else groups.set(k, { ...r, times: [r.start.slice(11)] }); }
   rows = [...groups.values()];
   const byHour = await rainChance();
   const out = rows.map((r) => ({ ...r, rain: r.outdoor ? byHour.get(r.start.slice(0, 13)) ?? null : null, missed: undefined, dup_of: undefined, first_seen: undefined }));
@@ -192,7 +202,7 @@ let busy = false;
 export async function eveningTick(full = false) {
   if (busy) return; busy = true;
   try {
-    const last = (db.prepare("select max(at) t from runs where what = 'parks'").get() as any)?.t ?? 0, daily = full || now() - last > 20 * 3600;
+    const last = (db.prepare("select max(at) t from runs where what = 'permits'").get() as any)?.t ?? 0, daily = full || now() - last > 20 * 3600;
     const tasks: [string, () => Promise<number> | number][] = daily ? [["parks", fromParks], ["ticketmaster", () => fromTicketmaster(7)], ["city", () => fromCity(7)], ["permits", fromPermits], ["free", () => fromFree(7)]]
       : [["ticketmaster", () => fromTicketmaster(1)], ["city", () => fromCity(1)], ["parks", fromParks]];
     for (const [name, f] of tasks) { try { await f(); } catch (e) { console.log(`evening ${name}:`, (e as Error).message); } }
