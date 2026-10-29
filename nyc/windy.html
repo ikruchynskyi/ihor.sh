@@ -18,7 +18,12 @@
 <script>
   const [lat, lon, zoom, overlay] = location.hash.slice(1).split(",");
   const tell = (m) => parent.postMessage(m, location.origin);
-  fetch("/api/nyc/windy-key").then((r) => r.json()).then(({ key }) => windyInit({ key, lat: +lat || 40.73, lon: +lon || -73.95, zoom: +zoom || 9, overlay: overlay || "wind" }, (api) => {
+  // the key, retried: during a site restart Cloudflare answers with an HTML error page ("Unexpected token '<'" in r.json())
+  const getKey = async (tries = 4) => { const r = await fetch("/api/nyc/windy-key").catch(() => null);
+    if (r?.ok && (r.headers.get("content-type") ?? "").includes("json")) return r.json();
+    if (tries > 1) return new Promise((ok) => setTimeout(ok, 3000)).then(() => getKey(tries - 1));
+    throw new Error(r ? `the site answered ${r.status}, try again in a minute` : "no connection"); };
+  getKey().then(({ key }) => windyInit({ key, lat: +lat || 40.73, lon: +lon || -73.95, zoom: +zoom || 9, overlay: overlay || "wind" }, (api) => {
     const { map, store } = api;
     window.windyAPI = api; // for poking at it from the console
     document.getElementById("msg").remove();

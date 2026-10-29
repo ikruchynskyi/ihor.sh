@@ -277,7 +277,7 @@
     #detail { position: absolute; z-index: 1001; right: 64px; top: calc((var(--hud-h, 52px) + 54px) / var(--zoom, 1)); width: min(380px, 38vw); max-height: calc((100vh - var(--hud-h, 52px) - 80px) / var(--zoom, 1)); overflow: auto;
       background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font: 13.5px/1.45 system-ui, -apple-system, sans-serif; }
     #detail .dh { position: sticky; top: 0; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; background: var(--card); border-bottom: 1px solid var(--line); }
-    #detail .dh b { flex: 1; font-size: 15px; } #detail .db { padding: 8px 12px 12px; } #detail h4 { scroll-margin-top: 56px; margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    #detail .dh b { flex: 1; font-size: 15px; } #detail .db { padding: 8px 12px 12px; } .pnear { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--line); } #detail h4 { scroll-margin-top: 56px; margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
     #detail ul { margin: 0; padding-left: 16px; } #detail li { margin: 0 0 6px; } #detail .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     #detail .acts button { font: 600 12px system-ui, sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; padding: 5px 9px !important; }
     #detail .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 4px 0; } #detail .meter i { display: block; height: 100%; background: var(--accent); }
@@ -1699,6 +1699,8 @@ function closeReplay() { stopPlay(); replay = null; replayLayer.clearLayers(); r
 // replay timeline has (incidents, alerts, flooding, helicopters, crime and fire news) that lands in one is a hit; hits
 // newer than the last look at the list are new, and the bar's ⭐ chip counts them.
 const ZONE_KEY = "nyc.zones", ZONE_SEEN = "nyc.zonesSeen";
+let tlCache = null; // the replay timeline, shared by the zones and "what's nearby" (the server caches it 2 minutes too)
+const timelineNow = async () => (tlCache && Date.now() - tlCache.at < 110_000 ? tlCache.d : (tlCache = { at: Date.now(), d: await getJSON("/api/nyc/timeline") }).d);
 const loadZones = () => { try { return JSON.parse(localStorage.getItem(ZONE_KEY) ?? "[]"); } catch { return []; } };
 let zones = loadZones(), zoneHits = new Map(), zonesAt = 0; // zone id → its events in 24 h
 const zonesSeen = () => { try { return +localStorage.getItem(ZONE_SEEN) || 0; } catch { return 0; } };
@@ -1712,7 +1714,7 @@ const inZone = (z, e) => z.pts.some(([la, lo]) => distM({ lat: la, lon: lo }, e)
 async function refreshZones() {
   if (!zones.length) { zoneHits = new Map(); seen.zones = null; return drawBar(); }
   if (Date.now() - zonesAt < 110_000) return;
-  const d = await getJSON("/api/nyc/timeline").catch(() => null);
+  const d = await timelineNow().catch(() => null);
   if (!d) return;
   zonesAt = Date.now();
   zoneHits = new Map(zones.map((z) => [z.id, d.events.filter((e) => inZone(z, e)).sort((a, b) => b.starts - a.starts)]));
@@ -1800,6 +1802,7 @@ function openDetail(c) {
     ${c.checkedBy?.length ? `<h4>Camera checks (local AI)</h4><ul>${c.checkedBy.map((v) => `<li>${esc(v.title)} <span class="muted">${hhmm(v.starts)}</span></li>`).join("")}</ul>` : ""}
     ${c.rough ? "" : `<div class="here-photo muted" id="dphoto">${photoHtml(photoAt(c.lat, c.lon).v)}</div>${dirBtns(c.lat, c.lon)}`}
     <div id="dcams"></div>
+    <div id="drel"></div>
     <div id="dresearch"></div>
     <div class="acts"><button data-dact="research" title="Search the web for this incident; the AI reads what it finds and writes what matters, every point with its sources">📰 Research this</button><button data-dact="ask">💬 Ask Blip</button><button data-dact="near">📍 Within ${NEAR_M} m</button><button data-dact="area">🔎 This area</button></div></div>`;
   d.setAttribute("aria-label", "Incident details"); d.hidden = false;
@@ -1814,6 +1817,7 @@ function openDetail(c) {
     const cams = l.map((k) => ({ k, m: map.distance([c.lat, c.lon], [k.lat, k.lon]) })).filter((o) => o.m <= 600 && !o.k.youtube).sort((a, b) => a.m - b.m).slice(0, 4), out = document.getElementById("dcams");
     if (out && detailNow === c && cams.length) out.innerHTML = `<h4>Cameras nearby</h4><div class="acts">${cams.map(({ k, m }) => `<button data-dcam="${esc(k.id)}">${camEmoji(k)}${camQ(k) ? ` ${camQ(k)}` : ""} ${esc(k.name)} <span class="muted">${Math.round(m)} m</span></button>`).join("")}</div>`;
   });
+  relatedHtml(c.lat, c.lon, { cams: false, skip: c.id }).then((h) => { const o = document.getElementById("drel"); if (o && detailNow === c && !c.rough) o.innerHTML = `<h4 style="margin-top:14px">Within ${REL_M} m</h4>${h}`; });
   if (research.has(c.id)) researchNow(c); // researched before: show it again
   seen.incidentOpen = { title: c.title, likely: p, sources: c.sources, since: hhmm(c.starts), where: c.hood ?? c.borough, reports: reports.map((e) => e.title).slice(0, 6), news: news.map((e) => e.title) };
 }
@@ -1843,7 +1847,7 @@ async function researchNow(c) {
 const closeDetail = () => { $("detail").hidden = true; detailNow = null; seen.incidentOpen = null; seen.drawer = null; };
 /** The drawer for anything else (a building's records…): a title and its body, the map stays where it is. */
 function showDrawer(icon, title, body) {
-  detailNow = null; seen.incidentOpen = null;
+  detailNow = null; seen.incidentOpen = null; detailSpot = null;
   const d = $("detail");
   d.innerHTML = `<div class="dh"><span style="font-size:20px">${icon}</span><b>${esc(title)}</b><button class="linkish" data-dact="close" aria-label="Close">×</button></div><div class="db">${body}</div>`;
   d.setAttribute("aria-label", title); d.hidden = false; d.scrollTop = 0;
@@ -1861,6 +1865,61 @@ $("detail").addEventListener("click", (e) => {
   if (a === "research") researchNow(c);
 });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("detail").hidden) closeDetail(); });
+
+// ---------- what's nearby: one drawer for anything on the map ----------
+// Popups stay for a quick look (next trains, bikes, a camera); "▸ What's nearby" on every popup opens the drawer with
+// what's around that spot: today's incidents, closures on now, today's news, the last 2 hours' alerts, flooding and
+// helicopters, and cameras, within 500 m. The incident drawer gets the same.
+const REL_M = 500;
+let related = []; // the drawer's related items, by index, for clicks
+async function relatedHtml(lat, lon, { cams = true, skip } = {}) {
+  const at = { lat, lon }, near = (x) => x.lat != null && distM(at, x) <= REL_M, by = (a, b) => distM(at, a) - distM(at, b), t2h = Date.now() / 1000 - 2 * 3600;
+  const [tl, camList, incs, nws] = await Promise.all([timelineNow().catch(() => null), cams ? (camsCache ??= getJSON("/api/nyc/cameras")).catch(() => []) : [],
+    cityData.incidents ?? getJSON("/api/nyc/incidents").catch(() => null), cityData.news ?? getJSON("/api/nyc/news").catch(() => null)]); // all at once
+  cityData.incidents ??= incs; cityData.news ??= nws;
+  const inc = (cityData.incidents?.incidents ?? []).filter((c) => near(c) && c.id !== skip).sort(by).slice(0, 8);
+  const closures = (cityData.incidents?.planned ?? []).filter(near).sort(by).slice(0, 6);
+  const news = (cityData.news?.items ?? []).filter(near).slice(0, 6);
+  const recent = (tl?.events ?? []).filter((e) => near(e) && e.starts > t2h && ["alert", "flood", "air", "fire", "crime"].includes(e.fam)).slice(-6).reverse();
+  const camsNear = camList.filter((k) => near(k) && !k.youtube).sort(by).slice(0, 4);
+  related = [];
+  const item = (x, html, after) => `<li><a href="#" data-rel="${related.push(x) - 1}">${html}</a> ${after}</li>`, m = (x) => `<span class="muted">${Math.round(distM(at, x))} m</span>`;
+  const parts = [
+    inc.length && `<h4>Incidents today</h4><ul>${inc.map((c) => item({ inc: c }, `${ICON_FAM(c)} ${esc(c.title)}`, `${m(c)} <span class="muted">· ${ago(c.starts)}</span>`)).join("")}</ul>`,
+    recent.length && `<h4>The last 2 hours</h4><ul>${recent.map((e) => item({ pin: e }, `${FAM_ICON[e.fam] ?? FAM_ICON.other} ${esc(e.title)}`, `${m(e)} <span class="muted">· ${nyWhen(e.starts)}</span>`)).join("")}</ul>`,
+    closures.length && `<h4>Closures and street events on now</h4><ul>${closures.map((e) => item({ pin: e }, `🚧 ${esc(e.title)}`, m(e))).join("")}</ul>`,
+    news.length && `<h4>In today's news</h4><ul>${news.map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a> <span class="muted">${esc(n.outlet ?? "")}${n.place ? ` · 📍 ${esc(n.place)}` : ""}</span></li>`).join("")}</ul>`,
+    camsNear.length && `<h4>Cameras</h4><div class="acts">${camsNear.map((k) => `<button data-dcam="${esc(k.id)}">${camEmoji(k)} ${esc(k.name)} ${m(k)}</button>`).join("")}</div>`,
+  ].filter(Boolean);
+  return parts.length ? parts.join("") : `<p class="muted">Nothing reported within ${REL_M} m today${cams ? ", and no cameras" : ""}.</p>`;
+}
+async function openNearby(lat, lon, title) {
+  showDrawer("📍", title || "This spot", `<div class="muted">Within ${REL_M} m</div><div id="drel"><p class="muted">Looking around…</p></div>
+    <div class="acts"><button data-dact="near">🚇 Transit, bikes, restrooms (600 m)</button><button data-dact="area">🔎 This area</button><button data-dact="ask">💬 Ask Blip</button></div>`);
+  detailSpot = { lat, lon, title };
+  const html = await relatedHtml(lat, lon), out = document.getElementById("drel");
+  if (out && detailSpot?.lat === lat) { out.innerHTML = html; seen.drawer = { title: `What's near ${title}`, text: out.innerText.slice(0, 2500) }; }
+}
+let detailSpot = null; // the spot the nearby drawer is about
+$("detail").addEventListener("click", (e) => {
+  const r = e.target.closest("[data-rel]"), a = e.target.closest("[data-dact]")?.dataset.dact;
+  if (r) { e.preventDefault(); const x = related[+r.dataset.rel]; if (x?.inc) openDetail(x.inc); else if (x?.pin) showPins([x.pin]); return; }
+  if (e.target.closest("[data-dcam]") && !detailNow) { const id = e.target.closest("[data-dcam]").dataset.dcam; (camsCache ?? Promise.resolve([])).then((l) => { const k = l.find((x) => x.id === id); if (k) openCam(k); }); return; }
+  const s = !detailNow && detailSpot;
+  if (!s || !a) return;
+  if (a === "near") { closeDetail(); nearMe(L.latLng(s.lat, s.lon), s.title); }
+  if (a === "area") { closeDetail(); map.setView([s.lat, s.lon], 15, { animate: false }); analyzeArea(); }
+  if (a === "ask") dispatchEvent(new CustomEvent("blip:ask", { detail: { text: `What's going on around ${s.title} right now?` } }));
+});
+// every popup gets the link, again after its content changes (a station's arrivals come in later)
+function nearbyFooter(pop) {
+  const box = pop.getElement()?.querySelector(".leaflet-popup-content");
+  if (!box || box.querySelector(".pnear") || !NYC.contains(pop.getLatLng())) return;
+  const t = box.querySelector("b")?.textContent.trim().replace(/^\W+\s*/u, "").slice(0, 80) || "this spot";
+  box.insertAdjacentHTML("beforeend", `<div class="pnear"><button type="button" class="linkish">▸ What's nearby</button></div>`);
+  box.querySelector(".pnear button").onclick = (ev) => { ev.stopPropagation(); const ll = pop.getLatLng(); openNearby(ll.lat, ll.lng, t); };
+}
+map.on("popupopen", (e) => { nearbyFooter(e.popup); if (!e.popup._nearHooked) { e.popup._nearHooked = true; e.popup.on("contentupdate", () => nearbyFooter(e.popup)); } });
 
 // ---------- the Now tab: today's incidents, ranked by what deserves attention ----------
 // attention = (1 + severity) × how likely × 1.5 in its first hour; the alerts without a place on top.
