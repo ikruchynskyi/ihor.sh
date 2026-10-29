@@ -97,6 +97,15 @@ let placesDb: DatabaseSync | null = null;
 const pdbOpen = () => { if (!placesDb) { placesDb = new DatabaseSync(process.env.PLACES_DB ?? path.join(import.meta.dirname, "..", "data", "places.db"), { timeout: 5000 });
   placesDb.exec("create table if not exists cache (k text primary key, at int, v text); create table if not exists used (day text primary key, n int)"); } return placesDb; };
 const nyDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+/** One call of a Google SKU ("nearby" for map clicks, "text" for searches; 1,000 free a month each): false once it would
+ *  pass PLACES_MONTHLY_CAP (900) or PLACES_DAILY_CAP (60) for that SKU. */
+function spendPlaces(sku: string) {
+  const pdb = pdbOpen(), day = nyDay(), get = (q: string, k: string) => (pdb.prepare(q).get(k) as any)?.n ?? 0;
+  if (get("select n from used where day = ?", `${sku}:${day}`) >= (Number(env("PLACES_DAILY_CAP")) || 60) || get("select sum(n) n from used where day like ?", `${sku}:${day.slice(0, 7)}%`) >= (Number(env("PLACES_MONTHLY_CAP")) || 900)) return false;
+  pdb.prepare("insert into used values (?, 1) on conflict(day) do update set n = n + 1").run(`${sku}:${day}`);
+  return true;
+}
+const placesKey = () => env("GOOGLE_PLACES_KEY") || env("GOOGLE_PLACES_API") || env("SHEETS_API_KEY");
 /** Google's weekly hours → open at this moment in New York (periods use 0 = Sunday, like JS; one period with no close = 24/7). */
 export function openNow(periods: any[] | undefined, now = new Date()) {
   if (!periods?.length) return null;
@@ -105,16 +114,14 @@ export function openNow(periods: any[] | undefined, now = new Date()) {
   return periods.some((p) => { if (!p.open || !p.close) return false; const a = at(p.open), b = at(p.close); return b > a ? t >= a && t < b : t >= a || t < b; }); // b < a: open past Saturday midnight
 }
 export async function googleRatings(lat: number, lon: number) {
-  const key = env("GOOGLE_PLACES_KEY") || env("GOOGLE_PLACES_API") || env("SHEETS_API_KEY");
+  const key = placesKey();
   if (!key) return [];
   const pdb = pdbOpen(), glat = Math.round(lat * 4000) / 4000, glon = Math.round(lon * 3000) / 3000, k = `${glat},${glon}`; // ~28 m squares
   const hit = pdb.prepare("select v from cache where k = ? and at > ?").get(k, Date.now() / 1000 - 30 * 86400) as { v: string } | undefined;
   let places: any[];
   if (hit) places = JSON.parse(hit.v);
   else {
-    const day = nyDay(), today = (pdb.prepare("select n from used where day = ?").get(day) as any)?.n ?? 0, month = (pdb.prepare("select sum(n) n from used where day like ?").get(`${day.slice(0, 7)}%`) as any)?.n ?? 0;
-    if (today >= (Number(env("PLACES_DAILY_CAP")) || 60) || month >= (Number(env("PLACES_MONTHLY_CAP")) || 900)) return [];
-    pdb.prepare("insert into used values (?, 1) on conflict(day) do update set n = n + 1").run(day);
+    if (!spendPlaces("nearby")) return [];
     // a key restricted to ihor.sh pages: these calls are made for those pages
     const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
       method: "POST", signal: AbortSignal.timeout(8_000),
@@ -129,6 +136,55 @@ export async function googleRatings(lat: number, lon: number) {
   }
   const dow = (new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getDay() + 6) % 7; // weekdayDescriptions start on Monday
   return places.map(({ periods, week, ...p }) => ({ ...p, open: p.closedForNow ? false : openNow(periods), hoursToday: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }));
+}
+
+/** Places by what and where ("ramen", "shoe store", "rooftop bar" near a point): Google's Text Search with rating, price,
+ *  hours, website and phone (its own 1,000 free calls a month), each search cached 7 days and filtered here by distance, rating,
+ *  price and open now; restaurants get their city inspection grade. Without Google (quota, key, outage): grade-A restaurants
+ *  from the city's inspections for food, OpenStreetMap otherwise, each with a Google Maps search link. */
+const PRICE = ["PRICE_LEVEL_FREE", "PRICE_LEVEL_INEXPENSIVE", "PRICE_LEVEL_MODERATE", "PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"];
+const FOOD = /restaurant|food|dinner|lunch|brunch|breakfast|pizza|sushi|ramen|taco|burger|bbq|steak|noodle|dumpling|bakery|cafe|coffee|deli|bagel|vegan|thai|italian|chinese|japanese|korean|indian|mexican|french|greek|halal|seafood|dessert|ice cream/i;
+export async function searchPlaces({ what, lat, lon, km = 1, minRating = 0, maxPrice = 4, onlyOpen = false }: { what: string; lat: number; lon: number; km?: number; minRating?: number; maxPrice?: number; onlyOpen?: boolean }) {
+  const q = what.trim().slice(0, 80), r = Math.min(5, Math.max(0.2, km)), maps = (name: string, address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`)}`;
+  const dist = (a: number, b: number) => +Math.hypot((a - lat) * 111.2, (b - lon) * 84.3).toFixed(2);
+  const key = placesKey(), ck = `text:${q.toLowerCase()}|${(Math.round(lat * 400) / 400).toFixed(4)},${(Math.round(lon * 300) / 300).toFixed(4)}|${r}`;
+  let found: any[] | null = null;
+  if (key) {
+    const pdb = pdbOpen(), hit = pdb.prepare("select v from cache where k = ? and at > ?").get(ck, Date.now() / 1000 - 7 * 86400) as { v: string } | undefined;
+    if (hit) found = JSON.parse(hit.v);
+    else if (spendPlaces("text")) {
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", signal: AbortSignal.timeout(10_000),
+        headers: { "content-type": "application/json", "X-Goog-Api-Key": key, Referer: "https://ihor.sh/", "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.nationalPhoneNumber,places.googleMapsUri,places.primaryTypeDisplayName,places.regularOpeningHours,places.businessStatus" },
+        body: JSON.stringify({ textQuery: q, pageSize: 20, locationBias: { circle: { center: { latitude: lat, longitude: lon }, radius: r * 1000 } } }) }).catch(() => null);
+      if (res?.ok) {
+        found = ((await res.json()).places ?? []).filter((p: any) => p.location && p.businessStatus !== "CLOSED_PERMANENTLY").map((p: any) => ({ name: p.displayName?.text ?? "", kind: p.primaryTypeDisplayName?.text ?? "", address: (p.formattedAddress ?? "").replace(/, USA$/, ""),
+          lat: p.location.latitude, lon: p.location.longitude, rating: p.rating ?? null, reviews: p.userRatingCount ?? 0, price: p.priceLevel ? PRICE.indexOf(p.priceLevel) : null, website: p.websiteUri ?? "", phone: p.nationalPhoneNumber ?? "",
+          googleMaps: p.googleMapsUri, periods: p.regularOpeningHours?.periods ?? null, week: p.regularOpeningHours?.weekdayDescriptions ?? null, closedForNow: p.businessStatus === "CLOSED_TEMPORARILY" }));
+        pdb.prepare("insert or replace into cache values (?, ?, ?)").run(ck, Math.floor(Date.now() / 1000), JSON.stringify(found));
+      }
+    }
+  }
+  if (found) {
+    const dow = (new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getDay() + 6) % 7;
+    let list = found.map(({ periods, week, ...p }) => ({ ...p, km: dist(p.lat, p.lon), open: p.closedForNow ? false : openNow(periods), today: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }))
+      .filter((p) => p.km <= r * 1.3 && (p.rating ?? 0) >= minRating && (p.price == null || p.price <= maxPrice) && (!onlyOpen || p.open !== false));
+    // food: grade A on the city's latest inspection (one query for the area), matched by name within 150 m
+    if (FOOD.test(q)) { const a = await restaurantsNear(lat, lon, r * 1300).catch(() => []), k = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+      for (const p of list) if (a.some((x: any) => k(x.name) === k(p.name) && Math.hypot((x.lat - p.lat) * 111.2, (x.lon - p.lon) * 84.3) <= 0.15)) (p as any).grade = "A"; }
+    return { source: "Google Maps", results: list.slice(0, 10) };
+  }
+  // no Google: the city's grade-A restaurants for food, OpenStreetMap for everything else
+  if (FOOD.test(q)) {
+    // the city files restaurants by cuisine: a dish is looked up as its cuisine too
+    const DISH: Record<string, string> = { ramen: "japanese", sushi: "japanese", udon: "japanese", taco: "mexican", burrito: "mexican", dumpling: "chinese", "dim sum": "chinese", curry: "indian", pho: "vietnamese", banh: "vietnamese", falafel: "middle eastern", shawarma: "middle eastern", bbq: "barbecue", burger: "hamburgers", bagel: "bagels", espresso: "coffee", brunch: "american" };
+    const words = q.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !/restaurant|food|dinner|lunch|place|good|best|cheap/.test(w)).flatMap((w) => [w, ...((DISH[w] ?? DISH[w.replace(/s$/, "")]) ? [DISH[w] ?? DISH[w.replace(/s$/, "")]] : [])]);
+    const list = (await restaurantsNear(lat, lon, r * 1000).catch(() => [])).filter((x: any) => !words.length || words.some((w) => `${x.cuisine} ${x.name}`.toLowerCase().includes(w)));
+    if (list.length) return { source: "NYC restaurant inspections (grade A); Google's details aren't available right now", results: list.slice(0, 10).map((x: any) => ({ name: x.name, kind: x.cuisine, address: x.address, lat: x.lat, lon: x.lon, km: +(x.m / 1000).toFixed(2), grade: "A", googleMaps: maps(x.name, x.address) })) };
+  }
+  const d = await json(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=25&lang=en&bbox=-74.26,40.49,-73.69,40.92`).catch(() => null);
+  const list = ((d?.features ?? []) as any[]).map((f) => ({ name: f.properties.name, kind: String(f.properties.osm_value ?? "").replace(/_/g, " "), address: [f.properties.housenumber, f.properties.street].filter(Boolean).join(" "), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }))
+    .filter((x) => x.name).map((x) => ({ ...x, km: dist(x.lat, x.lon), googleMaps: maps(x.name, x.address) })).filter((x) => x.km <= r * 1.3).sort((a, b) => a.km - b.km);
+  return { source: "OpenStreetMap; Google's details aren't available right now", results: list.slice(0, 10) };
 }
 
 const titleCase = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/(^|[\s/-])[a-z]/g, (c) => c.toUpperCase());

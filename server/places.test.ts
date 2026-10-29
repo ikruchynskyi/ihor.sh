@@ -32,3 +32,4 @@ assert.equal(m[0].grade, "A"); assert.equal(m[0].rating, 4.5); assert.equal(m[0]
 const off = mergeBusinesses([{ name: "Rookie USA", kind: "shoes shop", source: "OpenStreetMap" }, { name: "Lids", kind: "hat shop", source: "OpenStreetMap" }], []);
 assert.equal(off.length, 2); assert.ok(off.every((b: any) => !b.ratingUrl));
 console.log("merge ok");
+

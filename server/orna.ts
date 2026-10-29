@@ -40,7 +40,7 @@ const SHEET = `https://sheets.googleapis.com/v4/spreadsheets/${process.env.ORNA_
 let cache: { at: number; rows: { material: string; dates: Record<string, string> }[] } | null = null;
 async function forecast() {
   if (cache && cache.at > Date.now() - 3600_000) return cache.rows;
-  const r = await fetch(`${SHEET}?key=${process.env.SHEETS_API_KEY ?? ""}`, { signal: AbortSignal.timeout(15_000) });
+  const r = await fetch(`${SHEET}?key=${process.env.SHEETS_API_KEY ?? ""}`, { headers: { Referer: "https://ihor.sh/" }, signal: AbortSignal.timeout(15_000) }); // the key only answers ihor.sh pages
   if (!r.ok) throw new Error(`sheets ${r.status}`);
   const values: string[][] = (await r.json()).values ?? [];
   // row 0 is the header; column 1 (Anguish) is an outdated mechanic, the guilds follow in GUILDS order
