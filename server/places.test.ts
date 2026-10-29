@@ -28,7 +28,7 @@ const m = mergeBusinesses([
 assert.deepEqual(m.map((b: any) => b.name), ["Marea Restaurant", "Starbucks", "Bakery On 58 Corp.", "Wendy Mayer, DDS"]); // street level first; the unrated listing is gone
 assert.equal(m[0].grade, "A"); assert.equal(m[0].rating, 4.5); assert.equal(m[0].website, "https://marea.com"); assert.equal(m[0].source, "Health inspections, OpenStreetMap, Google");
 // Places off (quota used up, key gone, API down): every business is still listed, without Google's link, so the page
-// shows its Google Maps search link (nyc/index.html: b.ratingUrl ? "" : maps search)
+// shows its Google Maps search link (nyc/map.js: b.ratingUrl ? "" : maps search)
 const off = mergeBusinesses([{ name: "Rookie USA", kind: "shoes shop", source: "OpenStreetMap" }, { name: "Lids", kind: "hat shop", source: "OpenStreetMap" }], []);
 assert.equal(off.length, 2); assert.ok(off.every((b: any) => !b.ratingUrl));
 console.log("merge ok");
