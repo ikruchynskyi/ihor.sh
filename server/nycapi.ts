@@ -6,6 +6,8 @@
 //   restaurants: DOHMH restaurant inspections on NYC Open Data (Socrata 43nn-pn8j)
 
 import { OLLAMA, LOCAL_MODEL } from "./llm.ts";
+import { DatabaseSync } from "node:sqlite";
+import path from "node:path";
 
 const env = (k: string) => process.env[k] ?? "";
 const json = async (url: string, headers: Record<string, string> = {}) => {
@@ -63,31 +65,54 @@ export async function pointInfo(lat: number, lon: number) {
   // Google ratings: on the matching business ("Katz's" ↔ "Katz's Delicatessen"), or as their own entry before the license list.
   for (const g of rated) {
     const k = key(g.name), hit = businesses.find((b) => { const bk = key(b.name); return bk === k || (Math.min(bk.length, k.length) >= 4 && (bk.startsWith(k) || k.startsWith(bk))); });
-    if (hit) Object.assign(hit, { rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website });
-    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website, source: "Google" }); }
+    const extra = { rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website, phone: g.phone, open: g.open, hoursToday: g.hoursToday };
+    if (hit) Object.assign(hit, extra);
+    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, ...extra, source: "Google" }); }
   }
   return { lat, lon, found: true, place: p.label, address: p.housenumber ? `${titleCase(`${p.housenumber.replace(/\s+GARAGE$/i, "")} ${p.street}`).replace(/\bB'way\b/, "Broadway")}, ${p.borough}` : p.label.replace(/, (NY, )?USA$/, ""), neighborhood: info.neighborhood ?? p.neighbourhood ?? null, zip: info.ZIP ?? p.postalcode ?? null, businesses };
 }
 
-/**
- * Google ratings within ~40 m (Places API (New) Nearby Search). Key: GOOGLE_PLACES_KEY, else SHEETS_API_KEY; either must
- * be allowed to call the Places API (New). Ratings are a paid field: PLACES_DAILY_CAP (default 300) lookups a day.
- */
-let placesDay = "", placesUsed = 0;
-async function googleRatings(lat: number, lon: number) {
-  const key = env("GOOGLE_PLACES_KEY") || env("SHEETS_API_KEY");
+// ---------- Google Places on a map click: rating, website, phone, hours, inside the free tier ----------
+// Rating, website, phone and hours put Nearby Search in Google's Enterprise SKU: 1,000 free calls a month (per-SKU free
+// usage since March 2025). We stop at PLACES_MONTHLY_CAP (default 900) and PLACES_DAILY_CAP (default 60) calls, counted
+// in data/places.db so a restart doesn't reset them, and keep each ~28 m square's answer for 30 days.
+// opened on first use: modules that import this one (and their tests on the host) never touch the live file
+let placesDb: DatabaseSync | null = null;
+const pdbOpen = () => { if (!placesDb) { placesDb = new DatabaseSync(process.env.PLACES_DB ?? path.join(import.meta.dirname, "..", "data", "places.db"), { timeout: 5000 });
+  placesDb.exec("create table if not exists cache (k text primary key, at int, v text); create table if not exists used (day text primary key, n int)"); } return placesDb; };
+const nyDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+/** Google's weekly hours → open at this moment in New York (periods use 0 = Sunday, like JS; one period with no close = 24/7). */
+export function openNow(periods: any[] | undefined, now = new Date()) {
+  if (!periods?.length) return null;
+  if (periods.length === 1 && !periods[0].close) return true;
+  const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })), t = ny.getDay() * 1440 + ny.getHours() * 60 + ny.getMinutes(), at = (x: any) => x.day * 1440 + (x.hour ?? 0) * 60 + (x.minute ?? 0);
+  return periods.some((p) => { if (!p.open || !p.close) return false; const a = at(p.open), b = at(p.close); return b > a ? t >= a && t < b : t >= a || t < b; }); // b < a: open past Saturday midnight
+}
+export async function googleRatings(lat: number, lon: number) {
+  const key = env("GOOGLE_PLACES_KEY") || env("GOOGLE_PLACES_API") || env("SHEETS_API_KEY");
   if (!key) return [];
-  const day = new Date().toDateString();
-  if (day !== placesDay) { placesDay = day; placesUsed = 0; }
-  if (++placesUsed > (Number(env("PLACES_DAILY_CAP")) || 300)) return []; // ponytail: in-memory count, a restart resets it
-  const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-    method: "POST", signal: AbortSignal.timeout(8_000),
-    headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.websiteUri,places.primaryTypeDisplayName" },
-    body: JSON.stringify({ maxResultCount: 15, rankPreference: "DISTANCE", locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: 40 } } }),
-  });
-  if (!r.ok) throw new Error(`Places API ${r.status}`);
-  return (((await r.json()).places ?? []) as any[]).filter((p) => p.rating && p.displayName?.text)
-    .map((p) => ({ name: p.displayName.text as string, kind: p.primaryTypeDisplayName?.text ?? "", rating: p.rating as number, reviews: (p.userRatingCount ?? 0) as number, url: p.googleMapsUri as string, website: (p.websiteUri ?? "") as string }));
+  const pdb = pdbOpen(), glat = Math.round(lat * 4000) / 4000, glon = Math.round(lon * 3000) / 3000, k = `${glat},${glon}`; // ~28 m squares
+  const hit = pdb.prepare("select v from cache where k = ? and at > ?").get(k, Date.now() / 1000 - 30 * 86400) as { v: string } | undefined;
+  let places: any[];
+  if (hit) places = JSON.parse(hit.v);
+  else {
+    const day = nyDay(), today = (pdb.prepare("select n from used where day = ?").get(day) as any)?.n ?? 0, month = (pdb.prepare("select sum(n) n from used where day like ?").get(`${day.slice(0, 7)}%`) as any)?.n ?? 0;
+    if (today >= (Number(env("PLACES_DAILY_CAP")) || 60) || month >= (Number(env("PLACES_MONTHLY_CAP")) || 900)) return [];
+    pdb.prepare("insert into used values (?, 1) on conflict(day) do update set n = n + 1").run(day);
+    // a key restricted to ihor.sh pages: these calls are made for those pages
+    const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+      method: "POST", signal: AbortSignal.timeout(8_000),
+      headers: { "content-type": "application/json", "X-Goog-Api-Key": key, Referer: "https://ihor.sh/", "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.websiteUri,places.nationalPhoneNumber,places.regularOpeningHours,places.primaryTypeDisplayName,places.businessStatus" },
+      body: JSON.stringify({ maxResultCount: 15, rankPreference: "DISTANCE", locationRestriction: { circle: { center: { latitude: glat, longitude: glon }, radius: 45 } } }),
+    });
+    if (!r.ok) throw new Error(`Places API ${r.status}`);
+    places = ((await r.json()).places ?? []).filter((p: any) => p.displayName?.text && p.businessStatus !== "CLOSED_PERMANENTLY").map((p: any) => ({
+      name: p.displayName.text, kind: p.primaryTypeDisplayName?.text ?? "", rating: p.rating ?? null, reviews: p.userRatingCount ?? 0, url: p.googleMapsUri, website: p.websiteUri ?? "",
+      phone: p.nationalPhoneNumber ?? "", periods: p.regularOpeningHours?.periods ?? null, week: p.regularOpeningHours?.weekdayDescriptions ?? null, closedForNow: p.businessStatus === "CLOSED_TEMPORARILY" }));
+    pdb.prepare("insert or replace into cache values (?, ?, ?)").run(k, Math.floor(Date.now() / 1000), JSON.stringify(places));
+  }
+  const dow = (new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getDay() + 6) % 7; // weekdayDescriptions start on Monday
+  return places.map(({ periods, week, ...p }) => ({ ...p, open: p.closedForNow ? false : openNow(periods), hoursToday: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }));
 }
 
 const titleCase = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/(^|[\s/-])[a-z]/g, (c) => c.toUpperCase());

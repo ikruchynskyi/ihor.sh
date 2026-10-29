@@ -1,7 +1,7 @@
 // Blip's brain: the system prompt, the tools it can call, and the tool loop over Ollama: a cloud model first
 // (Ollama Cloud, OLLAMA_CLOUD_KEY), the local one when the cloud fails or has no key.
 // Each tool is a plain function from nycapi.ts / archive.ts / events.ts; results go back to the model as data.
-import { addressInfo, buildingReport, publicSpaces, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode, suggest, trafficCameras, webcamsNear, inNyc, inspectCamera } from "./nycapi.ts";
+import { addressInfo, buildingReport, publicSpaces, googleRatings, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode, suggest, trafficCameras, webcamsNear, inNyc, inspectCamera } from "./nycapi.ts";
 import { active, recent, view, latest, floodnetSensors, around, latestBrief, pulse, anomalies, borough, BOROUGHS, todaysNews, explore, area, safetyRecord, watchCameras } from "./city.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
@@ -339,6 +339,17 @@ const TOOLS: Record<string, Tool> = {
     parameters: { address: { type: "string", description: "Street address, e.g. '1 Bennett Ave Manhattan'" } }, required: ["address"],
     run: async ({ address }) => { const r: any = await buildingReport(String(address)); return r.found ? { ...r, mapLink: `/nyc/#place=${encodeURIComponent(r.address)}` } : { error: "No NYC building found at that address." }; },
   },
+  business_info: {
+    description: "One NYC business or place by name and area or address (\"Katz's Deli\", \"Joe's Pizza Carmine St\"): Google's rating and review count, open right now and today's hours, website, phone, Google Maps link, and the other businesses on that spot. openNow is computed from its hours at this moment: trust it over your own reading of the hours. It spends a small monthly quota, so call it for a place the visitor asks about, not to survey many.",
+    parameters: { place: { type: "string", description: "Business name with its street or neighborhood, or an address" } }, required: ["place"],
+    run: async ({ place }) => {
+      const at = await pointOf(undefined, undefined, place);
+      if (!at) return { error: "I couldn't find that place in NYC." };
+      const list = await googleRatings(at.lat, at.lon).catch(() => []);
+      if (!list.length) return { near: at.label, error: "No Google details there right now (or this month's free quota is used up)." };
+      return { near: at.label, places: list.slice(0, 8).map((p: any) => ({ name: p.name, kind: p.kind, rating: p.rating, reviews: p.reviews, openNow: p.open, today: p.hoursToday, website: p.website || undefined, phone: p.phone || undefined, googleMaps: p.url })), mapLink: mapAt(at.lat, at.lon, at.label) };
+    },
+  },
   public_spaces_near: {
     description: "Privately owned public spaces near a place: plazas, indoor atriums and covered arcades in private buildings that must stay open to everyone (City Planning's APOPS): a free place to sit, eat lunch, wait out rain. Name, type, indoors or not, hours, amenities (seating, tables, restrooms in a few), distance.",
     parameters: { place: { type: "string", description: "Place or address" }, lat: { type: "number", description: "Or a point" }, lon: { type: "number", description: "Longitude" }, indoor: { type: "boolean", description: "Only indoor ones (atriums, arcades)" } },
@@ -633,7 +644,7 @@ export async function ask(body: any, system: string, onStep?: (s: Step) => void)
   if (!last || last.role !== "user") throw new Error("bad request");
   const page = body?.page ?? {};
   const objects = str(page.context, 5000), visited = str(page.visited, 300);
-  last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}" week="${week()}">\n${str(page.text, 6000)}\n</page>\n`
+  last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}" now="${new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })} New York time" week="${week()}">\n${str(page.text, 6000)}\n</page>\n`
     + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + (visited ? `<visitor_has_explored>${visited}</visitor_has_explored>\n` : "") + `\n${last.content}`;
 
   const deep = body?.deep === true, maxSteps = deep ? DEEP_STEPS : MAX_STEPS;
