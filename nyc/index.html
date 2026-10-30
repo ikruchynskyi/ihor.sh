@@ -24,6 +24,7 @@
   </section>
   <section data-tab="explore" role="tabpanel">
     <div class="nearbar"><button id="nearBtn" title="Subway, buses, Citi Bike, cameras and public restrooms within 600 m of you">📍 Within 600 m of me</button><button id="nearHere" class="linkish">…of the map center</button><button id="nearOff" class="linkish" hidden>✕ clear</button></div>
+    <div class="nearbar"><button id="photoBtn" title="Pick a street photo: the signs in it become clickable, with the places they name (read on the server, the photo isn't kept)">📷 What's in a photo</button><input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" hidden></div>
     <div id="nearBox" class="muted" hidden></div>
     <details><summary id="typesSum">MTA alerts by type</summary><div id="types"></div></details>
     <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
@@ -61,6 +62,7 @@
 </div>
 <div id="cityHud"><div id="cityBar" role="status" aria-label="The city now"></div><div id="cityBrief" hidden></div></div>
 <aside id="detail" data-ui hidden aria-label="Incident details"></aside>
+<dialog id="photoView" aria-label="What's in the photo"><div class="pv-head"><b>📷 What's in the photo</b> <span class="muted" id="pvStatus"></span><button class="linkish" id="pvClose" aria-label="Close">×</button></div><div class="pv-body"><div class="pv-img"><img id="pvImg" alt="Your photo"><div id="pvBoxes"></div></div><div id="pvCard" class="pv-card"></div></div></dialog>
 <div id="replay" data-ui hidden role="region" aria-label="Replay the last 24 hours"></div>
 <div id="intro" data-ui hidden role="dialog" aria-labelledby="introT">
   <h2 id="introT">NYC right now</h2>

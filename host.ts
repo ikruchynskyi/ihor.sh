@@ -1,7 +1,8 @@
 // Host supervisor and hardware/GPU bridge on macOS (run at boot by sh.ihor.server):
 // 1. Starts Docker Desktop and Ollama if they aren't running yet, then brings up the Docker Compose stack (`docker compose up -d`).
 // 2. Exposes local-only endpoints for the host services that Docker Desktop for Mac can't virtualize:
-//    - HTTP 127.0.0.1:8075: `/whisper` (mlx_whisper captions on Metal) and `/upscale` (SeedVR2-3B mflux upscaler on Metal).
+//    - HTTP 127.0.0.1:8075: `/whisper` (mlx_whisper captions on Metal), `/upscale` (SeedVR2-3B mflux upscaler on Metal)
+//      and `/ocr` (a street photo's text, Apple Vision through ~/AI/ocr-venv).
 //    - TCP  127.0.0.1:8076: raw serial bridge to the Meshtastic USB radio (`/dev/cu.usbmodem*`).
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { closeSync, createReadStream, existsSync, openSync, statSync, writeSync, constants } from "node:fs";
@@ -11,6 +12,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { transcribeLocal } from "./server/monitor.ts";
 import { upscaleLocal } from "./server/upscale.ts";
+import { readLocal } from "./server/ocr.ts";
 import { findMeshPort } from "./server/mesh.ts";
 
 const execFileAsync = promisify(execFile);
@@ -124,6 +126,12 @@ const httpBridge = http.createServer(async (req, res) => {
       }
       const out = await upscaleLocal(Buffer.concat(chunks));
       return send(200, out);
+    }
+    if (req.url === "/ocr" && req.method === "POST") { // a street photo's text (Apple Vision, server/ocr.py)
+      const chunks: Buffer[] = [];
+      let len = 0;
+      for await (const c of req) { const b = Buffer.from(c); len += b.length; if (len > 15_000_000) return res.writeHead(413).end(); chunks.push(b); }
+      return send(200, await readLocal(Buffer.concat(chunks)));
     }
     send(404, { error: "not found" });
   } catch (e) {

@@ -2185,7 +2185,7 @@ document.addEventListener("click", async (e) => {
   if (!b) return;
   const [la, lo] = (b.dataset.ll ?? "").split(",").map(Number), here = hereAt && Math.abs(hereAt.ll.lat - la) < 1e-5 && Math.abs(hereAt.ll.lng - lo) < 1e-5;
   if (!Number.isFinite(la)) return;
-  const label = here ? hereAt.label : b.closest(".leaflet-popup-content, #detail")?.querySelector("b")?.textContent.trim();
+  const label = here ? hereAt.label : b.dataset.name || b.closest(".leaflet-popup-content, #detail")?.querySelector("b")?.textContent.trim();
   const id = b.dataset.dir, other = id === "tFrom" ? "tTo" : "tFrom";
   map.closePopup();
   await placePin(id, L.latLng(la, lo), label || undefined);
@@ -2195,6 +2195,48 @@ document.addEventListener("click", async (e) => {
   if (me && NYC.pad(0.3).contains(me) && !$(other).value) { await placePin(other, me, "My location"); $("trip").requestSubmit(); }
   else if (!$(other).value) setPicking(other);
 });
+// ---------- 📷 What's in a photo: its signs read on the server (Apple's text recognition, server/ocr.ts), matched with
+// Google Places within 300 m of where it was taken (the photo's GPS, else you, else the map's center) ----------
+let pv = null; // the photo's answer
+$("photoBtn").onclick = () => $("photoFile").click();
+$("pvClose").onclick = () => $("photoView").close();
+$("photoView").addEventListener("close", () => { URL.revokeObjectURL($("pvImg").src); seen.photoSigns = null; });
+$("photoFile").onchange = async () => {
+  const f = $("photoFile").files[0]; $("photoFile").value = "";
+  if (!f) return;
+  const me = meAt && NYC.pad(0.3).contains(meAt) ? meAt : null, at = me ?? viewCenter();
+  $("pvImg").src = URL.createObjectURL(f); $("pvBoxes").innerHTML = ""; $("pvCard").innerHTML = `<p class="muted">Reading the signs…</p>`;
+  $("pvStatus").textContent = ""; $("photoView").showModal();
+  const r = await fetch(`/api/nyc/photo-places?lat=${at.lat.toFixed(5)}&lon=${at.lng.toFixed(5)}&from=${me ? "me" : "map"}`, { method: "POST", body: f })
+    .then((x) => x.json()).catch((e) => ({ error: e.message }));
+  if (r.error) return void ($("pvCard").innerHTML = `<p>${esc(r.error)}</p>`);
+  pv = r;
+  const COLOR = { place: "#5cff9d", maybe: "#ffd166", sign: "#9aa3cf", text: "#9aa3cf" };
+  $("pvBoxes").innerHTML = r.items.map((it, i) => { const [x1, y1, x2, y2] = it.box, label = it.place ? `${it.place.name}${it.place.rating ? ` ★${it.place.rating}` : ""}` : it.kind === "maybe" ? `${it.text}… ?` : "";
+    return `<button class="pv-box ${it.kind}" data-pv="${i}" style="--c:${COLOR[it.kind]};left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%" title="${esc(it.text)}" aria-label="${esc(label || it.text)}">${label ? `<span>${esc(label)}</span>` : ""}</button>`; }).join("");
+  const n = r.items.filter((x) => x.place).length, m = r.items.filter((x) => x.kind === "maybe").length;
+  $("pvStatus").textContent = `${r.items.length} sign${r.items.length === 1 ? "" : "s"} read · ${n} place${n === 1 ? "" : "s"}${m ? ` · ${m} guess${m > 1 ? "es" : ""}` : ""}`;
+  $("pvCard").innerHTML = `<p>${n || m ? "Click a box for the place it names." : "No sign here names a place nearby."}</p>${pvList()}<p class="muted">Signs read by Apple's text recognition on this site's server; places from Google Maps within 300 m of ${esc(r.at.from)}. The photo isn't kept.</p>`;
+  seen.photoSigns = { near: r.at.from, signs: r.items.map((x) => `${x.text}${x.place ? ` = ${x.place.name} (${x.place.kind}, ${x.place.status})` : x.kind === "maybe" ? ` = maybe ${x.candidates.map((c) => c.name).join(" or ")}` : x.kind === "sign" ? " (traffic sign)" : ""}`) };
+};
+const pvList = () => `<ul>${pv.items.map((it, i) => (it.place || it.kind === "maybe" ? `<li><a href="#" data-pv="${i}">${esc(it.place?.name ?? `${it.text}…?`)}</a> <span class="muted">${esc(it.place ? `${it.place.kind} · ${Math.round(it.place.km * 1000)} m` : "a guess")}</span></li>` : "")).join("")}</ul>`;
+const pvPlace = (p, note = "") => `<h3>${esc(p.name)}</h3><div class="muted">${esc([p.kind, p.address].filter(Boolean).join(" · "))}</div>${note ? `<p class="muted">${esc(note)}</p>` : ""}
+  <p>${p.rating ? `<b style="color:#fab005">★ ${p.rating}</b> <span class="muted">(${p.reviews.toLocaleString()} reviews)</span> · ` : ""}${p.price != null ? `${"$".repeat(Math.max(1, p.price))} · ` : ""}<span style="color:${p.open === false ? "#e03131" : p.open ? "#2f9e44" : "inherit"}">${esc(p.status ?? "")}</span>${p.today ? `<br><span class="muted">Today ${esc(p.today)}</span>` : ""}</p>
+  <div class="acts">${p.lat != null ? `<button data-pvmap="${p.lat},${p.lon}" data-name="${esc(p.name)}">📍 On the map</button><button data-dir="tTo" data-name="${esc(p.name)}" data-ll="${(+p.lat).toFixed(6)},${(+p.lon).toFixed(6)}">↱ Take me there</button>` : ""}${p.googleMaps ? `<a href="${esc(p.googleMaps)}" target="_blank" rel="noopener">Google Maps</a>` : ""}${/^https?:/.test(p.website ?? "") ? `<a href="${esc(p.website)}" target="_blank" rel="noopener">website</a>` : ""}${p.phone ? `<a href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}">${esc(p.phone)}</a>` : ""}</div>`;
+$("photoView").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pv]"), m = e.target.closest("[data-pvmap]");
+  if (m) { e.preventDefault(); $("photoView").close(); const [la, lo] = m.dataset.pvmap.split(",").map(Number); map.setView([la, lo], 18); showHere(L.latLng(la, lo), m.dataset.name); return; }
+  if (e.target.closest("[data-dir]")) return void $("photoView").close(); // the directions handler plans it
+  if (!b || !pv) return;
+  e.preventDefault();
+  const it = pv.items[+b.dataset.pv];
+  $("pvBoxes").querySelectorAll(".pv-box").forEach((x) => x.classList.toggle("on", x.dataset.pv === b.dataset.pv));
+  $("pvCard").innerHTML = it.place ? pvPlace(it.place, `Read on the sign: "${it.text}"`) + `<p><a href="#" data-pvback>← all signs</a></p>`
+    : it.kind === "maybe" ? `<p>${esc(it.guess)}:</p>${it.candidates.map((c) => pvPlace(c)).join("<hr>")}<p><a href="#" data-pvback>← all signs</a></p>`
+    : `<p>"${esc(it.text)}"</p><p class="muted">${it.kind === "sign" ? "A traffic sign." : "Text that doesn't name a place nearby (an ad, a slogan, or a name Google doesn't have within 300 m)."}</p><p><a href="#" data-pvback>← all signs</a></p>`;
+});
+$("photoView").addEventListener("click", (e) => { if (e.target.closest("[data-pvback]")) { e.preventDefault(); $("pvCard").innerHTML = pvList(); } });
+
 /** Where you are: the position the map already has, or one asked for now (10 s at most; null if refused or unknown). */
 function myLocation() {
   if (meAt) return Promise.resolve(meAt);
@@ -2317,7 +2359,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastBuildingReport: seen.building && { address: seen.building.address, building: seen.building.building, hpdOpenViolations: seen.building.hpdOpenViolations, tenantComplaintsLastYear: seen.building.tenantComplaintsLastYear, rats: seen.building.rats, whoOwnsWhat: seen.building.whoOwnsWhat }, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    openIncident: seen.incidentOpen, openDrawer: seen.drawer, replayMoment: seen.replay, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
+    openIncident: seen.incidentOpen, openDrawer: seen.drawer, photoTheyShared: seen.photoSigns, replayMoment: seen.replay, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
     cityNow: pulseNow && { ...pulseNow, brief: pulseNow.brief?.bullets?.map((b) => b.text), unusualList: pulseNow.unusualList?.slice(0, 5).map((u) => u.text) },
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within600m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };

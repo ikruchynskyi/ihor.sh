@@ -37,6 +37,7 @@ import { hamPasses, satTrack, satEcef } from "./server/sat.ts";
 import { startMeteorRecorder, meteorApi, meteorCheckApi } from "./server/meteor-rec.ts";
 import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
+import { photoPlaces } from "./server/ocr.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, publicSpaces, buildingReport, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
 import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
@@ -113,7 +114,7 @@ let day = "", today = 0;
 const PER_IP = 20, WINDOW_MS = 10 * 60_000, PER_DAY = 1000;
 // Map data endpoints use keyed city APIs: a looser per-IP budget of their own.
 // Street photos have their own: they're read from cached Mapillary tiles, and the dots reload with every pan.
-const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>(), mlyHits = new Map<string, number[]>(), upscaleHits = new Map<string, number[]>();
+const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>(), mlyHits = new Map<string, number[]>(), upscaleHits = new Map<string, number[]>(), ocrHits = new Map<string, number[]>();
 function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   const now = Date.now(), recent = (bucket.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= max) return false;
@@ -779,6 +780,20 @@ const server = http.createServer(async (req, res) => {
       const out = await mapillaryGraph(mly[1], url.searchParams).catch((e) => e as Error & { code?: number });
       if (out instanceof Error) return res.writeHead(out.code === 400 || out.code === 404 ? out.code : 502, { "content-type": "application/json" }).end(JSON.stringify({ error: { message: out.message } }));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "private, max-age=600" }).end(out);
+    }
+    if (url.pathname === "/api/nyc/photo-places" && req.method === "POST") { // 📷 a street photo: its signs and the places they name (ocr.ts)
+      const ip = clientIp(req), q = url.searchParams, lat = Number(q.get("lat")), lon = Number(q.get("lon"));
+      const fail = (code: number, error: string) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
+      if (!dataAllowed(ip, ocrHits, 20)) return fail(429, "That's a lot of photos: try again in a few minutes.");
+      if (!(lat > 40.4 && lat < 41.0 && lon > -74.35 && lon < -73.6)) return fail(400, "Where was it taken? Share your location or move the map there.");
+      const chunks: Buffer[] = [];
+      let len = 0;
+      for await (const c of req) { const b = Buffer.from(c); len += b.length; if (len > 15_000_000) return fail(413, "That photo is over 15 MB."); chunks.push(b); }
+      const img = Buffer.concat(chunks), magic = img.subarray(0, 12).toString("hex");
+      if (!/^ffd8ff|^89504e47|^52494646.{8}57454250/.test(magic)) return fail(415, "A JPEG, PNG or WebP photo, please (on an iPhone, the camera's Most Compatible format).");
+      const out = await photoPlaces(img, { lat, lon, from: q.get("from") === "me" ? "your location" : "the map's center" }).catch((e: Error) => e);
+      if (out instanceof Error) return fail(503, `The text reader isn't answering: ${out.message}`);
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out));
     }
     if (url.pathname === "/api/nyc/upscale" && req.method === "POST") { // ✨ in a camera window: its frame now, ~4× by AI (upscale.ts)
       const ip = clientIp(req), id = String(url.searchParams.get("cam") ?? "");
