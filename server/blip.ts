@@ -36,7 +36,7 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ query }) => ({ hits: (await siteSearch(String(query), 8)).map((h) => ({ title: h.title, url: new URL(h.url, "https://ihor.sh").href, world: h.world, snippet: h.snippet.replace(/<\/?b>/g, "") })) }),
   },
   web_search: {
-    description: "Search the web (Tavily, then Ollama, then DuckDuckGo) for current facts, news, prices, hours, how-tos: anything that isn't on this site or that you aren't sure of. Returns titles, URLs and snippets.",
+    description: "Search the web (Tavily, then DuckDuckGo) for current facts, news, prices, hours, how-tos: anything that isn't on this site or that you aren't sure of. Returns titles, URLs and snippets.",
     parameters: { query: { type: "string", description: "What to search for" } }, required: ["query"],
     run: ({ query }) => webSearch(String(query)),
   },

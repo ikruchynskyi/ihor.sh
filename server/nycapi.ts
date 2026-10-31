@@ -788,7 +788,7 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = fa
 }
 
 // ---------- the web ----------
-/** Web search: Tavily, then Ollama's web search, then DuckDuckGo's HTML results; the first that answers with results. */
+/** Web search: Tavily (free monthly quota), then DuckDuckGo's HTML results; the first that answers with results. */
 export async function webSearch(query: string) {
   const key = env("TAVILY_API_KEY");
   if (key) {
@@ -799,15 +799,7 @@ export async function webSearch(query: string) {
       if (results.length) return { engine: "tavily", results: results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").slice(0, 400) })) };
     } catch {}
   }
-  const okey = env("OLLAMA_CLOUD_KEY");
-  if (okey) {
-    try {
-      const r = await fetch("https://ollama.com/api/web_search", { method: "POST", signal: AbortSignal.timeout(8_000),
-        headers: { "content-type": "application/json", Authorization: `Bearer ${okey}` }, body: JSON.stringify({ query, max_results: 5 }) });
-      const results = r.ok ? ((await r.json()).results ?? []) : [];
-      if (results.length) return { engine: "ollama", results: results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").replace(/\s+/g, " ").slice(0, 400) })) };
-    } catch {}
-  }
+  // (Ollama's web search was the next step: it's paid, so a Tavily miss goes straight to DuckDuckGo)
   const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh Blip)" }, signal: AbortSignal.timeout(8_000) });
   const html = await r.text();
   const results = [...html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)].slice(0, 5).map(([, href, title, snippet]) => {
