@@ -69,7 +69,7 @@
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, browserSpeak, listen, canListen, addCard, hasKanji, data, pitchInfo, renderPitch } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, browserSpeak, unlockAudio, listen, canListen, addCard, hasKanji, data, pitchInfo, renderPitch } from "/yomu/lib.js";
 const $ = (id) => document.getElementById(id);
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 const params = new URLSearchParams(location.search);
@@ -102,7 +102,9 @@ const browserVoice = (text) => browserSpeak(text, (state.settings.rate || 1) * 1
 const voices = new Map();
 const voiceFor = async (text) => {
   if (!voices.has(text)) {
-    const r = await fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => null);
+    const ask = () => fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => null);
+    let r = await ask();
+    if (!r?.ok && r?.status !== 429) r = await new Promise((go) => setTimeout(go, 1500)).then(ask); // one more try: a busy moment shouldn't cost her voice
     if (!r?.ok) return null;
     voices.set(text, URL.createObjectURL(await r.blob()));
   }
@@ -131,6 +133,7 @@ function renderLog() {
 let pending = false;
 async function send(text) {
   text = text.trim(); if (!text || pending) return;
+  unlockAudio(); // still inside the tap: her voice can then play when the reply comes
   turns.push({ role: "user", content: text }); keep();
   pending = true; renderLog(); $("q").value = ""; $("send").disabled = true;
   mochi({ mood: "curious", emote: "dots" });
@@ -145,6 +148,7 @@ async function send(text) {
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
 async function start(t) {
+  unlockAudio();
   topic = t; turns = []; keep(); $("status").textContent = "";
   pending = true; renderLog(); $("send").disabled = true;
   mochi({ mood: "curious", emote: "dots" });

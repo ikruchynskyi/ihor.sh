@@ -227,6 +227,16 @@ function getPlayer() {
   return player;
 }
 
+/** Call in a tap or key handler: phones block audio that starts after an await (a reply, its voice), unless the
+ *  player already played once inside a gesture. A 0-sample WAV does that silently. */
+export function unlockAudio() {
+  const a = getPlayer();
+  if (!a || a.dataset.unlocked) return;
+  a.dataset.unlocked = "1";
+  a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+  a.play().then(() => a.pause()).catch(() => {});
+}
+
 export function stopAudio() {
   if (player) {
     try {

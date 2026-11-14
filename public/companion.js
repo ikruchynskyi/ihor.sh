@@ -441,7 +441,7 @@ function mochiLine() {
   const h = new Date().getHours(), world = WORLD_NAMES[location.pathname.split("/")[1]];
   const visits = progress.worlds[location.pathname.split("/")[1]] ?? 0, title = document.title.split(/[·|–-]/)[0].trim().slice(0, 40);
   return pick([
-    h < 5 ? "Still up? Me too… let's be night owls together." : h < 12 ? "Good morning~ Did you have breakfast? I had fish." : h < 18 ? "This afternoon feels so cozy. Stay a while?" : "It's evening already… I'm glad you came by.",
+    h < 5 ? "Still up? Me too… let's be night owls together." : h < 12 ? "Good morning~ Did you have breakfast? I had pancakes." : h < 18 ? "This afternoon feels so cozy. Stay a while?" : "It's evening already… I'm glad you came by.",
     world ? (visits > 3 ? `You keep coming back to ${world}. I like that about you.` : `The ${world} world! Want me to show you around?`) : "Where shall we go today? I know every corner of this place.",
     title ? `“${title}”… ooh, you have good taste.` : "Ooh, what are we looking at?",
     "Psst. Click me if you want to talk. I don't bite. Much.",
