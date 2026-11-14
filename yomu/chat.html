@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yomu Chat</title>
-  <meta name="description" content="Free conversation in Japanese with Blip at your JLPT level (N5 to N1): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Runs on a local model, so nothing you write leaves the machine." />
+  <meta name="description" content="Free conversation in Japanese with Mochi, an animated catgirl who reacts to what you say, at your JLPT level (N5 to N1): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Runs on a local model, so nothing you write leaves the machine." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
     .levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
@@ -26,26 +26,36 @@
     #pop .kanji-row button { font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif !important; font-size: 1.3rem !important; text-transform: none !important; padding: 4px 8px !important; }
     #pop .kmeta { margin-top: 6px; font-size: .9rem; }
     .local { font-size: .9rem; }
-    .meme-wrap { margin: 10px 0 6px; max-width: 320px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: #000; }
-    .meme-wrap img { display: block; width: 100%; height: auto; }
+    /* Mochi beside the chat on wide screens; above it, pinned under the site bar, on phones */
+    main { max-width: 1140px; }
+    .room { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+    .mochi { position: sticky; top: 64px; height: min(600px, calc(100vh - 90px)); overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
+      background: radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); }
+    .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+    @media (max-width: 860px) { .room { grid-template-columns: minmax(0, 1fr); } .mochi { order: -1; top: 48px; z-index: 3; height: 240px; } }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Chat</p>
-  <h1>Chat with Blip in Japanese</h1>
-  <p class="lede">Talk about anything: Blip stays inside your level's grammar and words, answers in Japanese and keeps the conversation going. Tap any word for its reading and meaning, tap a kanji for its readings, and reveal the English when you want it. Write in Japanese (kana is fine) or in English; Blip corrects one thing at a time.</p>
+  <h1>Chat with Mochi in Japanese</h1>
+  <p class="lede">Talk about anything with Mochi: she stays inside your level's grammar and words, answers out loud in Japanese, shows how she feels about what you said and keeps the conversation going. Tap any word for its reading and meaning, tap a kanji for its readings, and reveal the English when you want it. Write in Japanese (kana is fine) or in English; Mochi corrects one thing at a time.</p>
   <div id="settings"></div>
   <div class="levels" id="levels"></div>
   <div class="topics" id="topics"></div>
-  <div class="log" id="log"></div>
-  <form class="ask" id="ask"><input id="q" lang="ja" placeholder="日本語で書いてください（or in English）" autocomplete="off" maxlength="300"><button type="submit" id="send">Send</button><button type="button" id="mic" hidden>🎤 Speak</button></form>
-  <p class="muted" id="status"></p>
-  <p><button type="button" id="restart">↺ New conversation</button></p>
+  <div class="room">
+    <div class="mochi"><iframe id="mochi" src="/yomu/mochi/overlay.html" title="Mochi, your conversation partner" aria-hidden="true" tabindex="-1"></iframe></div>
+    <div>
+      <div class="log" id="log"></div>
+      <form class="ask" id="ask"><input id="q" lang="ja" placeholder="日本語で書いてください（or in English）" autocomplete="off" maxlength="300"><button type="submit" id="send">Send</button><button type="button" id="mic" hidden>🎤 Speak</button></form>
+      <p class="muted" id="status"></p>
+      <p><button type="button" id="restart">↺ New conversation</button></p>
+    </div>
+  </div>
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, addCard, hasKanji, data, blip, pitchInfo, renderPitch } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, browserSpeak, listen, canListen, addCard, hasKanji, data, pitchInfo, renderPitch } from "/yomu/lib.js";
 const $ = (id) => document.getElementById(id);
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 const params = new URLSearchParams(location.search);
@@ -63,6 +73,12 @@ $("topics").innerHTML = TOPICS[level].map((t) => `<button type="button" data-top
 settingsBar($("settings"), () => renderLog(), { voice: false });
 if (canListen()) $("mic").hidden = false;
 
+// Mochi (yomu/mochi/overlay.js) in the iframe: her mood, emote and line come with each reply; her mouth moves while
+// the voice speaks (lib.js sends blip:key when any speech starts and stops). Her lines use the browser's own voice.
+const mochi = (cmd) => $("mochi").contentWindow?.postMessage({ mochi: cmd }, location.origin);
+addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
+const mochiSays = (t) => { mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content }); browserSpeak(t.content); };
+
 // The conversation, kept per level in this browser (sessionStorage: a fresh start next visit).
 const KEY = `yomu-chat-${level}`;
 let turns = []; try { turns = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch {}
@@ -73,9 +89,8 @@ function renderLog() {
   $("log").innerHTML = turns.map((t, i) => t.role === "user"
     ? `<div class="msg you"><div class="jp">${esc(t.content)}</div></div>`
     : `<div class="msg blip" data-i="${i}"><div class="jp">${t.words?.length ? renderTokens(toTokens(t.words), state.settings, state.known) : `<span class="w g" data-line="${i}" tabindex="0">${esc(t.content)}</span>`}</div>
-      ${t.memeUrl ? `<div class="meme-wrap"><img src="${esc(t.memeUrl)}" alt="Blip meme reaction (${esc(t.memeTemplate || "")})" loading="lazy"></div>` : ""}
       <div class="tools"><button class="mini" data-play="${i}">▶</button><button class="mini" data-en="${i}">${t.showEn ? "Hide English" : "English"}</button></div>
-      ${t.showEn ? `<div class="en">${esc(t.en)}</div>` : ""}${t.fix ? `<div class="fix">✎ ${esc(t.fix)}</div>` : ""}</div>`).join("") + (pending ? `<div class="msg blip wait">Blip is thinking<span class="dots"></span></div>` : "");
+      ${t.showEn ? `<div class="en">${esc(t.en)}</div>` : ""}${t.fix ? `<div class="fix">✎ ${esc(t.fix)}</div>` : ""}</div>`).join("") + (pending ? `<div class="msg blip wait">Mochi is thinking<span class="dots"></span></div>` : "");
   $("log").lastElementChild?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 let pending = false;
@@ -83,25 +98,26 @@ async function send(text) {
   text = text.trim(); if (!text || pending) return;
   turns.push({ role: "user", content: text }); keep();
   pending = true; renderLog(); $("q").value = ""; $("send").disabled = true;
-  const usedMemes = turns.map((t) => t.memeTemplate).filter(Boolean);
+  mochi({ mood: "curious", emote: "dots" });
   try {
-    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */, usedMemes }) });
+    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */ }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, memeUrl: d.memeUrl, memeTemplate: d.meme_template }); keep();
-    gain(2); speak(d.ja);
-  } catch (e) { $("status").textContent = e.message; turns.pop(); keep(); }
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, mood: d.mood, emote: d.emote }); keep();
+    gain(2); mochiSays(turns.at(-1));
+  } catch (e) { $("status").textContent = e.message; turns.pop(); keep(); mochi({ mood: "cry", emote: "sweat" }); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
 async function start(t) {
   topic = t; turns = []; keep(); $("status").textContent = "";
   pending = true; renderLog(); $("send").disabled = true;
+  mochi({ mood: "curious", emote: "dots" });
   try {
-    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [], usedMemes: [] }) });
+    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || "The local model didn't answer. Try again in a moment.");
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", memeUrl: d.memeUrl, memeTemplate: d.meme_template }); keep(); speak(d.ja);
-  } catch (e) { $("status").textContent = e.message; }
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", mood: d.mood, emote: d.emote }); keep(); mochiSays(turns.at(-1));
+  } catch (e) { $("status").textContent = e.message; mochi({ mood: "cry", emote: "sweat" }); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
 $("topics").addEventListener("click", (e) => { const t = e.target.closest("[data-topic]")?.dataset.topic; if (t) start(t); });
@@ -112,7 +128,7 @@ $("mic").onclick = async () => { $("mic").disabled = true; $("mic").textContent 
 // Tap a word: reading, romaji, meaning, its kanji; tap the plain line (when the model's split didn't cover it): the English.
 $("log").addEventListener("click", async (e) => {
   const b = e.target.closest("button");
-  if (b?.dataset.play != null) return speak(turns[+b.dataset.play].content);
+  if (b?.dataset.play != null) return mochiSays(turns[+b.dataset.play]);
   if (b?.dataset.en != null) { const t = turns[+b.dataset.en]; t.showEn = !t.showEn; keep(); return renderLog(); }
   const w = e.target.closest(".w.g"); if (!w) return;
   if (w.dataset.line != null) { const t = turns[+w.dataset.line]; t.showEn = true; keep(); return renderLog(); }
@@ -146,8 +162,12 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = t
 document.addEventListener("click", (e) => { if (!e.target.closest("#pop") && !e.target.closest(".w.g")) $("pop").hidden = true; });
 
 renderLog();
-if (!turns.length) blip(`Pick a topic, or just say こんにちは! I'll stay at ${level}.`, "happy");
-window.blipContext = () => ({ page: `Yomu chat: free Japanese conversation at JLPT ${level} with a local model (this page's own chat, not you). The visitor may ask you about grammar or words from it.`, level, topic, lastLines: turns.slice(-4).map((t) => `${t.role}: ${t.content}`) });
+// her hello once she has loaded (overlay.js posts mochiReady)
+addEventListener("message", (e) => {
+  if (e.origin !== location.origin || !e.data?.mochiReady) return;
+  if (!turns.length) mochi({ mood: "happy", emote: "nya", say: `Pick a topic, or just say こんにちは! I'll stay at ${level}.` });
+});
+window.blipContext = () => ({ page: `Yomu chat: free Japanese conversation at JLPT ${level} with Mochi, an animated catgirl run by a local model (this page's own chat partner, not you). The visitor may ask you about grammar or words from it.`, level, topic, lastLines: turns.slice(-4).map((t) => `${t.role}: ${t.content}`) });
 </script>
 </body>
 </html>

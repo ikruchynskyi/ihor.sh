@@ -468,6 +468,7 @@ export function browserSpeak(text, rate = state.settings.rate) {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP"; u.rate = rate; if (jaVoice) u.voice = jaVoice;
+      u.onstart = () => clearTimeout(timer); // the 5 s limit is for a voice that never starts, not for a long line
       u.onend = () => finish(true);
       u.onerror = () => finish(false);
       if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: true } }));

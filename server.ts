@@ -651,13 +651,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
       const ip = clientIp(req);
-      if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
+      if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Mochi needs a breather. Try again in a few minutes." }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
       let gone = false; res.on("close", () => { gone = true; });
-      try { const out = await inLine(() => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), Array.isArray(b?.usedMemes) ? b.usedMemes.map(String) : [])); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
+      try { const out = await inLine(() => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80))); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
       catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {

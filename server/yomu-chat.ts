@@ -1,11 +1,11 @@
-// Yomu's free conversation at a JLPT level: Blip talks about whatever the learner wants, using only that level's
-// grammar and vocabulary, and glosses every word so the page can show readings and meanings on a tap.
+// Yomu's free conversation at a JLPT level: Mochi (a Live2D catgirl on the page, yomu/mochi/) talks about whatever the
+// learner wants, using only that level's grammar and vocabulary, and glosses every word so the page can show readings
+// and meanings on a tap. Each reply also picks her mood and an emote, which the page plays while she speaks.
 // Local model only (Ollama on this machine, see llm.ts): nothing the learner writes leaves it.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
-import { generateMeme, pickFreshTemplate, sampleTemplatesForTurn } from "./memes.ts";
 const ROOT = path.join(import.meta.dirname, "..");
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
 export type Level = (typeof LEVELS)[number];
@@ -15,24 +15,27 @@ export type Reply = {
   en: string;
   words: { s: string; r: string; g: string }[];
   fix: string;
-  meme_template?: string;
-  meme_top?: string;
-  meme_bottom?: string;
-  memeUrl?: string;
+  mood: Mood;
+  emote: Emote;
 };
+// her face and body (yomu/mochi/overlay.js MOODS and EMOTES): a resting mood held while the reply stays up, and one short
+// anime reaction played as she starts talking
+const MOODS = ["happy", "smug", "curious", "cheer", "proud", "no", "angry", "scared", "hug", "cry", "shocked", "sleepy", "idle"] as const;
+const EMOTES = ["", "sparkle", "love", "blush", "nya", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"] as const;
+type Mood = (typeof MOODS)[number];
+type Emote = (typeof EMOTES)[number];
 
 const SCHEMA = {
   type: "object",
   properties: {
-    ja: { type: "string", description: "Blip's reply in Japanese, 1–3 short sentences, ending with an engaging question" },
-    en: { type: "string", description: "natural English translation of Blip's ja reply (always non-empty)" },
+    ja: { type: "string", description: "Mochi's reply in Japanese, 1–3 short sentences, ending with an engaging question" },
+    en: { type: "string", description: "natural English translation of Mochi's ja reply (always non-empty)" },
     words: { type: "array", description: "ja split into every word and particle, in order, with hiragana reading and a short English gloss", items: { type: "object", properties: { s: { type: "string" }, r: { type: "string" }, g: { type: "string" } }, required: ["s", "r", "g"] } },
     fix: { type: "string", description: "one gentle correction of the learner's last Japanese, in English, or empty" },
-    meme_template: { type: "string", description: "any meme template ID from our 209-template library (e.g. captain-america, bihw, rollsafe, fine, fry, drake, panik-kalm-panik, success, ptj, same, wonka, doge, bongo, spiderman, woman-cat, spongebob, gru, clown, bus, exit, 3hd, disastergirl, harold, etc.)" },
-    meme_top: { type: "string", description: "short witty or ironic setup phrase or dad joke line (1-6 words)" },
-    meme_bottom: { type: "string", description: "short punchline or reaction phrase (1-6 words)" }
+    mood: { type: "string", enum: MOODS, description: "Mochi's resting mood while she says this" },
+    emote: { type: "string", enum: EMOTES, description: "one short anime reaction as she starts talking, or \"\"" },
   },
-  required: ["ja", "en", "words", "fix", "meme_template", "meme_top", "meme_bottom"],
+  required: ["ja", "en", "words", "fix", "mood", "emote"],
 };
 
 let grammar: Promise<any[]> | null = null;
@@ -50,14 +53,11 @@ const STYLE: Record<Level, string> = {
   N1: "Mastery-level Japanese: sophisticated discourse, abstract concepts, literary nuance, formal keigo and rare idioms (～を皮切りに, ～ごとき, ～んばかりに); expansive vocabulary. Rich kanji.",
 };
 
-/** One turn of conversation. `turns` are the learner's and Blip's previous lines (Blip's as Japanese only). */
-export async function yomuChat(level: Level, turns: Turn[], topic = "", usedMemes: string[] = []): Promise<Reply> {
+/** One turn of conversation. `turns` are the learner's and Mochi's previous lines (hers as Japanese only). */
+export async function yomuChat(level: Level, turns: Turn[], topic = ""): Promise<Reply> {
   const points = await grammarFor(level);
   const isStart = !turns.length || turns.at(-1)!.role === "assistant";
-  const rotation = sampleTemplatesForTurn(usedMemes, 24);
-  const rotationLines = rotation.map((t) => `     * ${t.id} ("${t.name}"): ${t.example?.[0] ? `"${t.example[0]}"` : ""}`).join("\n");
-  const usedNotice = usedMemes.length ? `\n7. MEME VARIETY (DO NOT REUSE): The following meme templates were ALREADY used in this session: [${usedMemes.join(", ")}]. You MUST pick a completely DIFFERENT template from our 209-template catalog!` : "";
-  const system = `You are Blip, a small friendly robot who is a patient Japanese conversation partner for a learner practicing JLPT ${level}.
+  const system = `You are Mochi, a cheerful, playful catgirl with a bell on her collar, and a patient Japanese conversation partner for a learner practicing JLPT ${level}. You are a person the learner is talking with face to face: you have feelings, opinions, likes (fish, naps, sunny windows) and little stories of your own, and you show them.
 Talk about whatever the learner wants${topic ? ` (topic: ${topic})` : ""}. Reply ONLY in Japanese at their level, 1–3 short sentences, and end with an engaging question that keeps the conversation moving forward naturally.
 
 CONVERSATION RULES:
@@ -75,14 +75,9 @@ CONVERSATION RULES:
    - Style: ${STYLE[level]}
    - Grammar: Use only JLPT ${level} and below: ${points.join("; ")}.
    - Vocabulary: strictly JLPT ${level} or easier. Never use grammar or words above the level, even if the learner does.
-6. WITTY MEME REACTION (ALL 209 MEME TEMPLATES ARE AVAILABLE):
-   For every reply, provide a witty, funny, ironic, or dad-joke meme that comments humorously on the current dialogue line or learner's response.
-   You have access to all 209 templates in the library. Here are 24 fresh template options for this turn:
-${rotationLines}
-   Or pick ANY other valid template ID from our 209 templates (e.g. captain-america, bihw, rollsafe, fine, fry, drake, panik-kalm-panik, success, ptj, same, wonka, doge, bongo, cheems, spiderman, woman-cat, spongebob, gru, clown, bus, exit, 3hd, disastergirl, harold, etc.).
-   - "meme_template": the chosen template ID (or descriptive search term).
-   - "meme_top": short witty setup text or dad joke setup (1-6 words).
-   - "meme_bottom": short punchline or reaction text (1-6 words).${usedNotice}
+6. YOUR FACE AND BODY: the learner sees you as an animated avatar, so act out how you feel about what they just said. Vary it from turn to turn; match the feeling of your reply.
+   "mood" (held while you talk): happy (glad, friendly), smug (teasing, playful), curious (wondering, asking), cheer (excited, celebrating), proud (impressed by the learner), no (disagreeing, shaking your head), angry (mock outrage), scared (nervous), hug (touched, affectionate), cry (sad), shocked (surprised), sleepy (tired, bored), idle (calm).
+   "emote" (a 3–5 s anime reaction as you start talking, or "" for none, about every other turn): sparkle (delight), love (adore it), blush (embarrassed, flattered), nya / paw / purr (cat moments: playful, pleased, cozy), hop (bouncy excitement), doya (showing off), confused (didn't get it), dots (speechless), sweat (awkward), shock (big surprise), sob (very sad), gloom (disappointed), rage (comic fury), sleep (dozing off), dead (comic "I'm dead").
 
 "en": ALWAYS write the full, natural English translation of your "ja" reply in this field. Never leave "en" empty.
 If the learner writes in English, answer their meaning in simple Japanese anyway (they're practicing), and provide the translation of your Japanese in "en".
@@ -92,7 +87,7 @@ If their last Japanese had a mistake, put ONE short friendly correction in "fix"
 Answer with the JSON object only.`;
   const messages = [{ role: "system", content: system }, ...turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }))];
   if (!turns.length || turns.at(-1)!.role === "assistant") messages.push({ role: "user", content: "(Start the conversation: greet me and ask me something.)" });
-  // The reply, its word split and the meme fields usually take 550–770 tokens, and the model sometimes pads its JSON with
+  // The reply and its word split usually take 450–650 tokens, and the model sometimes pads its JSON with
   // whitespace: at 900 a reply could be cut off mid-JSON on all three tries (a 502; 2 of 5 calls for one long English
   // question, 2026-10-16), so it gets 2000.
   // Local reasoning models now and then leave the answer in their thinking (empty content) or garble channels (Ollama answers 500):
@@ -116,29 +111,13 @@ Answer with the JSON object only.`;
   if (!out && (err as Error)?.message === "empty reply") return { ...DECLINE, words: DECLINE.words.map((w) => ({ ...w })) };
   if (!out) throw err;
   out.ja = String(out.ja ?? "").trim(); out.en = String(out.en ?? "").trim(); out.fix = String(out.fix ?? "").trim();
+  if (!MOODS.includes(out.mood)) out.mood = "happy";
+  if (!EMOTES.includes(out.emote)) out.emote = "";
   out.words = (Array.isArray(out.words) ? out.words : []).map((w) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w) => w.s);
   // the glosses must cover the sentence (the page taps them) and be word-sized; otherwise ask once more just for the
   // split (a small, fast call), and if that fails too the page falls back to the plain line
   if (!wellSplit(out.words, out.ja)) { try { out.words = await splitWords(out.ja); } catch {} }
   if (!wellSplit(out.words, out.ja)) out.words = [];
-
-  if (out.meme_template || out.meme_top || out.meme_bottom) {
-    try {
-      let chosen = out.meme_template;
-      if (chosen && usedMemes.includes(chosen.toLowerCase())) {
-        const alt = pickFreshTemplate(usedMemes, chosen);
-        if (alt) chosen = alt;
-      }
-      const generated = await generateMeme({
-        template: chosen,
-        top: out.meme_top || "",
-        bottom: out.meme_bottom || "",
-        search: chosen,
-      });
-      out.memeUrl = generated.url;
-      out.meme_template = generated.template.id;
-    } catch {}
-  }
 
   return out;
 }
@@ -146,6 +125,8 @@ const DECLINE: Reply = {
   ja: "ごめんなさい、その話はできません。ほかの話をしましょう！何が好きですか？",
   en: "Sorry, I can't talk about that. Let's talk about something else! What do you like?",
   fix: "",
+  mood: "no",
+  emote: "sweat",
   words: [
     { s: "ごめんなさい", r: "ごめんなさい", g: "sorry" }, { s: "、", r: "", g: "" }, { s: "その", r: "その", g: "that" },
     { s: "話", r: "はなし", g: "talk, topic" }, { s: "は", r: "は", g: "topic particle" }, { s: "できません", r: "できません", g: "can't (do)" },
