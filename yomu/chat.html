@@ -31,7 +31,9 @@
     .room { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
     .mochi { position: sticky; top: 64px; height: min(600px, calc(100vh - 90px)); overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
       background: var(--room, none) center / cover, radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); }
-    .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+    .mochi { order: 1; } /* the right column; first in the markup so phones show her above the chat */
+    /* color-scheme as overlay.html declares it: a mismatch (the site's dark theme) makes browsers paint the iframe opaque white */
+    .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; color-scheme: normal; }
     .owner { margin-top: 18px; font-size: .9rem; } .owner form { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     @media (max-width: 860px) { .room { grid-template-columns: minmax(0, 1fr); } .mochi { order: -1; top: 48px; z-index: 3; height: 240px; } }
   </style>
