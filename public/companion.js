@@ -419,8 +419,8 @@ const isOctober = new Date().getMonth() === 9;
 try {
   const { setup } = await import("/blip-wardrobe.js");
   wardrobe = setup({
-    root, stage, bodyEl, face, fx, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, ping, tell,
-    useMochi: (on) => useMochi(on), isMochi: () => !!mochi,
+    root, stage, bodyEl, face, fx, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, ping,
+    useMochi: (on) => useMochi(on),
     W: () => W, H: () => H,
     layers: { behind: $(".behind"), hair: $(".hair"), costume: $(".costume"), clip: $(".clipbody"), faceOver: $(".face-over"), hat: $(".hat2"), held: $(".held"), act: $(".act") },
     // A chosen hat replaces the October pumpkin and a world's headgear; a chosen item replaces the world's item.
@@ -669,10 +669,11 @@ askBtn.onclick = () => openDialog();
 // ---------- Mochi instead of Blip (the wardrobe's COMPANION choice, kept in this browser) ----------
 // Yomu's chat page has its own Mochi, so Blip stays there.
 const ownMochi = !!document.getElementById("mochi");
+/** Mochi (on) or Blip as the companion; says whether Mochi is the one on screen now. */
 function useMochi(on) {
   local.set("blip:who", on ? "mochi" : "");
-  if (on === !!mochi) return;
-  if (on && ownMochi) return say("Mochi is busy in the chat on this page, so I'll stay here!", { ms: 3000 });
+  if (on === !!mochi) return !!mochi;
+  if (on && ownMochi) { say("Mochi is busy in the chat on this page, so I'll stay here!", { ms: 3000 }); return false; }
   if (on) {
     const frame = document.createElement("iframe"), spot = document.createElement("button");
     frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
@@ -691,7 +692,10 @@ function useMochi(on) {
   $(".hide").textContent = `HIDE ${NAME()}`; askBtn.setAttribute("aria-label", `Ask ${mochi ? "Mochi" : "Blip"}`);
   root.querySelector("svg.portrait").toggleAttribute("hidden", !!mochi); root.querySelector(".portrait.cat").hidden = !mochi;
   input.placeholder = mochi ? "Tell me anything, or ask about this page~" : "Ask me anything about this page…";
+  $(".wear").textContent = mochi ? "🤖 BLIP" : "👕 WARDROBE"; $(".wear").title = mochi ? "Switch back to Blip" : "";
+  $(".wardrobe").hidden = true;
   if (dialogOpen) renderLog();
+  return !!mochi;
 }
 if (local.get("blip:hidden")) hide();
 
@@ -768,7 +772,8 @@ deepBox.checked = !!local.get("blip:deep");
 deepBox.onchange = () => { local.set("blip:deep", deepBox.checked ? "1" : ""); input.maxLength = deepBox.checked ? 2000 : 500; };
 input.maxLength = deepBox.checked ? 2000 : 500;
 $(".new").onclick = () => { history = []; save(); renderLog(); input.focus(); };
-$(".wear").onclick = () => { const w = $(".wardrobe"); w.hidden = !w.hidden; if (!w.hidden && wardrobe) wardrobe.panel(w); };
+// Blip's wardrobe (with the COMPANION choice); Mochi has none, so there the button brings Blip back
+$(".wear").onclick = () => { if (mochi) return useMochi(false); const w = $(".wardrobe"); w.hidden = !w.hidden; if (!w.hidden && wardrobe) wardrobe.panel(w); };
 // Keys typed into Blip stay in Blip: pages with keyboard shortcuts (Space, R, 1–4…) never see them.
 root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); e.stopPropagation(); });
 for (const type of ["keyup", "keypress"]) root.addEventListener(type, (e) => e.stopPropagation());
@@ -800,7 +805,7 @@ progress.pages ??= {}; progress.worlds ??= {};
 }
 
 // Pages can also offer actions Blip may perform on them: window.blipActions = { name: { description, parameters, run(args) } }.
-const allActions = () => ({ ...(wardrobe?.actions ?? {}), ...(window.blipActions ?? {}) });
+const allActions = () => ({ ...(mochi ? {} : wardrobe?.actions ?? {}), ...(window.blipActions ?? {}) }); // Blip's outfits aren't Mochi's
 const pageActions = () => Object.entries(allActions()).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
 async function perform(actions) {
   for (const { name, args } of actions ?? []) {
