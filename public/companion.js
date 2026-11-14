@@ -155,7 +155,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
 /* Mochi: her frame lets clicks through; the spot over her body opens the chat (or a bubble's ▶ action) */
 .mochi { position: fixed; z-index: 2; right: 4px; bottom: var(--blip-floor, 0px); width: 230px; height: 380px; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
-.mochi-spot { all: unset; position: fixed; z-index: 2; right: 64px; bottom: var(--blip-floor, 0px); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
+.mochi-spot { position: fixed; background: transparent; z-index: 2; right: 64px; bottom: var(--blip-floor, 0px); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
 .mochi-spot:focus-visible { outline: 3px solid #4de1ff; }
 :host(.mochi-on) .ask { display: none; } /* she is the button */
 .portrait.cat { display: grid; place-items: center; font-size: 30px; line-height: 1; }
@@ -675,10 +675,12 @@ function useMochi(on) {
   if (on === !!mochi) return !!mochi;
   if (on && ownMochi) { say("Mochi is busy in the chat on this page, so I'll stay here!", { ms: 3000 }); return false; }
   if (on) {
-    const frame = document.createElement("iframe"), spot = document.createElement("button");
+    // the spot is a div with a button's role, not a <button>: the themes' button styles (:host(.sleek) button…) painted over her
+    const frame = document.createElement("iframe"), spot = document.createElement("div");
     frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
-    spot.className = "mochi-spot"; spot.type = "button"; spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her.");
+    spot.className = "mochi-spot"; spot.tabIndex = 0; spot.setAttribute("role", "button"); spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her.");
     spot.onclick = () => { activity(); const go = mochiClick; mochiClick = null; go ? go() : openDialog(); };
+    spot.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); spot.onclick(); } };
     root.append(frame, spot);
     hush(); sim.stop(); stage.style.display = "none";
     mochi = { frame, spot, ready: false, queue: [] };
