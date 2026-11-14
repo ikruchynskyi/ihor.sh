@@ -120,12 +120,12 @@ async function load() {
 	settings.url = url;
 	settings.FileReferences.Motions = { Idle: [{ File: cfg.idle || "Scene1.motion3.json" }] };
 	for (const m of MOTIONS) settings.FileReferences.Motions[m] = [{ File: m + ".motion3.json" }];
-	for (const e of EXPRESSIONS) {
+	await Promise.all(EXPRESSIONS.map(async (e) => { // all at once: one by one they held her up seconds on a phone
 		try {
 			const j = await (await fetch(MODEL_BASE + encodeURIComponent(e + ".exp3.json"))).json();
 			expData[e] = j.Parameters || [];
 		} catch (_) { expData[e] = []; }
-	}
+	}));
 	const app = new PIXI.Application({ view: stage, resizeTo: window, backgroundAlpha: 0, antialias: true });
 	model = await PIXI.live2d.Live2DModel.from(settings, { autoInteract: false });
 	core = model.internalModel.coreModel;
