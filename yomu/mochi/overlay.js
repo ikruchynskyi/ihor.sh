@@ -50,7 +50,8 @@ const EMOTES = {
 	sob:      { exp: ["cry"], motion: "zhentou", params: { ParamMouthOpenY: 0.6, ParamMouthForm: -1 }, zoom: 1.9, ms: 5500,
 	            deco: [{ s: "", x: -0.38, y: 0.05, size: 1, a: "river", cls: "river" }, { s: "", x: 0.38, y: 0.05, size: 1, a: "river late", cls: "river" }] },
 	blush:    { exp: ["baozhen"], params: { ParamCheek: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamAngleZ: -8 }, zoom: 1.8, ms: 4500,
-	            deco: [{ s: "///", x: -0.5, y: 0.3, size: 0.7, a: "fade", cls: "blush" }, { s: "///", x: 0.5, y: 0.3, size: 0.7, a: "fade", cls: "blush" }] },
+	            // the cheeks flush in the model itself (ParamCheek); "///" drawn over them slid off as her face turned
+	            deco: [{ s: "💓", x: 1.15, y: -0.85, size: 0.75, a: "pulse" }] },
 	sparkle:  { params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1, ParamMouthOpenY: 0.4, ParamCheek: 0.6 }, zoom: 1.7, ms: 4000,
 	            deco: [{ s: "✨", x: -1.2, y: -0.9, size: 0.8, a: "twinkle" }, { s: "✨", x: 1.2, y: -0.4, size: 1.0, a: "twinkle late" },
 	                   { s: "✦", x: 0.9, y: 0.9, size: 0.6, a: "twinkle", cls: "gold" }] },
@@ -236,9 +237,10 @@ function camera() {
 		el.style.transform = `translate(-50%, -50%) rotate(${a.rot + tilt * 180 / Math.PI + (a.swing ? swing : 0)}deg)`;
 	}
 	decoLayer.style.setProperty("--r", r + "px");
-	for (const el of decoLayer.children) {
-		el.style.left = (hx + Number(el.dataset.x) * r) + "px";
-		el.style.top = (hy + Number(el.dataset.y) * r) + "px";
+	for (const el of decoLayer.children) { // turned with the head's tilt, like the accessories (tears stay on her cheeks)
+		const dx = Number(el.dataset.x) * r, dy = Number(el.dataset.y) * r;
+		el.style.left = (hx + dx * Math.cos(tilt) - dy * Math.sin(tilt)) + "px";
+		el.style.top = (hy + dx * Math.sin(tilt) + dy * Math.cos(tilt)) + "px";
 	}
 }
 

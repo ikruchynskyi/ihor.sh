@@ -38,7 +38,7 @@
     .mochi > button { position: absolute; top: 8px; right: 8px; z-index: 1; }
     /* full screen: only Mochi in her room and the input (Esc or ✕ leaves) */
     .room.stage { position: fixed; inset: 0; z-index: 2147483000; display: block; background: var(--bg); }
-    .room.stage .mochi { position: absolute; inset: 0; top: 0; height: auto; border: 0; border-radius: 0; }
+    .room.stage .mochi { position: absolute; inset: 0; top: 0; z-index: 0; height: auto; border: 0; border-radius: 0; } /* z-index: phones give her 3, over the chat box */
     .room.stage .log, .room.stage #restartRow, .room.stage .owner { display: none; }
     .room.stage form.ask { position: absolute; z-index: 2; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); margin: 0; padding: 10px;
       border-radius: 14px; background: color-mix(in srgb, var(--card) 80%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
