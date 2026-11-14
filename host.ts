@@ -2,7 +2,8 @@
 // 1. Starts Docker Desktop and Ollama if they aren't running yet, then brings up the Docker Compose stack (`docker compose up -d`).
 // 2. Exposes local-only endpoints for the host services that Docker Desktop for Mac can't virtualize:
 //    - HTTP 127.0.0.1:8075: `/whisper` (mlx_whisper captions on Metal), `/upscale` (SeedVR2-3B mflux upscaler on Metal)
-//      and `/ocr` (a street photo's text, Apple Vision through ~/AI/ocr-venv).
+//      `/ocr` (a street photo's text, Apple Vision through ~/AI/ocr-venv) and `/voice` (Mochi's voice, Irodori-TTS
+//      on Metal through ~/Irodori-TTS/.venv: server/voice.py).
 //    - TCP  127.0.0.1:8076: raw serial bridge to the Meshtastic USB radio (`/dev/cu.usbmodem*`).
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { closeSync, createReadStream, existsSync, openSync, statSync, writeSync, constants } from "node:fs";
@@ -13,6 +14,7 @@ import { promisify } from "node:util";
 import { transcribeLocal } from "./server/monitor.ts";
 import { upscaleLocal } from "./server/upscale.ts";
 import { readLocal } from "./server/ocr.ts";
+import { startVoice, voiceLocal } from "./server/voice.ts";
 import { findMeshPort } from "./server/mesh.ts";
 
 const execFileAsync = promisify(execFile);
@@ -133,6 +135,12 @@ const httpBridge = http.createServer(async (req, res) => {
       for await (const c of req) { const b = Buffer.from(c); len += b.length; if (len > 15_000_000) return res.writeHead(413).end(); chunks.push(b); }
       return send(200, await readLocal(Buffer.concat(chunks)));
     }
+    if (req.url === "/voice" && req.method === "POST") { // Mochi's line as MP3 (server/voice.ts), never saved
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
+      const mp3 = await voiceLocal(String(JSON.parse(raw || "{}").text ?? ""));
+      return res.writeHead(200, { "content-type": "audio/mpeg", "cache-control": "no-store" }).end(mp3);
+    }
     send(404, { error: "not found" });
   } catch (e) {
     send(500, { error: (e as Error).message });
@@ -170,6 +178,9 @@ const meshBridge = net.createServer((client) => {
   }
 });
 meshBridge.listen(MESH_BRIDGE_PORT, "127.0.0.1", () => console.log(`host: Meshtastic serial bridge on 127.0.0.1:${MESH_BRIDGE_PORT}`));
+
+// Mochi's voice: loaded now, so the first line doesn't wait for the model; voice.ts restarts it if it crashes.
+startVoice();
 
 // Start Docker & containers now, and check every 60s so a daemon restart or crash self-heals.
 ensureDockerAndContainers();

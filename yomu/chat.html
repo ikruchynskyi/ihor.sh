@@ -96,7 +96,23 @@ addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
 // Her voice: a girl's Japanese voice where the browser has one, pitched up and a little quick, for an anime sound.
 const GIRL = /Kyoko|O-ren|Nanami|Haruka|Ayumi|Mizuki|Sayaka|Google 日本語|female/i, BOY = /Otoya|Ichiro|Keita|Hattori|male/i;
 const girlVoice = () => speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => (GIRL.test(b.name) && !BOY.test(b.name)) - (GIRL.test(a.name) && !BOY.test(a.name)))[0];
-const mochiSays = (t) => { mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content }); browserSpeak(t.content, (state.settings.rate || 1) * 1.08, { voice: "speechSynthesis" in window ? girlVoice() : null, pitch: 1.7 }); };
+const browserVoice = (text) => browserSpeak(text, (state.settings.rate || 1) * 1.05, { voice: "speechSynthesis" in window ? girlVoice() : null, pitch: 1.25 });
+// Her real voice: Irodori-TTS on the server with the stories' young woman's voice (server/voice.ts), made for each line
+// and kept only in this tab's memory (for ▶); the browser's voice when it's offline.
+const voices = new Map();
+const voiceFor = async (text) => {
+  if (!voices.has(text)) {
+    const r = await fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => null);
+    if (!r?.ok) return null;
+    voices.set(text, URL.createObjectURL(await r.blob()));
+  }
+  return voices.get(text);
+};
+const mochiSays = async (t, url) => {
+  mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content });
+  url ??= await voiceFor(t.content);
+  if (!url || !(await speak(t.content, 1, url))) browserVoice(t.content);
+};
 
 // The conversation, kept per level in this browser (sessionStorage: a fresh start next visit).
 const KEY = `yomu-chat-${level}`;
@@ -122,8 +138,9 @@ async function send(text) {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */ }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
+    const url = await voiceFor(d.ja); // she answers when her voice is ready
     turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, mood: d.mood, emote: d.emote }); keep();
-    gain(2); mochiSays(turns.at(-1));
+    gain(2); mochiSays(turns.at(-1), url);
   } catch (e) { $("status").textContent = e.message; turns.pop(); keep(); mochi({ mood: "cry", emote: "sweat" }); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
@@ -135,7 +152,8 @@ async function start(t) {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || "The local model didn't answer. Try again in a moment.");
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", mood: d.mood, emote: d.emote }); keep(); mochiSays(turns.at(-1));
+    const url = await voiceFor(d.ja);
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", mood: d.mood, emote: d.emote }); keep(); mochiSays(turns.at(-1), url);
   } catch (e) { $("status").textContent = e.message; mochi({ mood: "cry", emote: "sweat" }); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
