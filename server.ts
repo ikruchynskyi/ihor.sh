@@ -384,6 +384,9 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   if (!data) return notFound(res);
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`) || ext === ".woff2"; // font files are named by Google's content hash
+  // Mochi's Live2D model (~10 MB) and rooms change almost never: a month in the browser, not refetched on every page.
+  // ponytail: no version in the URL, so a changed model file needs a new name to reach returning visitors
+  const longLived = /[\\/]yomu[\\/]mochi[\\/](model|bg)[\\/]/.test(file);
   if (ext === ".html" && !data.includes('name="ihor-bare"')) {
     res.setHeader("vary", "accept");
     if (world === "home") res.setHeader("link", HOME_LINKS);
@@ -419,7 +422,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
     });
     return res.end(data);
   }
-  res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
+  res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : longLived ? "public, max-age=2592000" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
   // A module's own imports get the same ?v= as the page's, or "/ai/learn.js" and "/ai/learn.js?v=…" load as two modules.
   if (ext === ".js" && !hashed) return res.end(versioned(data.toString()));

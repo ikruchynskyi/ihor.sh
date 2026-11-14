@@ -126,7 +126,8 @@ async function load() {
 			expData[e] = j.Parameters || [];
 		} catch (_) { expData[e] = []; }
 	}));
-	const app = new PIXI.Application({ view: stage, resizeTo: window, backgroundAlpha: 0, antialias: true });
+	// drawn at the screen's pixel density (at 1× she was blurry on phones and retina screens); capped at 2× for speed
+	const app = new PIXI.Application({ view: stage, resizeTo: window, backgroundAlpha: 0, antialias: true, resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true });
 	model = await PIXI.live2d.Live2DModel.from(settings, { autoInteract: false });
 	core = model.internalModel.coreModel;
 	app.stage.addChild(model);

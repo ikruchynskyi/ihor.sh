@@ -122,14 +122,24 @@ if (!(db.prepare("select count(*) n from jobs_fts2").get() as any).n) { // first
   for (const r of db.prepare("select id, title, company, description from jobs").all() as any[]) ftsAdd.run(r.id, r.title, r.company, String(r.description ?? "").slice(0, 8000));
   db.exec("drop table if exists jobs_fts");
 }
+// A job seen again unchanged (most of them, every hour) only gets its last_seen: rewriting every row and its search
+// entry, each in its own commit, kept the server's CPU at ~90% for minutes after each start and each hour (2026-11-14).
+const known = db.prepare("select fp, title, location, url, closed from jobs where id = ?"), touch = db.prepare("update jobs set last_seen = ?, missed = 0 where id = ?");
+/** Runs fn in one transaction (one commit for a whole board instead of one per statement). fn must not await. */
+function batch<T>(fn: () => T): T {
+  db.exec("begin");
+  try { const out = fn(); db.exec("commit"); return out; } catch (e) { db.exec("rollback"); throw e; }
+}
 function save(j: In) {
   const reg = j.regionHint ?? region(j.location, j.isRemote);
   if (!reg) return false;
-  const desc = j.description.slice(0, 20000), t = now(), given = j.salary && j.salary.min > 0 ? j.salary : null, sal = given ?? parseSalary(desc);
+  const desc = j.description.slice(0, 20000), t = now(), fp = simhash(desc), prev = known.get(j.id) as any;
+  if (prev && prev.closed == null && prev.fp === fp && prev.title === j.title.trim() && prev.location === j.location.slice(0, 200) && prev.url === j.url) { touch.run(t, j.id); return true; }
+  const given = j.salary && j.salary.min > 0 ? j.salary : null, sal = given ?? parseSalary(desc);
   const posted = j.posted ? Math.floor(j.posted / 1000) : null;
   const row = { company: j.company, title: j.title, description: desc, region: reg, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null, posted, url: j.url, source: j.source, first_seen: t };
   upsert.run(j.id, j.source, j.company, ckey(j.company), j.title.trim(), j.location.slice(0, 200), reg, remoteType(j.location, desc, j.remoteHint ?? (j.isRemote ? "remote" : "")),
-    sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, j.salaryEst ? 1 : 0, posted, j.url, j.department ?? "", j.employment ?? "", seniority(j.title), func(j.title, j.department), desc, t, t, simhash(desc), JSON.stringify(flagsFor(row)));
+    sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, j.salaryEst ? 1 : 0, posted, j.url, j.department ?? "", j.employment ?? "", seniority(j.title), func(j.title, j.department), desc, t, t, fp, JSON.stringify(flagsFor(row)));
   ftsDel.run(j.id); ftsAdd.run(j.id, j.title, j.company, desc.slice(0, 8000));
   return true;
 }
@@ -176,9 +186,11 @@ export async function refreshBoards() {
   for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(async ({ ats, slug }) => {
     try {
       const jobs = await readBoard(ats, slug), seen = new Set<string>();
-      for (const j of jobs) if (save(j)) { seen.add(j.id); n++; }
-      sweep(ats, seen, `${{ greenhouse: "gh", lever: "lv", ashby: "ab" }[ats]}:${slug}:`);
-      db.prepare("update companies set name = ?, last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
+      batch(() => {
+        for (const j of jobs) if (save(j)) { seen.add(j.id); n++; }
+        sweep(ats, seen, `${{ greenhouse: "gh", lever: "lv", ashby: "ab" }[ats]}:${slug}:`);
+        db.prepare("update companies set name = ?, last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
+      });
     } catch (e) { bad++; db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
   }));
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "boards", bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
@@ -188,15 +200,14 @@ export async function refreshBoards() {
 /** NYC government jobs (the city's open data; External postings only, Internal ones repeat them). */
 export async function refreshNycJobs() {
   const rows = await getJson("https://data.cityofnewyork.us/resource/kpav-sd4t.json?$limit=5000&posting_type=External", 60_000), seen = new Set<string>();
-  for (const r of rows) {
+  batch(() => { for (const r of rows) {
     const id = `nyc:${r.job_id}`, per = /hour/i.test(r.salary_frequency) ? "hour" : /day/i.test(r.salary_frequency) ? "day" : "year";
     const ok = save({ id, source: "nycjobs", company: `NYC ${titleCase(String(r.agency ?? "").toLowerCase())}`, title: r.business_title, location: `${r.work_location ?? ""}, New York, NY`,
       salary: r.salary_range_from && per !== "day" ? { min: +r.salary_range_from, max: +(r.salary_range_to ?? r.salary_range_from), period: per } : null, posted: Date.parse(r.posting_date), url: `https://cityjobs.nyc.gov/job/${r.job_id}`,
       department: r.job_category ?? "", employment: r.full_time_part_time_indicator === "P" ? "Part-time" : "Full-time",
       description: [r.job_description, r.minimum_qual_requirements && `Minimum qualifications:\n${r.minimum_qual_requirements}`, r.preferred_skills && `Preferred skills:\n${r.preferred_skills}`, r.residency_requirement].filter(Boolean).join("\n\n") });
     if (ok) seen.add(id);
-  }
-  sweep("nycjobs", seen, "nyc:");
+  } sweep("nycjobs", seen, "nyc:"); });
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "nycjobs", 1, seen.size, "");
   return { jobs: seen.size };
 }

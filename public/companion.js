@@ -154,12 +154,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 :host(.sleek) .ask { border-radius: 50%; }
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
 /* Mochi: her frame lets clicks through; the spot over her body opens the chat (or a bubble's ▶ action) */
-.mochi { position: fixed; z-index: 2; right: 4px; bottom: calc(4px + var(--blip-floor, 0px)); width: 230px; height: 380px; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
-.mochi-spot { position: fixed; background: transparent; z-index: 2; right: 64px; bottom: calc(4px + var(--blip-floor, 0px)); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
+.mochi-box { position: fixed; z-index: 2; left: 0; top: 0; width: 280px; height: 460px; pointer-events: none; } /* placed and dragged by placeMochi() */
+.mochi { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
+.mochi-spot { position: absolute; left: 30%; bottom: 0; width: 40%; height: 63%; background: transparent; cursor: grab; pointer-events: auto; touch-action: none; border-radius: 40px 40px 8px 8px; }
+.mochi-spot:active { cursor: grabbing; }
 .mochi-spot:focus-visible { outline: 3px solid #4de1ff; }
-:host(.mochi-on) .ask { right: 242px; bottom: calc(16px + var(--blip-floor, 0px)); } /* the 💬 beside her, not over her */
+:host(.mochi-on) .ask { right: auto; left: 14px; bottom: calc(16px + var(--blip-floor, 0px)); } /* she can stand anywhere: the 💬 goes to the other corner */
 .portrait.cat { display: grid; place-items: center; font-size: 30px; line-height: 1; }
-@media (max-width: 600px) { .mochi { width: 170px; height: 290px; } .mochi-spot { right: 48px; width: 80px; height: 180px; } :host(.mochi-on) .ask { right: 182px; } }
+@media (max-width: 600px) { .mochi-box { width: 200px; height: 340px; } }
 `;
 
 const eye = (s) => `<g transform="translate(${s * 10},-4)">
@@ -652,12 +654,12 @@ addEventListener("keydown", (e) => {
 function hide() {
   hidden = true; local.set("blip:hidden", "1"); closeDialog(); hush();
   sim.stop(); stage.style.display = "none"; tab.hidden = false; askBtn.hidden = true;
-  if (mochi) mochi.frame.hidden = mochi.spot.hidden = true;
+  if (mochi) mochi.box.hidden = true;
 }
 function show() {
   hidden = false; local.set("blip:hidden", "");
   tab.hidden = true; askBtn.hidden = false;
-  if (mochi) { mochi.frame.hidden = mochi.spot.hidden = false; return; }
+  if (mochi) { mochi.box.hidden = false; placeMochi(mochi.box.offsetLeft, mochiFloor()); return; }
   stage.style.display = "";
   for (const n of nodes) n.y -= H; // drop back in from above
   flying = true; sim.restart();
@@ -669,6 +671,16 @@ askBtn.onclick = () => openDialog();
 // ---------- Mochi instead of Blip (the wardrobe's COMPANION choice, kept in this browser) ----------
 // Yomu's chat page has its own Mochi, so Blip stays there.
 const ownMochi = !!document.getElementById("mochi");
+// Where she stands: x anywhere on screen, y down to the floor (the page's --blip-floor raises it, as for Blip).
+const mochiFloor = () => innerHeight - (mochi?.box.offsetHeight ?? 0) - 4 - floorUp;
+function placeMochi(x, y) {
+  if (!mochi) return;
+  const { box } = mochi;
+  box.style.left = `${Math.max(0, Math.min(innerWidth - box.offsetWidth, x))}px`;
+  box.style.top = `${Math.max(0, Math.min(mochiFloor(), y))}px`;
+}
+addEventListener("resize", () => { if (mochi) { mochi.box.style.transition = "none"; placeMochi(mochi.box.offsetLeft, mochiFloor()); } });
+
 /** Mochi (on) or Blip as the companion; says whether Mochi is the one on screen now. */
 function useMochi(on) {
   local.set("blip:who", on ? "mochi" : "");
@@ -676,17 +688,41 @@ function useMochi(on) {
   if (on && ownMochi) { say("Mochi is busy in the chat on this page, so I'll stay here!", { ms: 3000 }); return false; }
   if (on) {
     // the spot is a div with a button's role, not a <button>: the themes' button styles (:host(.sleek) button…) painted over her
-    const frame = document.createElement("iframe"), spot = document.createElement("div");
+    const box = document.createElement("div"), frame = document.createElement("iframe"), spot = document.createElement("div");
+    box.className = "mochi-box";
     frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html?companion"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
-    spot.className = "mochi-spot"; spot.tabIndex = 0; spot.setAttribute("role", "button"); spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her.");
-    spot.onclick = () => { activity(); const go = mochiClick; mochiClick = null; go ? go() : openDialog(); };
+    spot.className = "mochi-spot"; spot.tabIndex = 0; spot.setAttribute("role", "button"); spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her, or drag her.");
+    // Tap: the chat (or a bubble's ▶ action). Drag: she follows the pointer, and let go she drops back to the floor, like
+    // Blip; where she stands is kept for the session.
+    let drag = null, dragEnd = 0;
+    spot.onclick = () => { if (performance.now() - dragEnd < 300) return; activity(); const go = mochiClick; mochiClick = null; go ? go() : openDialog(); };
     spot.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); spot.onclick(); } };
-    root.append(frame, spot);
+    spot.onpointerdown = (e) => { if (e.button) return; drag = { sx: e.clientX, sy: e.clientY, x: box.offsetLeft, y: box.offsetTop, moved: false }; spot.setPointerCapture(e.pointerId); };
+    spot.onpointermove = (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      if (!drag.moved) { drag.moved = true; box.style.transition = "none"; hush(); activity(); tell({ mood: "scared", hold: 0 }); }
+      placeMochi(drag.x + dx, drag.y + dy);
+    };
+    spot.onpointerup = spot.onpointercancel = () => {
+      if (!drag?.moved) { drag = null; return; }
+      drag = null; dragEnd = performance.now();
+      const fall = mochiFloor() - box.offsetTop;
+      box.style.transition = `top ${Math.min(0.7, 0.2 + fall / 1500).toFixed(2)}s cubic-bezier(.5,0,1,1)`;
+      placeMochi(box.offsetLeft, mochiFloor());
+      session.set("mochi:x", Math.round(box.offsetLeft));
+      setTimeout(() => tell(fall > 150 ? { emote: "sweat", mood: "idle", hold: 3 } : { mood: "happy", hold: 4 }), fall > 0 ? 450 : 0);
+    };
+    box.append(frame, spot);
+    root.append(box);
     hush(); sim.stop(); stage.style.display = "none";
-    mochi = { frame, spot, ready: false, queue: [] };
-    if (hidden) frame.hidden = spot.hidden = true;
+    mochi = { box, frame, spot, ready: false, queue: [] };
+    const saved = Number(session.get("mochi:x"));
+    placeMochi(Number.isFinite(saved) && session.get("mochi:x") ? saved : innerWidth - box.offsetWidth - 4, mochiFloor());
+    if (hidden) box.hidden = true;
   } else {
-    mochi.frame.remove(); mochi.spot.remove(); mochi = null;
+    mochi.box.remove(); mochi = null;
     if (!hidden) { stage.style.display = ""; sim.restart(); }
   }
   host.classList.toggle("mochi-on", !!mochi);
