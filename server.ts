@@ -11,7 +11,7 @@ import { deals } from "./server/deals.ts";
 import { callsign, repeatersIn } from "./server/ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./server/orna.ts";
 import { startEvents, currentEvents } from "./server/events.ts";
-import { ask, systemPrompt, toolCatalog } from "./server/blip.ts";
+import { ask, mochiPrompt, systemPrompt, toolCatalog } from "./server/blip.ts";
 import { mcp, a2a, serverCard, agentCard } from "./server/mcp.ts";
 import { roomStream, roomPost } from "./server/room.ts";
 import { issue, check, cookie, spend, TTL, clientIp } from "./server/session.ts";
@@ -106,6 +106,7 @@ async function siteMap() {
 }
 
 const SYSTEM = systemPrompt(await siteMap());
+const MOCHI_SYSTEM = mochiPrompt(SYSTEM); // the companion when the visitor picked Mochi in Blip's wardrobe
 const IN_HOST_SUPERVISOR = process.platform === "darwin" && !process.env.HOST_DIRECT;
 if (!IN_HOST_SUPERVISOR) buildIndex(ROOT, WORLDS).then((n) => console.log(`search: ${n} pages indexed`)).catch((e) => console.warn("search index:", e.message));
 
@@ -694,17 +695,17 @@ const server = http.createServer(async (req, res) => {
       if (wait) return res.writeHead(429, { "content-type": "application/json", "retry-after": String(wait) }).end(JSON.stringify({ error: `Blip takes one question every 30 seconds. Ask again in ${wait} s.`, retryAfter: wait }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
-      const body = JSON.parse(raw);
+      const body = JSON.parse(raw), system = body?.persona === "mochi" ? MOCHI_SYSTEM : SYSTEM;
       let gone = false; res.on("close", () => { gone = true; }); // left while in line: their turn is skipped
       if (!body?.stream) {
-        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, SYSTEM)))); }
+        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, system)))); }
         catch (e) { if (e instanceof LineFull) return busyReply(res, e); throw e; }
       }
       // Streamed: its place in line while it waits, then one JSON line per step as Blip thinks and calls tools (the chat
       // shows them while it waits), then the answer.
       res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
       try {
-        const answer = await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, SYSTEM, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
+        const answer = await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, system, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
         res.end(JSON.stringify(answer) + "\n");
       } catch (e) { if (!gone) res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
       return;

@@ -100,6 +100,9 @@ const CSS = `
 .wardrobe .opts button[aria-pressed="true"] { background: var(--accent, #ffb347); color: var(--on-accent, #1b1020); box-shadow: 0 3px 0 rgba(0,0,0,.35); }
 `;
 
+// Mochi's tricks when she is the companion (the wardrobe's COMPANION row): her anime reactions (yomu/mochi/overlay.js EMOTES)
+const MOCHI_TRICKS = { nya: "nya~", sparkle: "sparkle", purr: "purr", doya: "show off", hop: "hop", love: "love", blush: "blush", sleep: "nap" };
+
 /** Wires the wardrobe into Blip. api: { root, stage, bodyEl, face, layers: { behind, costume, clip, faceOver, hat, held, act }, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, spawn, ping, world, H(), W(), mood() } */
 export function setup(api) {
   const { root, layers } = api;
@@ -250,9 +253,15 @@ export function setup(api) {
   // ---------- the wardrobe panel, inside Blip's dialog ----------
   function panel(el) {
     const row = (title, table, key) => `<h3>${title}</h3><div class="opts">${Object.entries(table).map(([k, v]) => `<button type="button" data-k="${key}" data-v="${k}" aria-pressed="${look[key] === k}">${v.label}</button>`).join("")}</div>`;
-    el.innerHTML = row("COSTUME", SKINS, "skin") + row("HAT", HATS, "hat") + row("IN HAND", ITEMS, "item") + `<h3>TRICKS</h3><div class="opts"><button type="button" data-trick="">🎲 Surprise me</button>${Object.keys(TRICKS).map((k) => `<button type="button" data-trick="${k}">${k}</button>`).join("")}</div>`;
+    const who = api.isMochi() ? "mochi" : "blip";
+    const companion = `<h3 id="who-h">COMPANION</h3><div class="opts" role="radiogroup" aria-labelledby="who-h">${[["blip", "🤖 Blip"], ["mochi", "🐱 Mochi"]].map(([k, label]) => `<button type="button" role="radio" data-who="${k}" aria-checked="${who === k}" aria-pressed="${who === k}">${label}</button>`).join("")}</div>`;
+    el.innerHTML = companion + (who === "mochi"
+      ? `<h3>TRICKS</h3><div class="opts">${Object.entries(MOCHI_TRICKS).map(([k, label]) => `<button type="button" data-emote="${k}">${label}</button>`).join("")}</div>`
+      : row("COSTUME", SKINS, "skin") + row("HAT", HATS, "hat") + row("IN HAND", ITEMS, "item") + `<h3>TRICKS</h3><div class="opts"><button type="button" data-trick="">🎲 Surprise me</button>${Object.keys(TRICKS).map((k) => `<button type="button" data-trick="${k}">${k}</button>`).join("")}</div>`);
     el.onclick = (e) => {
       const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.who) { api.useMochi(b.dataset.who === "mochi"); panel(el); if (api.isMochi()) api.say(pick(["Hi~ I'm Mochi. Blip's taking a nap, so it's just us now.", "Mochi here! Be nice to me, okay?", "Nya~ my turn!"]), { ms: 3500 }); return; }
+      if (b.dataset.emote) { api.tell({ emote: b.dataset.emote }); return; }
       if (b.dataset.trick != null) { trick(b.dataset.trick || null); return; }
       look[b.dataset.k] = b.dataset.v; saveLook(); apply(); panel(el);
       api.hop(5); api.setMood("happy", 1000);

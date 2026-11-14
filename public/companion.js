@@ -1,6 +1,8 @@
 // Blip: the ihor.sh companion. Its body is a d3-force soft body (a ring of nodes on springs around a
 // core, plus a two-segment antenna). It idles, watches the cursor, clicks and selections, can be
 // dragged, thrown and poked, and answers questions about the current page through /api/ask.
+// The wardrobe's COMPANION choice swaps Blip for Mochi (the Live2D catgirl of Yomu's chat): she stands in the corner, says
+// the lines in her own bubble with her own moods, and chats as herself (the server's Mochi persona, blip.ts mochiPrompt).
 
 // WebMCP: an AI agent driving this tab gets the site search and Blip as tools (navigator.modelContext). Registered
 // before d3 loads, so they're there as soon as the page is.
@@ -151,6 +153,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 :host(.touch) .ask { display: block; }
 :host(.sleek) .ask { border-radius: 50%; }
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
+/* Mochi: her frame lets clicks through; the spot over her body opens the chat (or a bubble's ▶ action) */
+.mochi { position: fixed; z-index: 2; right: 4px; bottom: var(--blip-floor, 0px); width: 230px; height: 380px; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
+.mochi-spot { all: unset; position: fixed; z-index: 2; right: 64px; bottom: var(--blip-floor, 0px); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
+.mochi-spot:focus-visible { outline: 3px solid #4de1ff; }
+:host(.mochi-on) .ask { display: none; } /* she is the button */
+.portrait.cat { display: grid; place-items: center; font-size: 30px; line-height: 1; }
+@media (max-width: 600px) { .mochi { width: 150px; height: 250px; } .mochi-spot { right: 42px; width: 72px; height: 160px; } }
 `;
 
 const eye = (s) => `<g transform="translate(${s * 10},-4)">
@@ -195,6 +204,7 @@ root.innerHTML = `<style>${CSS}</style>
   <section class="panel" role="dialog" aria-modal="true" aria-labelledby="blip-h">
     <header>
       <svg class="portrait" viewBox="-24 -30 48 54" aria-hidden="true"><path d="M0,-18 Q2,-24 0,-28" fill="none" stroke="#2a1405" stroke-width="3"/><circle cy="-28" r="4" fill="#ff5c8a" stroke="#2a1405" stroke-width="2"/><ellipse rx="20" ry="18" fill="url(#skin)" stroke="#2a1405" stroke-width="3"/><circle cx="-7" cy="-3" r="4"/><circle cx="7" cy="-3" r="4"/><path d="M-5,7 Q0,11 5,7" fill="none" stroke="#2a1405" stroke-width="2.5"/></svg>
+      <span class="portrait cat" aria-hidden="true" hidden>🐱</span>
       <div><h2 id="blip-h">BLIP</h2><p>COMPANION · ON AIR</p></div>
       <button class="x" aria-label="Close">✕</button>
     </header>
@@ -208,10 +218,24 @@ const $ = (s) => root.querySelector(s);
 const [stage, bodyEl, antennaEl, tipEl, face, mouth, shadow, fx, blipEl, bubble, tab] =
   [".stage", ".body", ".antenna", ".tip", ".face", ".mouth", ".shadow", ".fx", ".blip", ".bubble", ".tab"].map($);
 const looks = root.querySelectorAll(".look");
+if (local.get("blip:who") === "mochi" && !document.getElementById("mochi")) stage.style.display = "none"; // Mochi takes over below: no Blip flash first
 const hat = root.querySelector(".hat");
 const arm = root.querySelector(".arm"), armLine = root.querySelector(".arm-line"), hand = root.querySelector(".hand");
 let pointAt = null; // { x, y, until }: the arm reaches toward it
 let wardrobe = null; // costumes, hats, things to hold and tricks (blip-wardrobe.js), set up once Blip can move
+let mochi = null, mochiClick = null, mochiClickT; // { frame, spot } while Mochi is the companion; what a click on her does now
+// to her frame (yomu/mochi/overlay.js); while she loads (a few seconds), the last few wait for her "ready"
+const tell = (cmd) => { if (!mochi) return; if (!mochi.ready) { mochi.queue.push(cmd); mochi.queue.splice(0, mochi.queue.length - 3); return; } mochi.frame.contentWindow?.postMessage({ mochi: cmd }, location.origin); };
+addEventListener("message", (e) => {
+  if (!mochi || e.source !== mochi.frame.contentWindow || !e.data?.mochiReady) return;
+  mochi.ready = true;
+  for (const cmd of mochi.queue.splice(0)) tell(cmd);
+});
+// Blip's moods as Mochi's (her moods hold a few seconds, then she falls back to her bouncy self)
+const MOCHI_MOOD = { happy: { mood: "happy", hold: 6 }, surprised: { mood: "shocked", hold: 4 }, sleep: { mood: "sleepy", hold: 0 },
+  dizzy: { emote: "sweat", mood: "idle", hold: 4 }, think: { mood: "curious", hold: 60 }, annoyed: { mood: "no", hold: 4 } };
+const MOCHI_EMOTES = new Set(["sparkle", "love", "blush", "nya", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"]);
+const NAME = () => (mochi ? "MOCHI" : "BLIP");
 hat.toggleAttribute("hidden", new Date().getMonth() !== 9); // a pumpkin on the head all October (SVG: attributes, not .hidden)
 
 // Each world gives Blip something to carry: where it goes ("head" around the top, "side" held at the right) and its drawing.
@@ -333,6 +357,7 @@ function render() {
 // ---------- expressions, speech, effects ----------
 let moodTimer;
 function setMood(m, ms) {
+  if (mochi && MOCHI_MOOD[m]) tell(MOCHI_MOOD[m]);
   mood = m;
   face.setAttribute("class", `face mood-${m}`);
   mouth.setAttribute("d", MOUTH[m]); mouth.setAttribute("class", `mouth ${m}`);
@@ -343,6 +368,11 @@ setMood("idle");
 
 let sayTimer, typeTimer;
 function say(text, { ms = 3500, cta = "", onClick = null } = {}) {
+  if (mochi) { // her own bubble; a ▶ action waits for a click on her
+    tell({ say: cta ? `${text}  ${cta}` : text });
+    mochiClick = onClick; clearTimeout(mochiClickT); mochiClickT = setTimeout(() => (mochiClick = null), ms + text.length * 30);
+    return;
+  }
   clearTimeout(sayTimer); clearInterval(typeTimer);
   bubble.hidden = false;
   bubble.classList.toggle("clickable", !!onClick);
@@ -389,7 +419,8 @@ const isOctober = new Date().getMonth() === 9;
 try {
   const { setup } = await import("/blip-wardrobe.js");
   wardrobe = setup({
-    root, stage, bodyEl, face, fx, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, ping,
+    root, stage, bodyEl, face, fx, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, ping, tell,
+    useMochi: (on) => useMochi(on), isMochi: () => !!mochi,
     W: () => W, H: () => H,
     layers: { behind: $(".behind"), hair: $(".hair"), costume: $(".costume"), clip: $(".clipbody"), faceOver: $(".face-over"), hat: $(".hat2"), held: $(".held"), act: $(".act") },
     // A chosen hat replaces the October pumpkin and a world's headgear; a chosen item replaces the world's item.
@@ -403,8 +434,28 @@ try {
 
 // ---------- idle life ----------
 let lastInput = performance.now(), nextIdle = performance.now() + (firstVisit ? 6000 : 4000), asleep = false, dialogOpen = false, dragging = false, hidden = false, asked = false, zzz;
+// Mochi's idle lines: about the visitor, the hour and where they are, not about radios and circuits
+function mochiLine() {
+  const h = new Date().getHours(), world = WORLD_NAMES[location.pathname.split("/")[1]];
+  const visits = progress.worlds[location.pathname.split("/")[1]] ?? 0, title = document.title.split(/[·|–-]/)[0].trim().slice(0, 40);
+  return pick([
+    h < 5 ? "Still up? Me too… let's be night owls together, nya." : h < 12 ? "Good morning~ Did you have breakfast? I had fish." : h < 18 ? "This afternoon feels so cozy. Stay a while?" : "It's evening already… I'm glad you came by.",
+    world ? (visits > 3 ? `You keep coming back to ${world}. I like that about you.` : `The ${world} world! Want me to show you around?`) : "Where shall we go today? I know every corner of this place.",
+    title ? `“${title}”… ooh, you have good taste.` : "Ooh, what are we looking at?",
+    "Psst. Click me if you want to talk. I don't bite. Much.",
+    "Select any text and I'll explain it, promise~",
+    "*stretches* Nyaa… okay, I'm all ears. Literally.",
+    "You read so carefully. Cute.",
+    "Stuck on something? Ask me, that's what I'm here for!",
+  ]);
+}
 function idle() {
   const r = Math.random();
+  if (mochi) { // her own antics fill the quiet (overlay.js); she talks now and then
+    if (!asked || r < 0.08) { asked = true; return say(pick(["Hi~ want to talk with me?", "Hey you. Got a minute for me?", "Ask me anything, okay?"]), { ms: 6000, cta: "▶ TAP ME", onClick: () => openDialog() }); }
+    if (r < 0.3) say(mochiLine(), { ms: 4500 });
+    return;
+  }
   if (!asked || r < 0.1) { asked = true; return say("Have a question?", { ms: 6000, cta: "▶ ASK ME", onClick: () => openDialog() }); }
   if (reduced) return blink();
   if (wardrobe && r < 0.24) return wardrobe.trick();
@@ -423,7 +474,7 @@ function activity() {
   if (!asleep) return;
   asleep = false; clearInterval(zzz);
   setMood("surprised", 900); hop(7);
-  say(pick(["!", "Huh? I'm up!", "Wasn't sleeping. Just… buffering."]), { ms: 1500 });
+  say(pick(mochi ? ["Hm? I wasn't sleeping…", "Oh! You're back~", "*yawn* …hi there."] : ["!", "Huh? I'm up!", "Wasn't sleeping. Just… buffering."]), { ms: 1500 });
 }
 setInterval(() => {
   const now = performance.now();
@@ -571,7 +622,7 @@ addEventListener("blip:point", (e) => point(e.detail?.element ?? e.detail, e.det
 // Pages can open the chat with a question: dispatchEvent(new CustomEvent("blip:ask", { detail: { text } })).
 addEventListener("blip:ask", (e) => openDialog(String(e.detail?.text ?? "")));
 addEventListener("blip:ping", () => { if (!hidden) ping(); });
-addEventListener("blip:key", (e) => tipEl.classList.toggle("on", !!e.detail?.on));
+addEventListener("blip:key", (e) => { tipEl.classList.toggle("on", !!e.detail?.on); tell({ talk: !!e.detail?.on }); }); // Mochi's lips move with the page's speech
 addEventListener("blip:look", (e) => { const { x, y, ms = 1500 } = e.detail ?? {}; if (Number.isFinite(x) && Number.isFinite(y)) gaze = { x, y, until: performance.now() + ms }; });
 
 // Party mode: the Konami code (↑ ↑ ↓ ↓ ← → ← → B A).
@@ -601,16 +652,47 @@ addEventListener("keydown", (e) => {
 function hide() {
   hidden = true; local.set("blip:hidden", "1"); closeDialog(); hush();
   sim.stop(); stage.style.display = "none"; tab.hidden = false; askBtn.hidden = true;
+  if (mochi) mochi.frame.hidden = mochi.spot.hidden = true;
 }
 function show() {
   hidden = false; local.set("blip:hidden", "");
-  stage.style.display = ""; tab.hidden = true; askBtn.hidden = false;
+  tab.hidden = true; askBtn.hidden = false;
+  if (mochi) { mochi.frame.hidden = mochi.spot.hidden = false; return; }
+  stage.style.display = "";
   for (const n of nodes) n.y -= H; // drop back in from above
   flying = true; sim.restart();
 }
 tab.onclick = show;
 const askBtn = root.querySelector(".ask");
 askBtn.onclick = () => openDialog();
+
+// ---------- Mochi instead of Blip (the wardrobe's COMPANION choice, kept in this browser) ----------
+// Yomu's chat page has its own Mochi, so Blip stays there.
+const ownMochi = !!document.getElementById("mochi");
+function useMochi(on) {
+  local.set("blip:who", on ? "mochi" : "");
+  if (on === !!mochi) return;
+  if (on && ownMochi) return say("Mochi is busy in the chat on this page, so I'll stay here!", { ms: 3000 });
+  if (on) {
+    const frame = document.createElement("iframe"), spot = document.createElement("button");
+    frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
+    spot.className = "mochi-spot"; spot.type = "button"; spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her.");
+    spot.onclick = () => { activity(); const go = mochiClick; mochiClick = null; go ? go() : openDialog(); };
+    root.append(frame, spot);
+    hush(); sim.stop(); stage.style.display = "none";
+    mochi = { frame, spot, ready: false, queue: [] };
+    if (hidden) frame.hidden = spot.hidden = true;
+  } else {
+    mochi.frame.remove(); mochi.spot.remove(); mochi = null;
+    if (!hidden) { stage.style.display = ""; sim.restart(); }
+  }
+  host.classList.toggle("mochi-on", !!mochi);
+  $("#blip-h").textContent = NAME(); tab.textContent = `▲ ${NAME()}`;
+  $(".hide").textContent = `HIDE ${NAME()}`; askBtn.setAttribute("aria-label", `Ask ${mochi ? "Mochi" : "Blip"}`);
+  root.querySelector("svg.portrait").toggleAttribute("hidden", !!mochi); root.querySelector(".portrait.cat").hidden = !mochi;
+  input.placeholder = mochi ? "Tell me anything, or ask about this page~" : "Ask me anything about this page…";
+  if (dialogOpen) renderLog();
+}
 if (local.get("blip:hidden")) hide();
 
 // ---------- the dialog ----------
@@ -656,8 +738,9 @@ const CHIPS = ["What is this page about?", "Where should I start?", "Tell me a r
 
 function renderLog() {
   log.innerHTML = history.length
-    ? history.map((m) => line(m.role === "user" ? "YOU" : "BLIP", m.role === "user" ? esc(m.content) : format(m.content))).join("")
-    : line("BLIP", "Hi! I'm Blip. I can see this page with you: ask me to explain anything here, quiz you, or help you build it. What's up?") +
+    ? history.map((m) => line(m.role === "user" ? "YOU" : NAME(), m.role === "user" ? esc(m.content) : format(m.content))).join("")
+    : line(NAME(), mochi ? "Hi, I'm Mochi! I'm looking at this page right here with you. Ask me anything, or just tell me how your day's going~"
+      : "Hi! I'm Blip. I can see this page with you: ask me to explain anything here, quiz you, or help you build it. What's up?") +
       `<div class="chips">${(Array.isArray(window.blipChips) ? window.blipChips.slice(0, 4).map(String) : CHIPS).map((c) => `<button type="button">${esc(c)}</button>`).join("")}</div>`;
   log.querySelectorAll(".chips button").forEach((b) => (b.onclick = () => send(b.textContent)));
   log.scrollTop = log.scrollHeight;
@@ -747,10 +830,10 @@ async function send(q) {
   if (!q || pending) return;
   pending = true; input.value = "";
   history.push({ role: "user", content: q }); save(); renderLog();
-  log.insertAdjacentHTML("beforeend", line("BLIP", `<span class="t"><span class="status"><span class="dots"></span></span></span>`));
+  log.insertAdjacentHTML("beforeend", line(NAME(), `<span class="t"><span class="status"><span class="dots"></span></span></span>`));
   const out = log.lastElementChild.querySelector(".t"), status = out.firstElementChild;
   log.scrollTop = log.scrollHeight;
-  setMood("think"); const pinging = setInterval(ping, 700);
+  setMood("think"); tell({ emote: "dots" }); const pinging = setInterval(ping, 700);
   // What Blip is doing, live: the server streams a line per step (thinking, each tool) before the answer.
   const t0 = performance.now();
   let doing = deep ? "thinking hard" : "thinking";
@@ -759,7 +842,7 @@ async function send(q) {
     // Only what the server reads (blip.ts ask: the last 8 messages, 1500 characters each): a whole long chat, or a few
     // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.
     const messages = history.slice(-8).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));
-    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, page: pageInfo(), stream: true, deep }) })
+    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, page: pageInfo(), stream: true, deep, ...(mochi ? { persona: "mochi" } : {}) }) })
       .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
     let data = {};
     if (!r.ok || !/x-ndjson/.test(r.headers.get("content-type") ?? "")) data = await r.json().catch(() => ({}));
@@ -783,14 +866,21 @@ async function send(q) {
     }
     if (r.status === 429 && data.retryAfter) throw Object.assign(new Error(data.error), { retryAfter: data.retryAfter });
     if (!r.ok || data.error || !data.reply) throw new Error(data.error || "Blip lost the signal. Try again?");
+    // Mochi opens each reply with a reaction tag ([sparkle], [blush]…): she plays it, the chat doesn't show it
+    const tag = data.reply.match(/^\s*\[(\w+)\]\s*/);
+    if (tag) data.reply = data.reply.slice(tag[0].length);
     history.push({ role: "assistant", content: data.reply }); save();
     clearInterval(pinging); clearInterval(tick);
+    if (mochi) {
+      const t = tag?.[1].toLowerCase() ?? "happy", first = data.reply.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*`]/g, "").split(/(?<=[.!?~])\s/)[0];
+      tell({ ...(MOCHI_EMOTES.has(t) ? { emote: t, mood: "idle", hold: 8 } : { mood: t, hold: 8 }), say: first.length > 110 ? first.slice(0, 108) + "…" : first });
+    }
     await typeOut(out, data.reply);
     const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => allActions()[a.name]?.label ?? a.name.replace(/_/g, " "))])];
     if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
     perform(data.actions);
     dispatchEvent(new CustomEvent("blip:reply", { detail: { text: data.reply } })); // the map pins the places it links
-    setMood("happy", 1500);
+    if (!mochi) setMood("happy", 1500); // hers came with the reply
   } catch (err) {
     history.pop(); save(); input.value = q;
     if (err.retryAfter) { cooldown(out, err.retryAfter); return; } // the server's limit: one question per visitor every 30 s
@@ -831,3 +921,5 @@ function typeOut(el, text) {
   const hud = document.querySelector(".ihor-hud");
   if (hud) new ResizeObserver(() => document.documentElement.style.setProperty("--hud-h", `${hud.offsetHeight}px`)).observe(hud);
 }
+
+if (local.get("blip:who") === "mochi") useMochi(true); // last: it touches the dialog, set up above
