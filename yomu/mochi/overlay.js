@@ -96,6 +96,7 @@ const stage = document.getElementById("stage");
 let model, core;
 // ?companion: the site companion in a page's corner (public/companion.js): always full body, no face close-ups
 const cfg = { model: "huohuo.model3.json", theme: "catgirl", companion: new URLSearchParams(location.search).has("companion") };
+document.body.classList.toggle("companion", cfg.companion);
 // reduced motion: a calm resting mood and no random antics
 const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let base = calm ? "idle" : "hyper";

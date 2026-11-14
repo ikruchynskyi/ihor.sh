@@ -108,6 +108,9 @@
 	#bubble.hype.show { animation: boing .5s cubic-bezier(.2, 2.2, .4, 1) both, jitter .18s linear .5s 6; }
 	@keyframes boing { from { opacity: 0; transform: scale(.3) rotate(8deg); } to { opacity: 1; transform: none; } }
 	@keyframes jitter { 25% { transform: rotate(-1.5deg); } 75% { transform: rotate(1.5deg); } }
+	/* the site companion's small frame (?companion): a smaller bubble that fits the band above her head, no mood label */
+	body.companion #bubble.hype { font-size: 13px; padding: 6px 10px 8px; -webkit-line-clamp: 3; }
+	body.companion #tag { display: none; }
 	#tag {
 		position: absolute; right: 8px; bottom: 6px; z-index: 2; font: 600 14px system-ui, sans-serif;
 		color: #efe6ff; background: rgba(0, 0, 0, .5); padding: 2px 8px; border-radius: 9px;
