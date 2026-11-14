@@ -255,7 +255,7 @@ export function setup(api) {
     el.innerHTML = companion + row("COSTUME", SKINS, "skin") + row("HAT", HATS, "hat") + row("IN HAND", ITEMS, "item") + `<h3>TRICKS</h3><div class="opts"><button type="button" data-trick="">🎲 Surprise me</button>${Object.keys(TRICKS).map((k) => `<button type="button" data-trick="${k}">${k}</button>`).join("")}</div>`;
     el.onclick = (e) => {
       const b = e.target.closest("button"); if (!b) return;
-      if (b.dataset.who) { if (api.useMochi(true)) api.say(pick(["Hi~ I'm Mochi. Blip's taking a nap, so it's just us now.", "Mochi here! Be nice to me, okay?", "Nya~ my turn!"]), { ms: 3500 }); return; }
+      if (b.dataset.who) { if (api.useMochi(true)) api.say(pick(["Hi~ I'm Mochi. Blip's taking a nap, so it's just us now.", "Mochi here! Be nice to me, okay?", "My turn~ Did you miss me?"]), { ms: 3500 }); return; }
       if (!b.dataset.k && b.dataset.trick == null) return; // the pressed Blip button
       if (b.dataset.trick != null) { trick(b.dataset.trick || null); return; }
       look[b.dataset.k] = b.dataset.v; saveLook(); apply(); panel(el);

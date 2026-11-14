@@ -228,7 +228,7 @@ ownerState();
 // her hello once she has loaded (overlay.js posts mochiReady)
 addEventListener("message", (e) => {
   if (e.origin !== location.origin || !e.data?.mochiReady) return;
-  if (!turns.length) mochi({ mood: "happy", emote: "nya", say: `Pick a topic, or just say こんにちは! I'll stay at ${level}.` });
+  if (!turns.length) mochi({ mood: "happy", emote: "sparkle", say: `Pick a topic, or just say こんにちは! I'll stay at ${level}.` });
 });
 window.blipContext = () => ({ page: `Yomu chat: free Japanese conversation at JLPT ${level} with Mochi, an animated catgirl run by a local model (this page's own chat partner, not you). The visitor may ask you about grammar or words from it.`, level, topic, lastLines: turns.slice(-4).map((t) => `${t.role}: ${t.content}`) });
 </script>

@@ -94,7 +94,8 @@ const decoLayer = document.getElementById("deco");
 const accLayer = document.getElementById("acc");
 const stage = document.getElementById("stage");
 let model, core;
-const cfg = { model: "huohuo.model3.json", theme: "catgirl" };
+// ?companion: the site companion in a page's corner (public/companion.js): always full body, no face close-ups
+const cfg = { model: "huohuo.model3.json", theme: "catgirl", companion: new URLSearchParams(location.search).has("companion") };
 // reduced motion: a calm resting mood and no random antics
 const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let base = calm ? "idle" : "hyper";
@@ -200,7 +201,7 @@ function fit() {
 function camera() {
 	const w = model.internalModel.width, h = model.internalModel.height;
 	const talking = performance.now() < talkingUntil;
-	cam.tz = emote && emote.def.zoom ? emote.def.zoom : (talking ? 1.6 : 1);
+	cam.tz = cfg.companion ? 1 : emote && emote.def.zoom ? emote.def.zoom : (talking ? 1.6 : 1);
 	cam.z += (cam.tz - cam.z) * (emote && emote.def.snap ? 0.3 : cam.speed);
 	const s = cam.baseScale * cam.z;
 	const t = Math.min(1, Math.max(0, (cam.z - 1) / 0.8));

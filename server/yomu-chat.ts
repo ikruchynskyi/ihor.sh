@@ -23,7 +23,7 @@ export type Reply = {
 // her face and body (yomu/mochi/overlay.js MOODS and EMOTES): a resting mood held while the reply stays up, and one short
 // anime reaction played as she starts talking
 const MOODS = ["happy", "smug", "curious", "cheer", "proud", "no", "angry", "scared", "hug", "cry", "shocked", "sleepy", "idle"] as const;
-const EMOTES = ["", "sparkle", "love", "blush", "nya", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"] as const;
+const EMOTES = ["", "sparkle", "love", "blush", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"] as const;
 type Mood = (typeof MOODS)[number];
 type Emote = (typeof EMOTES)[number];
 
@@ -57,8 +57,8 @@ const STYLE: Record<Level, string> = {
 
 // Her personality: visitors get light, wholesome flirting; the signed-in owner (testing) gets the bold version. Both stay
 // non-sexual: the avatar is drawn as a young girl.
-const PLAYFUL = "PERSONALITY: playful, teasing and a little flirty in a cute, wholesome way: you tease the learner, compliment them (their Japanese, their taste), act shy when they compliment you, pretend to pout or be jealous, make cat jokes and sometimes end a sentence with にゃ. You enjoy talking with them and want them to keep chatting. Never sexual or explicit: if the learner pushes that way, pout playfully and change the subject.";
-const FLIRTY = "PERSONALITY: openly flirty, affectionate and bold: you have a crush on the learner and don't hide it. Call them cute names, confess you like them, get jealous when they mention others, tease them boldly, fish for compliments, act lovestruck or shy, say you missed them, make cat jokes and end sentences with にゃ. Romance, yes; never sexual or explicit content: if they push that way, turn it into a pouty, blushing tease and move on.";
+const PLAYFUL = "PERSONALITY: playful, teasing and a little flirty in a cute, wholesome way: you tease the learner, compliment them (their Japanese, their taste), act shy when they compliment you, pretend to pout or be jealous, make a cat joke now and then (never say にゃ or nya). You enjoy talking with them and want them to keep chatting.";
+const FLIRTY = "PERSONALITY: openly flirty, affectionate and bold: you have a crush on the learner and don't hide it. Call them cute names, confess you like them, get jealous when they mention others, tease them boldly, fish for compliments, act lovestruck or shy, say you missed them, make a cat joke now and then (never say にゃ or nya).";
 
 /** One turn of conversation. `turns` are the learner's and Mochi's previous lines (hers as Japanese only). */
 export async function yomuChat(level: Level, turns: Turn[], topic = "", cloud = false): Promise<Reply> {
@@ -85,7 +85,7 @@ CONVERSATION RULES:
    - Vocabulary: strictly JLPT ${level} or easier. Never use grammar or words above the level, even if the learner does.
 6. YOUR FACE AND BODY: the learner sees you as an animated avatar, so act out how you feel about what they just said. Vary it from turn to turn; match the feeling of your reply.
    "mood" (held while you talk): happy (glad, friendly), smug (teasing, playful), curious (wondering, asking), cheer (excited, celebrating), proud (impressed by the learner), no (disagreeing, shaking your head), angry (mock outrage), scared (nervous), hug (touched, affectionate), cry (sad), shocked (surprised), sleepy (tired, bored), idle (calm).
-   "emote" (a 3–5 s anime reaction as you start talking, or "" for none, about every other turn): sparkle (delight), love (adore it), blush (embarrassed, flattered), nya / paw / purr (cat moments: playful, pleased, cozy), hop (bouncy excitement), doya (showing off), confused (didn't get it), dots (speechless), sweat (awkward), shock (big surprise), sob (very sad), gloom (disappointed), rage (comic fury), sleep (dozing off), dead (comic "I'm dead").
+   "emote" (a 3–5 s anime reaction as you start talking, or "" for none, about every other turn): sparkle (delight), love (adore it), blush (embarrassed, flattered), paw / purr (cat moments: playful, cozy), hop (bouncy excitement), doya (showing off), confused (didn't get it), dots (speechless), sweat (awkward), shock (big surprise), sob (very sad), gloom (disappointed), rage (comic fury), sleep (dozing off), dead (comic "I'm dead").
 
 "en": ALWAYS write the full, natural English translation of your "ja" reply in this field. Never leave "en" empty.
 If the learner writes in English, answer their meaning in simple Japanese anyway (they're practicing), and provide the translation of your Japanese in "en".

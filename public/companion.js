@@ -154,12 +154,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 :host(.sleek) .ask { border-radius: 50%; }
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
 /* Mochi: her frame lets clicks through; the spot over her body opens the chat (or a bubble's ▶ action) */
-.mochi { position: fixed; z-index: 2; right: 4px; bottom: var(--blip-floor, 0px); width: 230px; height: 380px; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
-.mochi-spot { position: fixed; background: transparent; z-index: 2; right: 64px; bottom: var(--blip-floor, 0px); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
+.mochi { position: fixed; z-index: 2; right: 4px; bottom: calc(4px + var(--blip-floor, 0px)); width: 230px; height: 380px; border: 0; pointer-events: none; background: transparent; color-scheme: normal; }
+.mochi-spot { position: fixed; background: transparent; z-index: 2; right: 64px; bottom: calc(4px + var(--blip-floor, 0px)); width: 110px; height: 240px; cursor: pointer; pointer-events: auto; border-radius: 40px 40px 8px 8px; }
 .mochi-spot:focus-visible { outline: 3px solid #4de1ff; }
-:host(.mochi-on) .ask { display: none; } /* she is the button */
+:host(.mochi-on) .ask { right: 242px; bottom: calc(16px + var(--blip-floor, 0px)); } /* the 💬 beside her, not over her */
 .portrait.cat { display: grid; place-items: center; font-size: 30px; line-height: 1; }
-@media (max-width: 600px) { .mochi { width: 150px; height: 250px; } .mochi-spot { right: 42px; width: 72px; height: 160px; } }
+@media (max-width: 600px) { .mochi { width: 170px; height: 290px; } .mochi-spot { right: 48px; width: 80px; height: 180px; } :host(.mochi-on) .ask { right: 182px; } }
 `;
 
 const eye = (s) => `<g transform="translate(${s * 10},-4)">
@@ -439,12 +439,12 @@ function mochiLine() {
   const h = new Date().getHours(), world = WORLD_NAMES[location.pathname.split("/")[1]];
   const visits = progress.worlds[location.pathname.split("/")[1]] ?? 0, title = document.title.split(/[·|–-]/)[0].trim().slice(0, 40);
   return pick([
-    h < 5 ? "Still up? Me too… let's be night owls together, nya." : h < 12 ? "Good morning~ Did you have breakfast? I had fish." : h < 18 ? "This afternoon feels so cozy. Stay a while?" : "It's evening already… I'm glad you came by.",
+    h < 5 ? "Still up? Me too… let's be night owls together." : h < 12 ? "Good morning~ Did you have breakfast? I had fish." : h < 18 ? "This afternoon feels so cozy. Stay a while?" : "It's evening already… I'm glad you came by.",
     world ? (visits > 3 ? `You keep coming back to ${world}. I like that about you.` : `The ${world} world! Want me to show you around?`) : "Where shall we go today? I know every corner of this place.",
     title ? `“${title}”… ooh, you have good taste.` : "Ooh, what are we looking at?",
     "Psst. Click me if you want to talk. I don't bite. Much.",
     "Select any text and I'll explain it, promise~",
-    "*stretches* Nyaa… okay, I'm all ears. Literally.",
+    "*stretches* Mmm… okay, I'm all ears. Literally.",
     "You read so carefully. Cute.",
     "Stuck on something? Ask me, that's what I'm here for!",
   ]);
@@ -677,7 +677,7 @@ function useMochi(on) {
   if (on) {
     // the spot is a div with a button's role, not a <button>: the themes' button styles (:host(.sleek) button…) painted over her
     const frame = document.createElement("iframe"), spot = document.createElement("div");
-    frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
+    frame.className = "mochi"; frame.src = "/yomu/mochi/overlay.html?companion"; frame.title = "Mochi"; frame.tabIndex = -1; frame.setAttribute("aria-hidden", "true");
     spot.className = "mochi-spot"; spot.tabIndex = 0; spot.setAttribute("role", "button"); spot.setAttribute("aria-label", "Mochi, the site companion. Press to talk with her.");
     spot.onclick = () => { activity(); const go = mochiClick; mochiClick = null; go ? go() : openDialog(); };
     spot.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); spot.onclick(); } };
