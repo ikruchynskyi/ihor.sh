@@ -850,7 +850,7 @@ async function send(q) {
     // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.
     const messages = history.slice(-8).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));
     const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, page: pageInfo(), stream: true, deep, ...(mochi ? { persona: "mochi" } : {}) }) })
-      .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
+      .catch(() => { throw new Error(`${mochi ? "Mochi" : "Blip"} lost the signal. Try again?`); });
     let data = {};
     if (!r.ok || !/x-ndjson/.test(r.headers.get("content-type") ?? "")) data = await r.json().catch(() => ({}));
     else {
@@ -872,7 +872,7 @@ async function send(q) {
       }
     }
     if (r.status === 429 && data.retryAfter) throw Object.assign(new Error(data.error), { retryAfter: data.retryAfter });
-    if (!r.ok || data.error || !data.reply) throw new Error(data.error || "Blip lost the signal. Try again?");
+    if (!r.ok || data.error || !data.reply) throw new Error(data.error || `${mochi ? "Mochi" : "Blip"} lost the signal. Try again?`);
     // Mochi opens each reply with a reaction tag ([sparkle], [blush]…): she plays it, the chat doesn't show it
     const tag = data.reply.match(/^\s*\[(\w+)\]\s*/);
     if (tag) data.reply = data.reply.slice(tag[0].length);
