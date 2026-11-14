@@ -364,10 +364,14 @@ function say(text, kind) {
 	bubble.classList.add("show");
 	const ms = Math.min(kind === "chat" ? 14000 : 9000, 2500 + text.length * SAY_MS_PER_CHAR);
 	talkingUntil = performance.now() + Math.min(ms - 1500, text.length * 45);
+	// typed out over its final size: the untyped rest is there but invisible, so the bubble doesn't grow letter by letter
+	const shown = document.createElement("span"), rest = document.createElement("span");
+	rest.style.visibility = "hidden"; rest.textContent = text;
+	bubble.replaceChildren(shown, rest);
 	let i = 0;
 	clearInterval(say.typing);
 	say.typing = setInterval(() => {
-		bubble.textContent = text.slice(0, ++i);
+		shown.textContent = text.slice(0, ++i); rest.textContent = text.slice(i);
 		if (i >= text.length) clearInterval(say.typing);
 	}, 30);
 	clearTimeout(say.timer);
