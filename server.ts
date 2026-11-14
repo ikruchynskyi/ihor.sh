@@ -25,7 +25,7 @@ import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./serv
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
-import { yomuChat, isLevel } from "./server/yomu-chat.ts";
+import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull } from "./server/llm.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
@@ -465,6 +465,9 @@ const METEOR_COOKIE = createHmac("sha256", SESSION_SECRET).update(`meteor-owner:
 const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", METEOR_COOKIE);
 // The incident review page (nyc/review.html) too: the owner labels incidents real or not, which measures each source.
 const REVIEW_COOKIE = createHmac("sha256", SESSION_SECRET).update(`review-owner:${MESH_KEY}`).digest("base64url");
+// Yomu's chat (yomu/chat.html): signed in with the owner key, Mochi answers with the cloud model (yomu-chat.ts).
+const YOMU_COOKIE = createHmac("sha256", SESSION_SECRET).update(`yomu-owner:${MESH_KEY}`).digest("base64url");
+const yomuOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihyomu=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", YOMU_COOKIE);
 const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", REVIEW_COOKIE);
 let meshSentAt = 0, meshTraceAt = 0;
 
@@ -649,6 +652,17 @@ const server = http.createServer(async (req, res) => {
         }).end(buf);
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
+    if (url.pathname === "/api/yomu/owner") { // GET: signed in?; POST {key}: sign in, {key: "logout"}: sign out
+      if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ owner: yomuOwner(req), model: CLOUD_CHAT_MODEL }));
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
+      const key = String((() => { try { return JSON.parse(raw || "{}").key; } catch { return ""; } })() ?? "");
+      if (key === "logout") return res.writeHead(200, { "set-cookie": "ihyomu=; Path=/api/yomu; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
+      if (!spend(`yomu-login:${clientIp(req)}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
+      const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+      return res.writeHead(200, { "set-cookie": `ihyomu=${YOMU_COOKIE}; Path=/api/yomu; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
+    }
     if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
       const ip = clientIp(req);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Mochi needs a breather. Try again in a few minutes." }));
@@ -657,7 +671,10 @@ const server = http.createServer(async (req, res) => {
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
       let gone = false; res.on("close", () => { gone = true; });
-      try { const out = await inLine(() => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80))); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
+      // the owner's cloud turns skip the local model's line (ponytail: its local fallback then runs outside the line too; one person, rare)
+      const owner = yomuOwner(req);
+      const turn = () => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), owner);
+      try { const out = await (owner ? turn() : inLine(turn)); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
       catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {

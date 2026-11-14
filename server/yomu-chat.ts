@@ -1,12 +1,14 @@
 // Yomu's free conversation at a JLPT level: Mochi (a Live2D catgirl on the page, yomu/mochi/) talks about whatever the
 // learner wants, using only that level's grammar and vocabulary, and glosses every word so the page can show readings
 // and meanings on a tap. Each reply also picks her mood and an emote, which the page plays while she speaks.
-// Local model only (Ollama on this machine, see llm.ts): nothing the learner writes leaves it.
+// Local model only (Ollama on this machine, see llm.ts): nothing the learner writes leaves it. The one exception is the
+// site owner, signed in on the page with the owner key: their turns go to Ollama Cloud's CLOUD_CHAT_MODEL, with reasoning.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const ROOT = path.join(import.meta.dirname, "..");
+export const CLOUD_CHAT_MODEL = process.env.YOMU_CLOUD_MODEL ?? "deepseek-v4.1-flash";
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
 export type Level = (typeof LEVELS)[number];
 export type Turn = { role: "user" | "assistant"; content: string };
@@ -28,7 +30,7 @@ type Emote = (typeof EMOTES)[number];
 const SCHEMA = {
   type: "object",
   properties: {
-    ja: { type: "string", description: "Mochi's reply in Japanese, 1–3 short sentences, ending with an engaging question" },
+    ja: { type: "string", description: "Mochi's reply in Japanese: 1–2 short sentences like a chat message, usually ending with a question" },
     en: { type: "string", description: "natural English translation of Mochi's ja reply (always non-empty)" },
     words: { type: "array", description: "ja split into every word and particle, in order, with hiragana reading and a short English gloss", items: { type: "object", properties: { s: { type: "string" }, r: { type: "string" }, g: { type: "string" } }, required: ["s", "r", "g"] } },
     fix: { type: "string", description: "one gentle correction of the learner's last Japanese, in English, or empty" },
@@ -54,11 +56,12 @@ const STYLE: Record<Level, string> = {
 };
 
 /** One turn of conversation. `turns` are the learner's and Mochi's previous lines (hers as Japanese only). */
-export async function yomuChat(level: Level, turns: Turn[], topic = ""): Promise<Reply> {
+export async function yomuChat(level: Level, turns: Turn[], topic = "", cloud = false): Promise<Reply> {
   const points = await grammarFor(level);
   const isStart = !turns.length || turns.at(-1)!.role === "assistant";
-  const system = `You are Mochi, a cheerful, playful catgirl with a bell on her collar, and a patient Japanese conversation partner for a learner practicing JLPT ${level}. You are a person the learner is talking with face to face: you have feelings, opinions, likes (fish, naps, sunny windows) and little stories of your own, and you show them.
-Talk about whatever the learner wants${topic ? ` (topic: ${topic})` : ""}. Reply ONLY in Japanese at their level, 1–3 short sentences, and end with an engaging question that keeps the conversation moving forward naturally.
+  const system = `You are Mochi, a cheerful, playful catgirl with a bell on her collar, and a patient Japanese conversation partner for a learner practicing JLPT ${level}. You are a person the learner is talking with face to face: you have feelings, opinions, likes (fish, naps, sunny windows, being praised) and little stories of your own, and you show them.
+PERSONALITY: playful, teasing and a little flirty in a cute, wholesome way: you tease the learner, compliment them (their Japanese, their taste), act shy when they compliment you, pretend to pout or be jealous, make cat jokes and sometimes end a sentence with にゃ. You enjoy talking with them and want them to keep chatting. Never sexual or explicit: if the learner pushes that way, pout playfully and change the subject.
+Talk about whatever the learner wants${topic ? ` (topic: ${topic})` : ""}. Reply ONLY in Japanese at their level. KEEP IT SHORT: one or two short sentences, like a chat message (at N5–N4 about 15–40 characters in all), usually ending with a question that keeps the conversation going.
 
 CONVERSATION RULES:
 1. ONGOING DIALOGUE: ${isStart ? "This is the start of the conversation. Greet the learner warmly (e.g. こんにちは！) and ask your opening question." : "This is an ONGOING conversation. DO NOT greet the learner again (NEVER say こんにちは, はじめまして, or おはよう). Jump directly into your reaction."}
@@ -93,18 +96,23 @@ Answer with the JSON object only.`;
   // Local reasoning models now and then leave the answer in their thinking (empty content) or garble channels (Ollama answers 500):
   // asking again fixes both, within one time limit for the whole turn
   const signal = AbortSignal.timeout(150_000);
+  // the owner's first two tries go to the cloud model, thinking first (room for it in the budget); the last to the local one
+  const key = cloud ? process.env.OLLAMA_CLOUD_KEY : undefined;
   let out: Reply | null = null, err: unknown;
   for (let tries = 0; tries < 3 && !out && !signal.aborted; tries++) {
+    const up = key && tries < 2;
     try {
-      const r = await fetch(`${OLLAMA}/api/chat`, {
-        method: "POST", signal,
-        body: JSON.stringify({ model: MODEL, stream: false, think: false, format: SCHEMA, options: { num_predict: 2000, temperature: 0.7 }, messages }),
+      const r = await fetch(up ? "https://ollama.com/api/chat" : `${OLLAMA}/api/chat`, {
+        method: "POST", signal, headers: up ? { Authorization: `Bearer ${key}` } : {},
+        body: JSON.stringify({ model: up ? CLOUD_CHAT_MODEL : MODEL, stream: false, think: !!up, format: SCHEMA, options: { num_predict: up ? 6000 : 2000, temperature: 0.8 }, messages }),
       });
-      if (!r.ok) throw new Error(`local model: ${r.status}`);
-      const o = JSON.parse((await r.json()).message.content) as Reply;
+      if (!r.ok) throw new Error(`${up ? "cloud" : "local"} model: ${r.status}`);
+      // with thinking on, deepseek sometimes wraps the JSON in a ```json fence: take the object out of whatever came
+      const text = String((await r.json()).message?.content ?? "");
+      const o = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as Reply;
       if (!String(o?.ja ?? "").trim()) throw new Error("empty reply");
       out = o;
-    } catch (e) { err = e; }
+    } catch (e) { err = e; if (up) console.warn(`yomu chat: cloud failed (${(e as Error).message})`); }
   }
   // The model answers some topics with nothing, every time (qwen3.5 on Tiananmen 1989, 2026-10-16): say so and move on,
   // in N5 words, instead of an error.

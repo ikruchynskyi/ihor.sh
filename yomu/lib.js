@@ -452,7 +452,8 @@ export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.r
   return browserSpeak(clean, rate);
 }
 
-export function browserSpeak(text, rate = state.settings.rate) {
+/** voice and pitch (0–2) override the page's Japanese voice and its normal pitch (yomu/chat.html: Mochi's voice). */
+export function browserSpeak(text, rate = state.settings.rate, { voice = jaVoice, pitch = 1 } = {}) {
   return new Promise((done) => {
     if (!("speechSynthesis" in W)) return done(false);
     let resolved = false;
@@ -467,7 +468,7 @@ export function browserSpeak(text, rate = state.settings.rate) {
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "ja-JP"; u.rate = rate; if (jaVoice) u.voice = jaVoice;
+      u.lang = "ja-JP"; u.rate = rate; u.pitch = pitch; if (voice) u.voice = voice;
       u.onstart = () => clearTimeout(timer); // the 5 s limit is for a voice that never starts, not for a long line
       u.onend = () => finish(true);
       u.onerror = () => finish(false);

@@ -30,8 +30,9 @@
     main { max-width: 1140px; }
     .room { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
     .mochi { position: sticky; top: 64px; height: min(600px, calc(100vh - 90px)); overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
-      background: radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); }
+      background: var(--room, none) center / cover, radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); }
     .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+    .owner { margin-top: 18px; font-size: .9rem; } .owner form { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     @media (max-width: 860px) { .room { grid-template-columns: minmax(0, 1fr); } .mochi { order: -1; top: 48px; z-index: 3; height: 240px; } }
   </style>
 </head>
@@ -50,6 +51,9 @@
       <form class="ask" id="ask"><input id="q" lang="ja" placeholder="日本語で書いてください（or in English）" autocomplete="off" maxlength="300"><button type="submit" id="send">Send</button><button type="button" id="mic" hidden>🎤 Speak</button></form>
       <p class="muted" id="status"></p>
       <p><button type="button" id="restart">↺ New conversation</button></p>
+      <details class="owner muted" id="owner"><summary id="ownerSum">Site owner</summary>
+        <form id="ownerForm"><input type="password" id="ownerKey" placeholder="Owner key" autocomplete="current-password" aria-label="Owner key"><button type="submit">Sign in</button></form>
+        <p id="ownerOn" hidden>Mochi answers you with the cloud model, thinking first. <button type="button" class="mini" id="ownerOut">Sign out</button></p></details>
     </div>
   </div>
 </main>
@@ -75,9 +79,14 @@ if (canListen()) $("mic").hidden = false;
 
 // Mochi (yomu/mochi/overlay.js) in the iframe: her mood, emote and line come with each reply; her mouth moves while
 // the voice speaks (lib.js sends blip:key when any speech starts and stops). Her lines use the browser's own voice.
+// one of five cozy rooms behind her, a new one each visit (yomu/mochi/bg/, made with Qwen-Image on this machine)
+$("mochi").parentElement.style.setProperty("--room", `url(/yomu/mochi/bg/${1 + Math.floor(Math.random() * 5)}.webp)`);
 const mochi = (cmd) => $("mochi").contentWindow?.postMessage({ mochi: cmd }, location.origin);
 addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
-const mochiSays = (t) => { mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content }); browserSpeak(t.content); };
+// Her voice: a girl's Japanese voice where the browser has one, pitched up and a little quick, for an anime sound.
+const GIRL = /Kyoko|O-ren|Nanami|Haruka|Ayumi|Mizuki|Sayaka|Google 日本語|female/i, BOY = /Otoya|Ichiro|Keita|Hattori|male/i;
+const girlVoice = () => speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => (GIRL.test(b.name) && !BOY.test(b.name)) - (GIRL.test(a.name) && !BOY.test(a.name)))[0];
+const mochiSays = (t) => { mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content }); browserSpeak(t.content, (state.settings.rate || 1) * 1.08, { voice: "speechSynthesis" in window ? girlVoice() : null, pitch: 1.7 }); };
 
 // The conversation, kept per level in this browser (sessionStorage: a fresh start next visit).
 const KEY = `yomu-chat-${level}`;
@@ -162,6 +171,22 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = t
 document.addEventListener("click", (e) => { if (!e.target.closest("#pop") && !e.target.closest(".w.g")) $("pop").hidden = true; });
 
 renderLog();
+// The site owner signs in with the owner key (server.ts /api/yomu/owner): their chats go to the cloud model.
+async function ownerState() {
+  const d = await fetch("/api/yomu/owner").then((r) => r.json()).catch(() => ({}));
+  $("ownerSum").textContent = d.owner ? `Site owner · ☁ ${d.model}` : "Site owner";
+  $("ownerForm").hidden = !!d.owner; $("ownerOn").hidden = !d.owner;
+}
+$("ownerForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/yomu/owner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: $("ownerKey").value }) });
+  $("ownerKey").value = "";
+  if (!r.ok) { $("status").textContent = (await r.json().catch(() => ({}))).error || "Sign-in failed."; return; }
+  $("status").textContent = ""; ownerState();
+};
+$("ownerOut").onclick = async () => { await fetch("/api/yomu/owner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: "logout" }) }); ownerState(); };
+ownerState();
+
 // her hello once she has loaded (overlay.js posts mochiReady)
 addEventListener("message", (e) => {
   if (e.origin !== location.origin || !e.data?.mochiReady) return;
