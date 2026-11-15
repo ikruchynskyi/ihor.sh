@@ -491,6 +491,10 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("content-security-policy", "frame-ancestors 'self'; object-src 'none'; base-uri 'self'");
   res.setHeader("referrer-policy", "strict-origin-when-cross-origin");
   if (/(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0])) res.setHeader("strict-transport-security", "max-age=31536000");
+  // One host for search: www.ihor.sh pages are copies of ihor.sh ones (Search Console lists them as alternates).
+  if (/^www\.ihor\.sh$/i.test(String(req.headers.host ?? "").split(":")[0]) && (req.method === "GET" || req.method === "HEAD")) {
+    res.writeHead(301, { location: SITE + (req.url ?? "/") }); res.end(); return;
+  }
   const session = check(SESSION_SECRET, cookie(req.headers.cookie));
   // Pages hand out a session; any request renews one past half its life, so a map left open keeps working.
   if ((!session && !url.pathname.startsWith("/api/")) || (session && session.age > TTL / 2)) {
