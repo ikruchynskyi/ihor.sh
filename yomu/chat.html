@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yomu Chat</title>
-  <meta name="description" content="Free conversation in Japanese with Mochi, an animated catgirl who reacts to what you say, at your JLPT level (N5 to N1): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Runs on a local model, so nothing you write leaves the machine." />
+  <meta name="description" content="Free conversation in Japanese with Mochi, an animated catgirl who reacts to what you say, at your JLPT level (N5 to N1): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Your chat isn't stored." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
     .levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
@@ -140,7 +140,7 @@ async function send(text) {
   try {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */ }) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
+    if (!r.ok || d.error) throw new Error(d.error || `Mochi didn't answer (HTTP ${r.status}). Try again in a moment.`);
     const url = await voiceFor(d.ja); // she answers when her voice is ready
     turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, mood: d.mood, emote: d.emote }); keep();
     gain(2); mochiSays(turns.at(-1), url);
@@ -155,7 +155,7 @@ async function start(t) {
   try {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || d.error) throw new Error(d.error || "The local model didn't answer. Try again in a moment.");
+    if (!r.ok || d.error) throw new Error(d.error || "Mochi didn't answer. Try again in a moment.");
     const url = await voiceFor(d.ja);
     turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", mood: d.mood, emote: d.emote }); keep(); mochiSays(turns.at(-1), url);
   } catch (e) { $("status").textContent = e.message; mochi({ mood: "cry", emote: "sweat" }); }

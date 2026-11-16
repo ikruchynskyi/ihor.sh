@@ -683,7 +683,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const ip = clientIp(req);
     if (METERED.some((p) => url.pathname.startsWith(p)) && !canCloud(req) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
-    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !local(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY, enterprise: enterprise() }));
+    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !local(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Something went wrong. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY, enterprise: enterprise() }));
   }
   try {
     if (url.pathname.startsWith("/api/radio/monitor")) { // listen on the server SDR with captions (monitor.ts)
@@ -1258,6 +1258,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
+    if (url.pathname === "/nyc/how.html") return res.writeHead(301, { location: "/nyc/" }).end(); // the architecture tour was removed (internal details, user 2026-11-16)
     if (url.pathname === "/admin") return isAdmin(req) ? serveFile(res, path.join(ROOT, "admin.html"), SITE_LABEL, url.pathname, url.searchParams) : res.writeHead(302, { location: "/" }).end();
     if (url.pathname === "/admin.html") return res.writeHead(302, { location: "/admin" }).end();
     if (url.pathname === "/terms") return serveFile(res, path.join(ROOT, "terms.html"), SITE_LABEL, url.pathname, url.searchParams);

@@ -113,15 +113,14 @@ function introHTML(c) {
     ${scoreHTML(c)}
     <div class="igrid">
       ${o && (o.hiring || o.market || o.tips?.length) ? `<div class="ai"><h3>Overview <span class="badge">AI</span></h3>${o.hiring ? `<p>${esc(o.hiring.text)}</p>` : ""}${o.market ? `<p>${esc(o.market.text)}</p>` : ""}${o.people ? `<p>${esc(o.people.text)}</p>` : ""}
-        ${o.tips?.length ? `<h3 style="margin-top:10px">If you apply</h3><ul>${o.tips.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul>` : ""}
-        <details class="hint" style="margin-top:8px"><summary>The facts it was written from</summary><ol>${c.facts.map((f) => `<li>${esc(f.text)}</li>`).join("")}</ol></details></div>` : ""}
+        ${o.tips?.length ? `<h3 style="margin-top:10px">If you apply</h3><ul>${o.tips.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul>` : ""}</div>` : ""}
       ${c.levels ? `<div><h3>What it pays, by level</h3>${c.levels.families.map(ladder).join("")}<p class="hint">Self-reported total pay (salary, stock, bonus) from <a href="https://www.levels.fyi/companies/${esc(c.levels.slug)}" target="_blank" rel="noopener">Levels.fyi</a>.</p></div>` : ""}
     </div>
     ${c.research?.findings?.length || c.blind || c.signals ? `<div class="igrid"><div>${c.research?.findings?.length ? `<h3>Working there now <span class="badge">AI, from the web</span></h3><ul class="news">${c.research.findings.map((f) => `<li>${esc(f.text)}<span class="hint">${f.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(new URL(x.url).hostname.replace(/^www\./, ""))}</a>`).join(" · ")}</span></li>`).join("")}</ul>` : ""}${c.signals ? sigHTML(c.signals) : ""}</div>
       <div>${c.blind ? blindHTML(c.blind) : ""}<p class="hint">Reviews: ${c.blind ? `<a href="${esc(c.blind.url)}" target="_blank" rel="noopener">Blind ↗</a> · ` : ""}<a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p></div></div>`
       : `<p class="hint">Reviews: <a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p>`}
     ${c.news?.length ? `<h3>In the news, last two weeks</h3><ul class="news">${c.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="hint">${esc(n.source)} · ${age(n.at)}</span></li>`).join("")}</ul>` : ""}
-    <p class="hint" style="margin:12px 0 0">Made ${age(c.at)} from Wikipedia, Nasdaq, Google News, Levels.fyi, Blind, a web search and this site's jobs; remade each morning. The overview is AI-written and keeps only lines whose facts and numbers check out.</p>`;
+    <p class="hint" style="margin:12px 0 0">Updated ${age(c.at)}. Sources: Wikipedia, Nasdaq, Google News, Levels.fyi, Blind and the web; the overview is written by AI.</p>`;
 }
 async function intro() {
   const box = $("intro");
@@ -139,7 +138,6 @@ try {
       ${tile(`${e.stale}%`, "of open jobs up over 60 days", e.stale >= 50 ? "many may be evergreen" : "")}${tile(e.medianDaysUp != null ? `${e.medianDaysUp} days` : "—", "a job usually stays up", "median, last 6 months")}
       ${tile(e.pay ? k$(e.pay.median) : "—", "median stated pay", e.pay ? `middle half ${k$(e.pay.p25)}–${k$(e.pay.p75)} (${e.pay.n} salaries)` : "too few salaries stated")}</div>
     <p>${e.fields.map(([f, n]) => `<span class="chip">${esc(LABEL.func[f] ?? f)} ${n}</span>`).join("")}</p>
-    ${e.boards.length ? `<p class="hint">Read from: ${e.boards.map((b) => `${esc(b.ats)} (${b.open ?? 0} jobs, checked ${b.checked ? age(b.checked) : "—"})`).join(", ")}.</p>` : `<p class="hint">Its jobs here come from aggregators (Adzuna) and public listings; its own job board isn't read yet.</p>`}
     <h2>Open jobs</h2>${e.jobs.map((r) => `<div class="row card"><h3>${jobLink(r)}</h3><div class="meta"><span>${esc(r.location)}</span><span>${esc(LABEL.seniority[r.seniority] ?? "")}</span>${pay(r) ? `<span class="pay">${pay(r)}</span>` : ""}<span>${age(r.posted ?? r.first_seen)}</span>
       ${verified(r.source) ? `<span class="chip ok">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}${r.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div></div>`).join("")}
     ${e.open > e.jobs.length ? `<p class="hint">Showing the newest ${e.jobs.length} of ${e.open}: <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">see all in search</a>.</p>` : ""}`;

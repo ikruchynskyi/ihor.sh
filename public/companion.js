@@ -880,7 +880,7 @@ async function send(q) {
   // What Blip is doing, live: the server streams a line per step (thinking, each tool) before the answer.
   const t0 = performance.now();
   let doing = deep ? "thinking hard" : "thinking";
-  const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ? " · the model is slow right now, hang on" : ""}`; }, 500);
+  const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ?  " · this one's taking a while, hang on" : ""}`; }, 500);
   try {
     // Only what the server reads (blip.ts ask: the last 8 messages, 1500 characters each): a whole long chat, or a few
     // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.

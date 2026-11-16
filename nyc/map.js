@@ -1099,7 +1099,7 @@ function drawBar() {
     p.flooding || Math.abs(p.surgeFt ?? 0) >= 1 ? chip("floods", `🌊 ${p.flooding ? `${p.flooding} flooding` : "Harbor"}${p.surgeFt != null ? ` <small>${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft</small>` : ""}`, "Street flooding now (FloodNet sensors) · harbor water at the Battery against the predicted tide (NOAA)", "warm") : "",
     p.aqi > 100 ? chip("aqi", `🌫 Air ${p.aqi}`, "US air quality index: over 100 is unhealthy for sensitive groups", "warm") : "",
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut} without power`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
-    chip("brief", `☀ NYC today <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "Today in New York, hourly: what's on, the weather, alerts, the subway, top news and critical incidents; written by the local model from facts the code gathered, every line checked against them"),
+    chip("brief", `☀ NYC today <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "Today in New York, hourly: big events, the weather, alerts, the subway, top news and critical incidents"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
     `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 or 72 hours on the map: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ Replay</button>`,
     zones.length ? chip("zones", `⭐ My places${zoneNew() ? ` <small class="new">${zoneNew()} new</small>` : ""}`, `Your watched places (${zones.map((z) => z.name).join(", ")}): what happened there in 24 hours`, zoneNew() ? "warm" : "") : "",
@@ -1138,7 +1138,7 @@ function briefHtml() {
   const secs = b.sections ?? [["", ""]], idx = b.bullets.map((x, i) => ({ ...x, i }));
   const sec = ([k, label]) => { const l = idx.filter((x) => (x.section ?? "") === k); return l.length ? `${label ? `<p class="muted" style="margin:.6em 0 .2em"><b>${esc(label)}</b></p>` : ""}<ul>${bulletsHtml({ ...b, bullets: l }, "brief", l.map((x) => x.i))}</ul>` : ""; };
   return { title: `☀ NYC today <span class="muted">· ${hhmm(b.at)} · <a href="/nyc/today.html" target="_blank" rel="noopener">full screen ↗</a></span>`, body: `${b.headline ? `<p><b>${esc(b.headline.text)}</b></p>` : ""}${secs.map(sec).join("")}
-    ${b.dropped ? `<p class="muted">${b.dropped} line${b.dropped > 1 ? "s were" : " was"} dropped for not matching the facts.</p>` : ""}<details><summary class="muted">The facts it was given</summary><ol>${b.facts.map((f) => `<li value="${f.id.slice(1)}">${esc(f.text)}</li>`).join("")}</ol></details>` };
+` };
 }
 // A bullet whose facts have places is a link: it pins them (hover a fact number for the fact).
 const bulletsHtml = (b, from, at = null) => { const fact = new Map(b.facts.map((f) => [f.id, f])); return b.bullets.map((x, n) => { const placed = x.facts.some((id) => fact.get(id)?.lat != null), i = at ? at[n] : n;
@@ -1417,7 +1417,7 @@ const cite = (r, ns) => ns.map((n) => r.sources[n - 1]).filter(Boolean).map((s) 
 const researchHtml = (r) => `<h4>📰 What the sources say${r.important ? ' <span class="new">matters now</span>' : ""}</h4>${r.summary ? `<p><b>${esc(r.summary)}</b></p>` : ""}
   ${r.points.length ? `<ul>${r.points.map((p) => `<li>${esc(p.text)} ${cite(r, p.sources)}</li>`).join("")}</ul>` : "<p class=muted>Nothing in the sources checked out.</p>"}
   ${r.unknown.length ? `<p class="muted"><b>Still unclear:</b> ${r.unknown.map(esc).join(" · ")}</p>` : ""}
-  <details><summary class="muted">${r.sources.length} sources · by ${esc(r.by ?? "the AI")}${r.dropped ? ` · ${r.dropped} point${r.dropped > 1 ? "s" : ""} dropped: numbers not in its sources` : ""}</summary><ol>${r.sources.map((s) => `<li>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title)} <span class="muted">${esc(s.from)}</span></li>`).join("")}</ol></details>`;
+  <details><summary class="muted">${r.sources.length} sources</summary><ol>${r.sources.map((s) => `<li>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title)} <span class="muted">${esc(s.from)}</span></li>`).join("")}</ol></details>`;
 async function researchNow(c) {
   const show = (html) => { const o = detailNow === c && document.getElementById("dresearch"); if (o) o.innerHTML = html; };
   if (research.has(c.id)) return show(researchHtml(research.get(c.id)));
@@ -1592,8 +1592,8 @@ function renderBrief() {
   const r = brief.result;
   o.innerHTML = brief.running ? `<p class="muted">⏳ ${esc(brief.step)} <span>${Math.round((Date.now() - brief.t0) / 1000)} s</span></p>`
     : brief.error ? `<p>${esc(brief.error)}</p>`
-    : `<div class="briefbox"><b>✨ Brief</b> <span class="muted">${hhmm(r.at)} · by ${esc(r.by)}${r.cameras ? ` after looking at ${r.cameras} camera${r.cameras > 1 ? "s" : ""}` : ""}</span><ul>${bulletsHtml(r, "area")}</ul>
-      <p class="muted">${r.dropped ? `${r.dropped} bullet(s) dropped for not matching the facts. ` : ""}Click a bullet for its places; hover a number for its fact.</p></div>`;
+    : `<div class="briefbox"><b>✨ Brief</b> <span class="muted">${hhmm(r.at)}${r.cameras ? ` after looking at ${r.cameras} camera${r.cameras > 1 ? "s" : ""}` : ""}</span><ul>${bulletsHtml(r, "area")}</ul>
+      <p class="muted">Click a bullet for its places.</p></div>`;
   if (!brief.running) { brief.seen = true; $("cityBrief").classList.remove("min"); $("cityBrief").querySelector(".pb").scrollTop = 0; } // unfold, and show it
   drawBar();
 }
@@ -1751,7 +1751,7 @@ function openCam(c) {
     const hasTts = "speechSynthesis" in window;
     box.innerHTML = `
       <div class="cv-hdr">
-        <div class="cv-title"><span>👁</span> <b>Qwen Vision Analysis</b>${c.of ? ` <small>of the camera's real frame now, not the upscale</small>` : ""}</div>
+        <div class="cv-title"><span>👁</span> <b>What the camera shows</b>${c.of ? ` <small>of the camera's real frame now, not the upscale</small>` : ""}</div>
         <div class="cv-actions">
           ${hasTts ? `<button class="cv-speak-btn" title="Read description out loud">🔊 Listen</button>` : ""}
           <button class="cv-close-btn" title="Close" aria-label="Close CV analysis">×</button>
@@ -2340,7 +2340,7 @@ window.blipActions = {
     run: async ({ lat, lon, zoom }) => { if (Number.isFinite(+lat) && Number.isFinite(+lon) && +lat) map.setView([+lat, +lon], +zoom || 15); await analyzeArea(); return seen.area; } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
-  inspect_camera: { label: "inspected camera with AI vision", description: "Analyze the live image from an open or specified traffic camera using local Qwen computer vision.", parameters: { id: { type: "string", description: "Camera ID" }, prompt: { type: "string", description: "Optional question" } },
+  inspect_camera: { label: "inspected camera with AI vision", description: "Analyze the live image from an open or specified traffic camera using AI vision.", parameters: { id: { type: "string", description: "Camera ID" }, prompt: { type: "string", description: "Optional question" } },
     run: async ({ id, prompt }) => {
       const targetId = id || (seen.openCams[0] && (await getJSON("/api/nyc/cameras")).find((c) => c.name === seen.openCams[0])?.id);
       if (!targetId) return "No camera specified or open.";

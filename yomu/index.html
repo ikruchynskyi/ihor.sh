@@ -169,7 +169,7 @@ async function renderPath() {
         <a href="/yomu/grammar.html?level=${lvl}">Grammar<br>${bar(count(grammar, (g) => "g:" + g.id), grammar.length)}</a>
         <a href="/yomu/deck.html?level=${lvl}&type=kanji">Kanji<br>${bar(count(kanji, (k) => "k:" + k.k), kanji.length)}</a>
         <a href="/yomu/deck.html?level=${lvl}&type=words">Words<br>${bar(count(words, (w) => "w:" + w.w), words.length)}</a>
-        <a href="/yomu/chat.html?level=${lvl}">💬 Chat<br><span class="muted">free talk at ${lvl}, on a local model</span></a>
+        <a href="/yomu/chat.html?level=${lvl}">💬 Chat<br><span class="muted">free talk at ${lvl}</span></a>
       </div></div>`;
   }
   $("path").innerHTML = html;

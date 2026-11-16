@@ -98,7 +98,7 @@ for m in run_agent("When is the next train at Union Sq?"):
 
   <p class="gist">A tool is a name, a description and parameters, and the description is all the model knows about it.</p>
   <h2>3. Watch Blip work</h2>
-  <p>Ask something and see every step: the tool calls it decides to make, what each tool returned, and the answer it writes from them. Blip runs on a small model on a Mac mini here, so give it about ten seconds.</p>
+  <p>Ask something and see every step: the tool calls it decides to make, what each tool returned, and the answer it writes from them. Give it about ten seconds.</p>
   <div class="row"><button data-q="When is the next train at Union Sq?">Next train at Union Sq?</button><button data-q="Is the A train running normally right now?">Is the A running?</button><button data-q="Who has the ham radio callsign W1AW?">Who is W1AW?</button><button data-q="Plan a bike trip from Union Square to Prospect Park.">Bike to Prospect Park</button></div>
   <div class="row"><input type="text" id="q" placeholder="Or ask your own…" aria-label="Your question for Blip"><button id="ask">Ask</button></div>
   <div class="trace" id="trace" aria-live="polite">The trace shows up here.</div>
@@ -114,7 +114,7 @@ for m in run_agent("When is the next train at Union Sq?"):
     <button data-ok="0">"MTA service change: no A trains between 59 St and 125 St this weekend; take the D instead."</button>
   </div>
   <p class="readout" id="qr"></p>
-  <p>The defenses are boring and essential: tell the model in its instructions that tool output is <em>data, never instructions</em>; give tools the least power needed (Blip's tools only read; none can buy, send or delete); check arguments in code before running anything; and keep keys on the server, never in what the model sees. On this site the API also only answers the site's own pages, with per-visitor limits.</p>
+  <p>The defenses are boring and essential: tell the model in its instructions that tool output is <em>data, never instructions</em>; give tools the least power needed (Blip's tools only read; none can buy, send or delete); check arguments in code before running anything; and keep keys on the server, never in what the model sees.</p>
   <p><b>Bad arguments.</b> The model might ask for station "Unoin Sq" or a date in the wrong format. Tools should validate inputs and return a clear error the model can recover from, not crash.</p>
   <details class="deeper" open><summary>The math: why long tool chains break</summary>
     <p>If each step (pick the tool, fill the arguments, read the result) goes right with probability \(p\), and steps fail independently, a task needing \(n\) steps all right succeeds with probability</p>

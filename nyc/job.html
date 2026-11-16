@@ -51,7 +51,7 @@ function head() {
   const j = job, e = j.employer, t = tracked()[j.id];
   document.title = `${j.title} at ${j.company}`; $("crumb").textContent = $("jt").textContent = j.title;
   $("head").innerHTML = `<div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
-      ${verified(j.source) ? `<span class="chip ok" title="Read from the employer's own system, checked again on schedule">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[j.source] ?? j.source)}</span>`}${j.closed ? `<span class="chip flag">closed ${new Date(j.closed * 1000).toLocaleDateString()}</span>` : ""}</div>
+      ${verified(j.source) ? `<span class="chip ok" title="From the employer's own listings">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[j.source] ?? j.source)}</span>`}${j.closed ? `<span class="chip flag">closed ${new Date(j.closed * 1000).toLocaleDateString()}</span>` : ""}</div>
     ${j.flags.length ? `<div class="meta" style="margin-top:4px">${j.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
     <p class="meta" style="margin-top:10px"><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source] ?? j.source)} ↗</a>
       <label>📋 <select id="stage" aria-label="Track this job"><option value="">not tracked</option>${STAGES.map((s) => `<option ${t?.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>

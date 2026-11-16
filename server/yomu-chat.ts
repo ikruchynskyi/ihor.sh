@@ -161,7 +161,7 @@ export async function splitWords(ja: string): Promise<Reply["words"]> {
     body: JSON.stringify({ model: MODEL, stream: false, think: false, format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
       messages: [{ role: "system", content: 'Split the Japanese sentence into dictionary words and particles, in order, covering every character: s = surface form, r = hiragana reading, g = short English meaning (particles: "particle: marks the topic" etc.; punctuation: g ""). One word per item, never a phrase. JSON only.' }, { role: "user", content: ja }] }),
   });
-  if (!r.ok) throw new Error(`local model: ${r.status}`);
+  if (!r.ok) throw new Error(`Mochi didn't answer (${r.status})`);
   const d = JSON.parse((await r.json()).message.content);
   return (Array.isArray(d.words) ? d.words : []).map((w: any) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w: any) => w.s);
 }
