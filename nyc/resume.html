@@ -244,7 +244,7 @@ function renderTailor() {
     ${tailored.added.length ? `<p style="margin:0"><b>Added from the job: untick every one you don't have</b></p><p id="addedList" style="margin-top:2px">${tailored.added.map((sk) => `<label class="chip miss" style="cursor:pointer"><input type="checkbox" value="${esc(sk)}" checked> ${esc(sk)}</label>`).join(" ")}</p>`
       : `<p class="hint">It added no skills your résumé doesn't already show.</p>`}
     ${notes.length ? `<details><summary>${notes.length} line${notes.length > 1 ? "s" : ""} to double-check</summary><ul>${notes.map((b) => `<li>${esc(b.text)}<br><span class="hint">⚠ ${esc(b.notes.join("; "))}</span></li>`).join("")}</ul></details>` : ""}
-    <p class="hint">Built by ${esc(tailored.by ?? "the AI")}; your roles and dates are copied from your résumé, and numbers it doesn't have became [X] for you to fill in or delete.</p>
+    <p class="hint">Your roles and dates are copied from your résumé, and numbers it doesn't have became [X] for you to fill in or delete.</p>
     <label class="hint"><input type="checkbox" id="keepCv" checked> keep this version with the job in <a href="/nyc/jobs.html#mine">📋 My applications</a> (in this browser)</label></div>`;
   applyTailor();
 }

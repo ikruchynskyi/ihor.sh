@@ -48,6 +48,7 @@
   <h2>What the site stores</h2>
   <ul>
     <li><b>One cookie</b> (<code>ihs</code>): a random, signed session token that lasts 24 hours. It lets the site's own pages use its data API and keeps the rate limits fair. It isn't used to track you across sites, and there are no analytics or advertising trackers.</li>
+    <li><b>An account, if you make one</b> (optional; nothing on the site needs it): signing in with Google stores your Google account id, email address, name and picture, and a second signed cookie (<code>iha</code>, 90 days) keeps you signed in. Signing out removes the cookie; to have the account deleted, ask the site's owner.</li>
     <li><b>Your browser's storage</b> keeps your theme and reading settings, course progress and chat history on your device. Settings and progress stay there; a chat sends its conversation along with each new question, so the model has the context, and the server doesn't keep it. Clearing your browser's site data removes all of it.</li>
     <li><b>Your location</b> is used only when you ask for something near you, and only to look it up. It isn't stored.</li>
     <li><b>Server logs</b> keep errors and, for the agent endpoints (MCP and A2A), the requesting IP address and user agent. The site is served through Cloudflare, which processes requests under its own privacy policy.</li>

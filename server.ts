@@ -26,7 +26,8 @@ import { startEvening, events as eveningEvents, eventById, planEvening } from ".
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
-import { inLine, LineFull } from "./server/llm.ts";
+import { inLine, LineFull, asker } from "./server/llm.ts";
+import { ADMIN, userFrom, sessionFor, signOutEverywhere, googleReady, googleStart, googleFinish } from "./server/auth.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
 import { voice } from "./server/voice.ts";
@@ -290,7 +291,7 @@ Sitemap: ${SITE}/sitemap.xml
 let llms: Promise<string> | null = null;
 function llmsTxt() {
   return (llms ??= (async () => {
-    const out = [`# ihor.sh`, ``, `> Hobby projects built and learned in public, free and without accounts: a software-defined radio written from scratch with courses, NYC open-data tools (a live subway map, a jobs radar, an evening planner, a résumé check), AI and electronics courses with interactive chapters, Yomu (Japanese from zero), a bikepacking route notebook, and Blip, a companion that answers questions on every page.`, ``,
+    const out = [`# ihor.sh`, ``, `> Hobby projects built and learned in public, free and with no account needed: a software-defined radio written from scratch with courses, NYC open-data tools (a live subway map, a jobs radar, an evening planner, a résumé check), AI and electronics courses with interactive chapters, Yomu (Japanese from zero), a bikepacking route notebook, and Blip, a companion that answers questions on every page.`, ``,
       `For agents:`, `- Pages render in the browser (JavaScript). The lists below link every page with its description.`,
       `- Live data (subway, buses, ferries, Citi Bike, ships in the harbor, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP; its tools need a bearer token from the owner, except site_search, which is open), or by asking Blip on any page.`,
       `- Search the whole site (pages, lessons, tools, Yomu stories and grammar): ${SITE}/search?q=<words> (keyless; JSON {query, hits: [{title, url, world, snippet}]}, or Markdown with Accept: text/markdown or &format=md; &n= up to 20).`,
@@ -464,16 +465,24 @@ const MESH_KEY = process.env.MESH_OWNER_KEY || (() => {
 })();
 const MESH_COOKIE = createHmac("sha256", SESSION_SECRET).update(`mesh-owner:${MESH_KEY}`).digest("base64url");
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
-const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", MESH_COOKIE);
+const meshOwner = (req: http.IncomingMessage) => isAdmin(req) || same(/(?:^|;\s*)ihmesh=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", MESH_COOKIE);
 // The Meteor station check (radio/meteor-check.html) uses the same owner key, with its own cookie for /api/meteor.
 const METEOR_COOKIE = createHmac("sha256", SESSION_SECRET).update(`meteor-owner:${MESH_KEY}`).digest("base64url");
-const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", METEOR_COOKIE);
+const meteorOwner = (req: http.IncomingMessage) => isAdmin(req) || same(/(?:^|;\s*)ihmet=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", METEOR_COOKIE);
 // The incident review page (nyc/review.html) too: the owner labels incidents real or not, which measures each source.
 const REVIEW_COOKIE = createHmac("sha256", SESSION_SECRET).update(`review-owner:${MESH_KEY}`).digest("base64url");
 // Yomu's chat (yomu/chat.html): signed in with the owner key, Mochi answers with the cloud model (yomu-chat.ts).
 const YOMU_COOKIE = createHmac("sha256", SESSION_SECRET).update(`yomu-owner:${MESH_KEY}`).digest("base64url");
-const yomuOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihyomu=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", YOMU_COOKIE);
-const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", REVIEW_COOKIE);
+const yomuOwner = (req: http.IncomingMessage) => isAdmin(req) || same(/(?:^|;\s*)ihyomu=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", YOMU_COOKIE);
+const reviewOwner = (req: http.IncomingMessage) => isAdmin(req) || same(/(?:^|;\s*)ihrev=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", REVIEW_COOKIE);
+// Accounts (auth.ts): the signed-in user, from the iha cookie. The admin is the owner on every owner page as well, and
+// its AI calls go to the cloud model (asker, below).
+const currentUser = (req: http.IncomingMessage) => userFrom(SESSION_SECRET, cookie(req.headers.cookie, "iha"));
+const isAdmin = (req: http.IncomingMessage) => currentUser(req)?.role === "admin";
+const isLive = (req: http.IncomingMessage) => /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+const signedIn = (req: http.IncomingMessage, id: string) => `iha=${sessionFor(SESSION_SECRET, id)}; Path=/; Max-Age=${90 * 86400}; HttpOnly; SameSite=Lax${isLive(req) ? "; Secure" : ""}`;
+/** Cookies set by this response so far (a fresh ihs), plus these. */
+const withCookies = (res: http.ServerResponse, ...more: string[]) => [...[res.getHeader("set-cookie") ?? []].flat().map(String), ...more];
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
@@ -497,7 +506,7 @@ const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => St
     seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" }; };
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
-const server = http.createServer(async (req, res) => {
+const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
   const url = new URL(req.url ?? "/", "http://x");
   // On every response (SECURITY.md): browsers mustn't guess content types, other sites mustn't frame the pages
   // (clickjacking the owner pages), no plugins, no <base> hijack; HTTPS only on the live domain.
@@ -524,6 +533,23 @@ const server = http.createServer(async (req, res) => {
     const viaMcp = url.pathname === "/mcp";
     return (viaMcp ? mcp : a2a)(req, res, (q) => inLine(() => ask({ messages: [{ role: "user", content: q }], page: viaMcp ? { url: "mcp", title: "MCP client" } : { url: "a2a", title: "A2A agent" } }, SYSTEM)))
       .catch((e) => { if (!res.headersSent) res.writeHead(500).end(String(e.message)); });
+  }
+  // Google sign-in (auth.ts): plain navigations, so outside /api/; the ihg cookie ties the start to the callback
+  if (url.pathname === "/auth/google" || url.pathname === "/auth/google/callback") {
+    const back = `${isLive(req) ? SITE : `http://${req.headers.host}`}/auth/google/callback`;
+    const page = (msg: string, code = 400) => res.writeHead(code, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" })
+      .end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in</title><body style="font:16px/1.5 system-ui;margin:40px auto;max-width:520px;padding:0 16px"><p>${msg.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}</p><p><a href="/">Back to ihor.sh</a></p>`);
+    if (!googleReady()) return page("Google sign-in isn't set up on this site yet.", 404);
+    if (!spend(`auth:${clientIp(req)}`, 30, 3600_000)) return page("Too many sign-in attempts. Try again in an hour.", 429);
+    if (url.pathname === "/auth/google") {
+      const g = googleStart(SESSION_SECRET, back, String(url.searchParams.get("next") ?? "/"));
+      return res.writeHead(302, { location: g.url, "cache-control": "no-store", "set-cookie": withCookies(res, `ihg=${g.cookie}; Path=/auth; Max-Age=600; HttpOnly; SameSite=Lax${isLive(req) ? "; Secure" : ""}`) }).end();
+    }
+    if (url.searchParams.get("error")) return page("Google sign-in was cancelled.");
+    try {
+      const done = await googleFinish(SESSION_SECRET, back, String(url.searchParams.get("code") ?? ""), String(url.searchParams.get("state") ?? ""), cookie(req.headers.cookie, "ihg"));
+      return res.writeHead(302, { location: done.next, "cache-control": "no-store", "set-cookie": withCookies(res, signedIn(req, done.id), "ihg=; Path=/auth; Max-Age=0") }).end();
+    } catch (e) { return page((e as Error).message); }
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;
@@ -1072,6 +1098,18 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
     }
     if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/auth/me") { const u = currentUser(req); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ user: u && { name: u.name, email: u.email, picture: u.picture, role: u.role }, google: googleReady() })); }
+    if (url.pathname === "/api/auth/token" && req.method === "POST") { // the admin signs in with the owner key
+      if (!spend(`authkey:${clientIp(req)}`, 10, 3600_000)) return json403(res, "Too many tries. Try again in an hour.", 429);
+      let raw = ""; for await (const c of req) { raw += c; if (raw.length > 500) return res.writeHead(413).end(); }
+      const key = String((() => { try { return JSON.parse(raw || "{}").key ?? ""; } catch { return ""; } })());
+      if (!same(key, MESH_KEY)) return json403(res, "That's not the admin token.");
+      return res.writeHead(200, { "set-cookie": withCookies(res, signedIn(req, ADMIN)), "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ok: true }));
+    }
+    if (url.pathname === "/api/auth/logout" && req.method === "POST") {
+      const u = currentUser(req); if (u && url.searchParams.get("everywhere") === "1") signOutEverywhere(u.id);
+      return res.writeHead(200, { "set-cookie": withCookies(res, "iha=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"), "content-type": "application/json", "cache-control": "no-store" }).end("{}");
+    }
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
@@ -1083,6 +1121,9 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
       let b: any; try { b = JSON.parse(raw || "{}"); } catch { return res.writeHead(400).end(); }
       const resume = String(b.resume ?? "").slice(0, 20_000);
+      // the long answers as polled jobs (the local model can take over Cloudflare's 100 s); the quick match (meaning only) stays a request
+      if (url.pathname === "/api/jobs/suggest") return startJob(res, () => jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Reading your résumé…", true);
+      if (url.pathname === "/api/jobs/match" && b.rank !== false) return startJob(res, () => jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, true), "Scoring the closest jobs against your résumé…", true);
       if (url.pathname === "/api/jobs/tailor") return startJob(res, () => jobTailor(resume, b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Rebuilding your résumé for this job (up to two minutes)…", true);
       try {
         const d: any = url.pathname === "/api/jobs/match"
@@ -1138,7 +1179,10 @@ const server = http.createServer(async (req, res) => {
     if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip lost the signal. Try again?" }));
     else if (!res.writableEnded) res.destroy(); // `writeHead(200).end(await …)` sends the headers before the await: a failure must still end the request, not leave the page waiting
   }
-});
+};
+// Each request runs as who's asking: the signed-in admin's AI calls go to the cloud model (llm.ts asker). run(), not
+// enterWith(): the tunnel reuses connections across visitors, so the context must end with the request.
+const server = http.createServer((req, res) => void asker.run({ cloud: isAdmin(req) }, () => serve(req, res)));
 
 if (IN_HOST_SUPERVISOR) {
   await import("./host.ts");

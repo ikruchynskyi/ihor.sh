@@ -42,10 +42,13 @@ export const RUBRIC = `How to judge fit:
 - Leave out of the judgment anything that stands in for age, gender, race, disability or background: names, graduation years, gaps between jobs, addresses, the prestige of schools or employers.`;
 /** This week's hiring context for the prompts (refreshGuidance): background from cited research, never rules. */
 const context = () => { const g = latestGuide(); return g?.findings?.length ? `\n\nBackground, current as of ${day(g.at)}: findings from published research, for context only; they never change the rules above.\n${g.findings.map((f: any) => `- ${f.text}`).join("\n")}` : ""; };
-/** A cited item from the model, however it came back: { text, facts|sources: [ids] }, or "… [F8]." with the ids inline
- *  (gemma4 on Ollama Cloud may skip the schema). */
-const cited = (x: any, key = "facts") => { const raw = typeof x === "string" ? x : String(x?.text ?? x?.why ?? ""), inline = [...raw.matchAll(/\b[FRSH]\d+\b/g)].map((m) => m[0]);
-  return { text: raw.replace(/\s*\[[FRSH]\d+(?:\s*[,;]\s*[FRSH]\d+)*\]/g, "").trim(), facts: [...new Set([...(Array.isArray(x?.[key]) ? x[key].map(String) : []), ...inline])] }; };
+/** A cited item from the model, however it came back: { text, facts|sources: [ids] }, "… [F8]." with the ids inline, or
+ *  its own keys ({ item, citation: "[F1] 120 open jobs." }): cloud models don't always keep to the schema. */
+const cited = (x: any, _key = "facts") => {
+  const strings = typeof x === "string" ? [x] : (Object.values(x ?? {}).flat().filter((v) => typeof v === "string") as string[]);
+  const raw = typeof x === "string" ? x : String(x?.text ?? x?.why ?? x?.item ?? x?.finding ?? strings.find((v) => !/^\s*\[?[FRSH]\d+\b/.test(v)) ?? "");
+  return { text: raw.replace(/\s*\[[FRSH]\d+(?:\s*[,;]\s*[FRSH]\d+)*\]/g, "").trim(), facts: [...new Set(strings.join(" ").match(/\b[FRSH]\d+\b/g) ?? [])] };
+};
 const STRONG = /\b(led|spearheaded|owned|directed|headed|managed|oversaw|architected)\b/i;
 const nums = (s: string) => s.replace(/\[[^\]]*\]/g, "").match(/\d[\d,.]*%?/g) ?? [];
 /** The never-invent checks on one rewritten line: a number the résumé doesn't have becomes [X]; a stronger role verb, or
@@ -75,7 +78,7 @@ export async function match(resume: string, qy: Query, rank = true) {
   const ranked = await llmJson(
     `You screen résumés against job postings like a careful, fair recruiter.\n${RUBRIC}\nFor each job: 'score' 0-100 by those anchors; 'has': up to 4 required items the résumé meets, each with its evidence in a few words ("partly" for a related skill); 'missing': up to 3 required items the résumé doesn't show (not preferred ones); 'why': one sentence. Judge only from the texts given; never assume experience that isn't written.${context()} Reply as JSON.`,
     `RÉSUMÉ:\n${clip(text, 4000)}\n\nJOBS:\n${top.map((j) => `[${j.id}] ${j.title} at ${j.company}\n${clip(String(j.description ?? "").replace(/\s+/g, " "), 900)}`).join("\n\n")}`, schema).catch(() => null);
-  // gemma4 on Ollama Cloud may ignore the schema ({"0": {"job": "[id] title…", "score": 85…}}): take the items wherever they
+  // a cloud model may ignore the schema ({"0": {"job": "[id] title…", "score": 85…}}): take the items wherever they
   // are and pair each with the job whose id it mentions, so scores aren't silently lost (they were, until 2026-11-16)
   const items = (Array.isArray(ranked?.jobs) ? ranked.jobs : Object.values(ranked ?? {})).filter((x: any) => x && typeof x === "object" && Number.isFinite(Number(x.score)));
   const by = new Map<string, any>(top.map((j) => [j.id, items.find((x: any) => x.id === j.id || JSON.stringify(x).includes(j.id))] as const).filter(([, x]) => x).map(([id, x]: any) => [id, { ...x, score: Number(x.score), has: x.has ?? [], missing: x.missing ?? [], why: String(x.why ?? "") }]));
@@ -104,6 +107,7 @@ Return at most 8 bullets, the ones that gain the most.${context()} Reply as JSON
     `RÉSUMÉ:\n${clip(resume, 6000)}\n\nBULLETS TO IMPROVE:\n${bullets.slice(0, 20).map((b) => `- ${b}`).join("\n")}${job ? `\n\nTARGET JOB: ${job.title} at ${job.company}\n${clip(String(job.description).replace(/\s+/g, " "), 2500)}` : ""}`, schema, 3000);
   out.bullets = (out.bullets ?? []).filter((b: any) => b.before && b.after).map((b: any) => { const g = guard(b.before, b.after, resume); return { ...b, after: g.after, why: g.notes.length ? `${b.why} ⚠ ${g.notes.join("; ")}` : b.why }; });
   // a summary sentence naming a skill the job wants but the résumé doesn't have is dropped
+  delete out._model;
   if (job && out.summary) { const lacking = jobTerms(String(job.description)).skills.filter((t: string) => !mentions(resume, t)); out.summary = out.summary.split(/(?<=[.!?])\s+/).filter((sen: string) => !lacking.some((t: string) => mentions(sen, t))).join(" "); }
   return out;
 }
@@ -138,12 +142,12 @@ Reply as JSON.`,
     `RÉSUMÉ:\n${text}\n\nTARGET JOB: ${job.title} at ${job.company}\nSkills it names: ${wants.join(", ") || "(none we know)"}\n${clip(String(job.description).replace(/\s+/g, " "), 3000)}`, schema, 4000);
   const lines = resume.split("\n").map((l) => l.trim()).filter(Boolean), orig = extract(resume).bullets, known = `${resume}\n${job.description}`;
   const roles = (out.roles ?? []).map((r: any) => ({ heading: closest(String(r.heading ?? ""), lines),
-    // gemma4 on Ollama Cloud doesn't always keep to the schema's keys ({ from, to }, { from, reworded }): the text is the other string
+    // a cloud model doesn't always keep to the schema's keys ({ from, to }, { from, reworded }): the text is the other string
     bullets: (r.bullets ?? []).map((b: any) => { const from = closest(String(b.from ?? ""), orig), text = String(b.text ?? Object.entries(b ?? {}).find(([k, v]) => k !== "from" && typeof v === "string")?.[1] ?? "").trim();
       const g = guard(from, text, resume, known); return { text: g.after, from, notes: g.notes }; }).filter((b: any) => b.text) }))
     .filter((r: any) => r.heading && r.bullets.length);
   if (!roles.length) return { error: "The AI's version didn't keep your roles recognizably; try again, or use the suggestions below." };
-  return { summary: guard("", String(out.summary ?? ""), resume, known).after, skills: [...new Map((out.skills ?? []).map((x: unknown) => String(x).trim()).filter(Boolean).map((x: string) => [x.toLowerCase(), x])).values()].slice(0, 30), roles, by: out._model };
+  return { summary: guard("", String(out.summary ?? ""), resume, known).after, skills: [...new Map((out.skills ?? []).map((x: unknown) => String(x).trim()).filter(Boolean).map((x: string) => [x.toLowerCase(), x])).values()].slice(0, 30), roles };
 }
 
 // ---------- the market in words ----------
@@ -187,7 +191,7 @@ export function marketBrief(qy: Query) {
 Every item lists the ids of the facts it uses. Copy each number exactly as its fact writes it; never add a number, company, trend or cause that isn't in the facts. Plain words, no filler. Reply as JSON.`,
       F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["overview", "points", "advice"], properties: { overview: item, points: { type: "array", items: item }, advice: { type: "array", items: item } } }, 2500);
     const ok = (x: { text: string; facts: string[] }) => !!x.text && faithful(x, byId), list = (l: any) => (Array.isArray(l) ? l.map((x: any) => cited(x)).filter(ok).slice(0, 5) : []), ov = cited(out.overview);
-    const r = { overview: ok(ov) ? ov : null, points: list(out.points), advice: list(out.advice), facts: F, by: out._model };
+    const r = { overview: ok(ov) ? ov : null, points: list(out.points), advice: list(out.advice), facts: F };
     if (!r.overview && !r.points.length && !r.advice.length) throw new Error("The AI's overview didn't check out against the numbers; try again in a minute.");
     return r;
   })();
@@ -213,7 +217,7 @@ export async function refreshGuidance() {
   const findings = list.map((x) => cited(x, "sources")).filter((f) => f.text.length >= 20 && f.text.length <= 400 && faithful(f, byId)).slice(0, 8)
     .map((f) => ({ text: f.text, sources: f.facts.map((id) => S.find((x) => x.id === id)).filter(Boolean).map((x) => ({ title: x!.title, url: x!.url })) }));
   if (findings.length < 3) throw new Error(`only ${findings.length} findings checked out against their sources`);
-  saveGuide({ findings, by: out._model, searched: S.length });
+  saveGuide({ findings, searched: S.length });
   return findings;
 }
 let guiding = false;
@@ -278,7 +282,7 @@ Copy every number exactly as its fact writes it. Don't flag what the facts and p
     const good = list("good").map((x: any) => { const c = cited(x); return { text: c.text, facts: c.facts.filter((id) => byId.has(id)), quote: String(x?.quote ?? "").trim() }; })
       .filter((g: any) => g.text && grounded(g.text, g.facts, g.quote)).slice(0, 3);
     const verdict = cited(out.verdict).text;
-    return { id, title: j.title, company: j.company, verdict: nums(verdict).length && !grounded(verdict, F.map((f) => f.id), "") ? "" : verdict, flags, good, facts: F, by: out._model, at: Math.floor(Date.now() / 1000) };
+    return { id, title: j.title, company: j.company, verdict: nums(verdict).length && !grounded(verdict, F.map((f) => f.id), "") ? "" : verdict, flags, good, facts: F, at: Math.floor(Date.now() / 1000) };
   })();
   checks.set(id, { at: Date.now(), p }); p.catch(() => checks.delete(id));
   return p;

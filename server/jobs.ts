@@ -35,9 +35,13 @@ const env = (k: string) => process.env[k] ?? "";
 const getJson = async (u: string, ms = 30_000, body?: object) => { const r = await fetch(u, { method: body ? "POST" : "GET", headers: body ? { ...UA, "content-type": "application/json" } : UA, body: body && JSON.stringify(body), signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<any>; };
 // Workday's Cloudflare answered 429 to every board after a burst (2026-11-16): requests to one platform go one at a time
 // at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
-const nextSlot = new Map<string, number>(), resting = new Map<string, number>();
+// Each run also has a request budget per platform (BUDGET; reset by refreshBoards): a board that hits it, or a 429, keeps
+// what it read so far and stops, and the next try is simply the next scheduled run (user, 2026-11-16: no retries).
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 400, smartrecruiters: 400 };
 const pace = async (ats: string, ms: number) => {
   if ((resting.get(ats) ?? 0) > Date.now()) throw new Error(`HTTP 429 earlier: ${ats} rests until ${new Date(resting.get(ats)!).toISOString().slice(11, 16)} UTC`);
+  const used = (spentRun.get(ats) ?? 0) + 1; spentRun.set(ats, used);
+  if (BUDGET[ats] && used > BUDGET[ats]) throw new Error(`this run's ${BUDGET[ats]} requests are used`);
   const t = Math.max(Date.now(), (nextSlot.get(ats) ?? 0) + ms); nextSlot.set(ats, t); await new Promise((r) => setTimeout(r, t - Date.now()));
 };
 const lastAt = (what: string) => (db.prepare("select max(at) t from runs where what = ?").get(what) as any)?.t ?? 0;
@@ -228,6 +232,7 @@ const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Mo
 for (const [slug, name] of WORKDAY) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('workday', ?, ?, ?)").run(slug, name, now());
 for (const [ats, slug] of [["smartrecruiters", "Equinox"], ["workable", "huggingface"]]) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
 const BOARD_NAME = new Map(WORKDAY);
+const WD_FAMILIES = /technolog|engineer|software|information|\bit\b|data|analytic|decision|financ|accounting|treasury|risk|quant|actuar|invest|trading|cyber/i;
 /** Every facet value on a Workday board, nested ones too: { p: its parameter, d: what it says, id }. */
 const wdFacets = (fs: any[], p = ""): { p: string; d: string; id: string }[] => (fs ?? []).flatMap((f) => (f.values ?? []).flatMap((v: any) => (v.values ? wdFacets([v], v.facetParameter ?? f.facetParameter) : [{ p: f.facetParameter ?? p, d: String(v.descriptor ?? ""), id: v.id }])));
 const titleCase = (s: string) => s.replace(/(^|[-_ ])(\w)/g, (_, a, b) => `${a ? " " : ""}${b.toUpperCase()}`);
@@ -245,6 +250,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
   }
   if (ats === "smartrecruiters") { // the list is filtered to NY, NJ and CT by SmartRecruiters; a description costs one request
     const out: In[] = [];
+    try {
     for (const st of ["NY", "NJ", "CT"]) for (let off = 0; off < 1000; off += 100) {
       await pace(ats, 500); const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us&region=${st}`);
       for (const p of d.content ?? []) {
@@ -258,19 +264,23 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
       }
       if ((d.content ?? []).length < 100) break;
     }
+    } catch (e) { if (!/429|requests are used/.test((e as Error).message)) throw e; (out as any).partial = (e as Error).message; } // keep what we read
     return out;
   }
-  if (ats === "workday") { // asked only for the board's places in our area (its own location facets); a description costs one request
-    const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant);
+  if (ats === "workday") { // a description costs one request, so Workday is asked only for what we want (user, 2026-11-16):
+    // the board's own location facets in our area and its job families for technology, engineering, data and finance
+    const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant), out: In[] = [];
+    try {
     await pace(ats, 1500); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
     const places = vals.filter((v) => v.p === "locations" && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
     const pick = places.length ? places : states; if (!pick.length) return [];
-    const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id) }, out: In[] = [];
-    for (let off = 0; off < 2000; off += 20) {
+    const fams = vals.filter((v) => /family/i.test(v.p) && WD_FAMILIES.test(v.d)), famP = fams[0]?.p;
+    const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id), ...(famP ? { [famP]: fams.filter((v) => v.p === famP).map((v) => v.id) } : {}) };
+    for (let off = 0; off < 2000; off += 20) { // 20 a page is Workday's most (50 and 100 answer 400)
       await pace(ats, 1500); const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
       for (const p of d.jobPostings ?? []) {
         const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
-        if (!many && !region(loc)) continue;
+        if ((!many && !region(loc)) || (!famP && !["engineering", "data", "finance"].includes(func(p.title ?? "")))) continue; // no family facet: by title
         if (known(id)) { out.push(brief(id, company, many ? "New York, NY" : loc)); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
         await pace(ats, 1500); const i = (await getJson(`${base}${p.externalPath}`).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
@@ -279,6 +289,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
       }
       if ((d.jobPostings ?? []).length < 20) break;
     }
+    } catch (e) { if (!/429|requests are used/.test((e as Error).message)) throw e; (out as any).partial = (e as Error).message; } // keep what we read
     return out;
   }
   if (ats === "greenhouse") {
@@ -309,19 +320,19 @@ const openIds = db.prepare("select 1 from jobs where id = ? and closed is null")
 /** Re-read companies' boards (these ATSes): new and changed jobs saved, missing ones a step closer to closed. */
 export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "workable"], what = "boards") {
   const list = db.prepare(`select ats, slug from companies where ats in (${atses.map(() => "?").join(",")})`).all(...atses) as { ats: string; slug: string }[];
+  for (const a of atses) spentRun.set(a, 0);
   let n = 0, bad = 0;
   for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(async ({ ats, slug }) => {
     try {
-      const jobs = await readBoard(ats, slug), seen = new Set<string>();
+      const jobs = await readBoard(ats, slug), seen = new Set<string>(), partial = (jobs as any).partial as string | undefined;
       batch(() => {
         for (const j of jobs) if (j.known ? (touch.run(now(), j.id), true) : save(j)) { seen.add(j.id); n++; }
-        sweep(ats, seen, `${PREFIX[ats]}:${slug}:`);
-        db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
+        if (!partial) sweep(ats, seen, `${PREFIX[ats]}:${slug}:`); // a board read only in part closes nothing
+        db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = ?, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), partial ? `read in part (${partial})` : null, seen.size, ats, slug);
       });
     } catch (e) { bad++; if (/HTTP 429$/.test((e as Error).message)) resting.set(ats, Date.now() + 3600_000); db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
   }));
-  // a run where most boards failed (a platform resting after a 429) isn't a run: the next hourly tick tries again
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), bad > list.length / 2 ? `${what}-failed` : what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`); // failed or not, the next try is the next run
   return { boards: list.length, failed: bad, jobs: n };
 }
 
@@ -667,5 +678,5 @@ export function jobHistory(id: string) {
     pay: j.salary_min != null && !j.salary_est ? ((j.salary_min + (j.salary_max ?? j.salary_min)) / 2) * (j.salary_period === "hour" ? 2080 : 1) : null, market: { p25: m.p25, median: m.pay, p75: m.p75, n: m.withPay } };
 }
 export const saveGuide = (body: object) => db.prepare("insert or replace into guides values (?, ?)").run(now(), JSON.stringify(body));
-export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; return r ? { at: r.at as number, ...JSON.parse(r.body) } : null; };
+export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; if (!r) return null; const { by, ...g } = JSON.parse(r.body); return { at: r.at as number, ...g }; }; // no model names on the site
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;

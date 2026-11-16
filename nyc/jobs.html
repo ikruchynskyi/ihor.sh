@@ -401,7 +401,7 @@ async function writeBrief() {
     $("brief").innerHTML = `${r.overview ? `<p>${esc(r.overview.text)} ${cite(r.overview)}</p>` : ""}
       ${r.points.length ? `<b>What the numbers say</b><ul>${r.points.map((x) => `<li>${esc(x.text)} ${cite(x)}</li>`).join("")}</ul>` : ""}
       ${r.advice.length ? `<b>What to do</b><ul>${r.advice.map((x) => `<li>${esc(x.text)} ${cite(x)}</li>`).join("")}</ul>` : ""}
-      <p class="hint">Written by ${esc(r.by)} from ${r.facts.length} numbered facts (hover a [F…] to see them; R facts are published research). A line whose numbers don't match the facts it cites is dropped before you see it.</p>`;
+      <p class="hint">Written by AI from ${r.facts.length} numbered facts (hover a [F…] to see them; R facts are published research). A line whose numbers don't match the facts it cites is dropped before you see it.</p>`;
     $("briefStep").textContent = "";
   } catch (e) { $("briefStep").textContent = e.message; } finally { $("briefBtn") && ($("briefBtn").disabled = false); }
 }
@@ -417,7 +417,7 @@ async function redFlags(btn) {
     out.innerHTML = `<div class="card brief" style="padding:8px 12px;margin:6px 0">${r.verdict ? `<p><b>${esc(r.verdict)}</b></p>` : ""}
       ${r.flags.length ? `<ul>${r.flags.map((f) => `<li><span class="chip${f.severity === "low" ? "" : " flag"}">${f.severity === "high" ? "⚑⚑ " : "⚑ "}${esc(f.flag)}</span> ${esc(f.why)}${cite(f)}${quote(f)}${f.ask ? `<br><span class="hint">Ask them: ${esc(f.ask)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="hint">No red flags that hold up against the facts.</p>`}
       ${r.good.length ? `<b>Good signs</b><ul>${r.good.map((g) => `<li>✓ ${esc(g.text)}${cite(g)}${quote(g)}</li>`).join("")}</ul>` : ""}
-      <p class="hint">Checked by ${esc(r.by)} on ${new Date(r.at * 1000).toLocaleDateString()} from the posting and ${r.facts.length} facts from this site's record of ${esc(r.company)} (hover a [H…]). A flag that cites nothing or misquotes the posting is dropped. Kept for a day: anyone else who asks about this job gets the same check.</p></div>`;
+      <p class="hint">Checked by AI on ${new Date(r.at * 1000).toLocaleDateString()} from the posting and ${r.facts.length} facts from this site's record of ${esc(r.company)} (hover a [H…]). A flag that cites nothing or misquotes the posting is dropped. Kept for a day: anyone else who asks about this job gets the same check.</p></div>`;
     step.textContent = "";
   } catch (err) { step.textContent = err.message; } finally { btn.disabled = false; }
 }
@@ -467,7 +467,7 @@ $("matchBtn").onclick = async () => {
   try {
     const fast = await post("/api/jobs/match", { ...body, rank: false });
     box.innerHTML = `<h2 style="margin:4px 0">Closest to your résumé</h2><p class="hint" id="rankNote">The AI is now reading the top 15 against your résumé to score them and say what fits and what's missing (about a minute)…</p>${matchCards(fast)}`;
-    const ranked = await post("/api/jobs/match", body);
+    const { id } = await post("/api/jobs/match", body), ranked = await poll(id, (x) => $("rankNote") && ($("rankNote").textContent = x));
     box.innerHTML = ranked.ranked ? `<h2 style="margin:4px 0">Best fits for your résumé</h2><p class="hint">Scored by AI from your résumé and each posting only: ✓ what it found in your résumé, ✗ what the job asks for that your résumé doesn't show. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`
       : `<h2 style="margin:4px 0">Closest to your résumé</h2><p class="hint">The AI couldn't score them this time (try again in a minute); these are ranked by meaning only. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`;
   } catch (e) { box.innerHTML = `<p class="hint">${esc(e.message)}</p>`; }

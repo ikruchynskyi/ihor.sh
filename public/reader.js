@@ -131,9 +131,13 @@ function panelHTML() {
     .x, .reset { font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); padding: 8px; letter-spacing: .06em; text-transform: uppercase; }
     .reset { margin-top: 16px; width: 100%; }
     .hint { margin: 2px 0 0; font-size: .85em; color: var(--muted, #9aa8c0); }
+    .acct { display: grid; gap: 6px; } .acct a.g { display: block; text-align: center; padding: 7px 9px; border: 2px solid var(--line, #273349); color: var(--fg, #e6edf7); text-decoration: none; border-radius: var(--r-sm, 0); }
+    .acct a.g:hover { border-color: var(--accent, #5ee1ff); } .acct form { display: flex; gap: 6px; } .acct input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; color: var(--fg, #e6edf7); background: var(--bg, #121b2e); border: 2px solid var(--line, #273349); }
+    .acct summary { cursor: pointer; color: var(--muted, #9aa8c0); font-size: .9em; }
   </style>
   <section class="panel" role="dialog" aria-label="Reader settings">
     <header><h2>${isHome ? "Theme" : "Reader"}</h2><button class="x" aria-label="Close reader settings">✕</button></header>
+    <h3>Account</h3><div class="acct" aria-live="polite">${acctHTML()}</div>
     ${GROUPS.map(([kind, label]) => `<h3>${label}</h3>${pick("theme", Object.fromEntries(Object.entries(THEMES).filter(([, t]) => t.kind === kind)), s.theme, (k, t) => swatch(t))}`).join("")}
     <p class="hint">Arcade is the pixel look. The others are smooth, with their own fonts.</p>
     <h3>Font</h3>${pick("font", FONTS, fontKey(), (k, o) => `<span style='font-family:${o.css.replace(/"/g, "&quot;")}'>${o.label}</span>`)}
@@ -143,10 +147,29 @@ function panelHTML() {
     <button class="reset" type="button">Reset</button>
   </section>`;
 }
+// ---------- account (server/auth.ts): sign in with Google, or the admin with the owner token ----------
+let me; // { user, google } from /api/auth/me, once per page
+const escA = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function acctHTML() {
+  if (!me) return `<p class="hint">…</p>`;
+  if (me.user) return `<p class="hint" style="margin:0">Signed in as <b>${escA(me.user.name)}</b>${me.user.role === "admin" ? " (admin)" : ""}</p><button type="button" data-out>Sign out</button>`;
+  const next = encodeURIComponent(location.pathname + location.search + location.hash);
+  return `${me.google ? `<a class="g" href="/auth/google?next=${next}">Continue with Google</a>` : ""}
+    <details><summary>Admin token</summary><form data-tok><input type="password" name="key" autocomplete="current-password" aria-label="Admin token" placeholder="token"><button type="submit">Sign in</button></form></details><p class="hint" data-msg></p>`;
+}
+const acctPost = (u, body) => fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+function wireAcct() {
+  const box = root.querySelector(".acct"); if (!box) return;
+  box.innerHTML = acctHTML();
+  box.querySelector("[data-out]")?.addEventListener("click", () => acctPost("/api/auth/logout").then(() => location.reload()));
+  box.querySelector("[data-tok]")?.addEventListener("submit", (e) => { e.preventDefault();
+    acctPost("/api/auth/token", { key: e.target.key.value }).then(() => location.reload()).catch((err) => (box.querySelector("[data-msg]").textContent = err.message)); });
+}
 let open = false, button;
 function render() {
   root.innerHTML = open ? panelHTML() : "";
   if (!open) return;
+  if (me) wireAcct(); else fetch("/api/auth/me").then((r) => r.json()).then((d) => { me = d; wireAcct(); }).catch(() => {});
   for (const k of Object.keys(FONTS)) loadFont(k); // previews in their own fonts
   root.querySelector(".x").onclick = toggle;
   root.querySelector(".reset").onclick = () => { chosen = {}; s = { ...DEFAULTS }; try { localStorage.removeItem(KEY); } catch {} apply(); render(); };

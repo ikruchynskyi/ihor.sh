@@ -1,11 +1,15 @@
 import "./env.ts";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 // The local model: what Blip and Jobs AI fall back to when Ollama Cloud fails or its free credits run out, and Yomu's
 // only model (its chat promises nothing leaves this machine). Default qwen3.8:27b-mlx; OLLAMA_MODEL in .env overrides it.
 export const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
 export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.8:27b-mlx";
-/** Ollama Cloud's model (free credits every two weeks): Blip, Jobs AI and the map's incident research try it first. */
-export const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
+/** Ollama Cloud's model for the signed-in admin (as in Yomu's chat): every llmJson call made for them goes there first.
+ *  Visitors get the local model only (user, 2026-11-16: no gemma, Qwen). */
+export const OWNER_MODEL = process.env.YOMU_CLOUD_MODEL ?? "deepseek-v4.1-flash";
+/** Who an AI call is for, per request (server.ts runs each request in it): { cloud: true } for the signed-in admin. */
+export const asker = new AsyncLocalStorage<{ cloud: boolean }>();
 
 /** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"). */
 export const supportsEffort = (model = LOCAL_MODEL) => model.startsWith("qwen");
@@ -66,17 +70,24 @@ if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-chec
   console.log("llm.ts: line OK");
 }
 
-/** One model call that must answer JSON in a schema: the cloud model first, the local one if it fails. _model says which answered. */
+/** Does a value have a schema's required keys and types, all the way down? (Cloud models may answer in their own shape.) */
+export const fits = (v: any, s: any): boolean => s?.type === "object" ? !!v && typeof v === "object" && !Array.isArray(v) && (s.required ?? []).every((k: string) => k in v) && Object.entries(s.properties ?? {}).every(([k, p]) => !(k in v) || fits(v[k], p))
+  : s?.type === "array" ? Array.isArray(v) && v.every((x) => fits(x, s.items)) : s?.type === "string" ? typeof v === "string" : s?.type === "integer" || s?.type === "number" ? typeof v === "number" : true;
+/** One model call that must answer JSON in a schema. For the signed-in admin (asker), the cloud model first, with the schema
+ *  written into the instructions too (its `format` alone was ignored), and the local model when its answer doesn't fit;
+ *  for everyone else, the local model. _model says which answered. */
 export async function llmJson(system: string, user: string, schema: object, maxTokens = 2500): Promise<any> {
-  const messages = [{ role: "system", content: system }, { role: "user", content: user }], key = process.env.OLLAMA_CLOUD_KEY;
-  const parse = (s: string) => JSON.parse(s.replace(/^```(json)?|```$/g, "").trim());
-  if (key) {
+  const key = process.env.OLLAMA_CLOUD_KEY;
+  const parse = (s: string) => JSON.parse(s.replace(/^\s*```(json)?|```\s*$/g, "").trim());
+  if (key && asker.getStore()?.cloud) {
     try {
-      const r = await fetch("https://ollama.com/api/chat", { method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: CLOUD_MODEL, stream: false, format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
-      if (r.ok) return { ...parse((await r.json()).message.content), _model: CLOUD_MODEL };
+      const messages = [{ role: "system", content: `${system}\n\nReply with only a JSON object that matches this JSON Schema exactly (the same keys, no code fence):\n${JSON.stringify(schema)}` }, { role: "user", content: user }];
+      const r = await fetch("https://ollama.com/api/chat", { method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: OWNER_MODEL, stream: false, think: false, format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
+      if (r.ok) { const out = parse((await r.json()).message.content); if (fits(out, schema)) return { ...out, _model: OWNER_MODEL }; }
     } catch {}
   }
-  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
+  // num_ctx: Ollama's default (4,096) would cut a résumé, a posting and the answer short
+  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(300_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2, num_ctx: 16384 }, messages: [{ role: "system", content: system }, { role: "user", content: user }] }) });
   if (!r.ok) throw new Error(`model ${r.status}`);
   return { ...parse((await r.json()).message.content), _model: LOCAL_MODEL };
 }
