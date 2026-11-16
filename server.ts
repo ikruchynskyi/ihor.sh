@@ -20,7 +20,8 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
+import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, type Query as JobQuery } from "./server/jobs.ts";
+import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
@@ -85,7 +86,7 @@ const companion = () => `<script type="module" src="${asset("reader.js")}"></scr
 // fonts.css also has a size-matched fallback for Press Start 2P, so the pixel text wraps the same before the font arrives
 // (preloading the fonts instead cost the home page ~1 s of LCP in Lighthouse: they competed with theme.css and the scripts).
 const HEAD = `<script>(function(){var h=document.documentElement,r={};try{r=JSON.parse(localStorage.getItem("ihor-reader")||"{}")}catch(e){}
-var t=r.theme||(/^\/nyc\/(jobs|job|company|resume)\b/.test(location.pathname)?"subway":"arcade");h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
+var t=r.theme||(/^\\/nyc\\/(jobs|job|company|resume)\\b/.test(location.pathname)?"subway":"arcade");h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
 var W=window.__wait={active:new Map(),n:0,typical:{},on:new Set()};try{W.typical=JSON.parse(localStorage.getItem("ihor-wait")||"{}")}catch(e){}
 var f=window.fetch,tell=function(){W.on.forEach(function(l){try{l()}catch(e){}})};
 window.fetch=function(a){var u;try{u=new URL(typeof a==="string"?a:a&&a.url||"",location.href)}catch(e){return f.apply(window,arguments)}
@@ -1120,7 +1121,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       catch { return json403(res, "Search by meaning is unavailable right now; try plain search.", 503); }
     }
     if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
-    if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(e ?? { error: "No open jobs from that employer here." })); }
+    if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name) } : { error: "No open jobs from that employer here." })); }
+    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock and pay, then writing the overview (up to two minutes)…"), makeCard(c)), "Waiting for the AI…"); }
     if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
       const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
       if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(getData(u.id)));
@@ -1157,10 +1159,10 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cronStatus()));
     }
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
-    if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify({ ...jobMarket(jobQuery(url.searchParams)), levels: getCompanyInfo(LEVELS_MARKET) }));
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
-    if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
+    if (url.pathname === "/api/jobs/job") { const j0 = jobOne(String(url.searchParams.get("id") ?? "")), j = j0 && { ...j0, card: miniCard(j0.company) }; return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
     if (["/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/bullet"].includes(url.pathname) && req.method === "POST") {
       // the résumé is used for this request only: not stored, not logged (errors log the message, never the body)
       let raw = "";
@@ -1243,6 +1245,7 @@ if (IN_HOST_SUPERVISOR) {
   schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", () => embedJobs());
   schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", () => refreshGuidance());
   schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", () => precomputeChecks());
+  schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", () => refreshCards());
   schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts());
   startCron();
   startEvening();

@@ -8,17 +8,29 @@ const PW_DIR = process.env.PLAYWRIGHT_DIR ?? `${process.env.HOME}/.npm/_npx/9833
 const CHROME = process.env.PLAYWRIGHT_CHROME ?? `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
 const text = (s: unknown) => String(s ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+/** Each job's page opened in the browser, 4 tabs at a time until the minute runs out: the page's main text (Meta's and
+ *  Apple's job pages only render in a browser). */
+async function pagesText(page: any, jobs: Posting[], until: number) {
+  const ctx = page.context(), queue = jobs.filter((j) => !j.description), tabs = await Promise.all(Array.from({ length: Math.min(4, queue.length) }, () => ctx.newPage()));
+  await Promise.all(tabs.map(async (tab: any) => {
+    for (let j = queue.shift(); j && Date.now() < until - 4000; j = queue.shift()) {
+      try { await tab.goto(j.url, { waitUntil: "domcontentloaded", timeout: 15_000 }); await tab.waitForTimeout(1500); const t = await tab.$eval("main, [role=main], body", (e: any) => e.innerText).catch(() => ""), at = t.indexOf(j.title); j.description = (at >= 0 ? t.slice(at) : t).slice(0, 20_000); } catch {} // from the title on: no site menu
+    }
+  }));
+}
 
 /** Meta: its job search page asks its GraphQL for every matching job at once; the answer is read as the page loads. */
-async function meta(page: any, until: number) {
+async function meta(page: any, until: number, known: Set<string>) {
   const found = new Map<string, any>();
   const walk = (x: any) => { if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === "object") { if (x.id && x.title && (x.locations || x.teams)) found.set(String(x.id), x); Object.values(x).forEach(walk); } };
   page.on("response", async (r: any) => { if (!r.url().includes("/graphql")) return; const t = await r.text().catch(() => ""); for (const line of t.replace(/^for \(;;\);/, "").split("\n")) { try { walk(JSON.parse(line)); } catch {} } });
   await page.goto("https://www.metacareers.com/jobsearch/?offices[0]=New%20York%2C%20NY", { waitUntil: "domcontentloaded", timeout: Math.max(5000, until - Date.now()) });
   for (let i = 0; i < 20 && !found.size && Date.now() < until - 2000; i++) await page.waitForTimeout(500);
   await page.waitForTimeout(1500);
-  return [...found.values()].map((j): Posting => ({ id: String(j.id), company: "Meta", title: String(j.title), location: [j.locations].flat().filter(Boolean).map(String).join("; "), url: `https://www.metacareers.com/jobs/${j.id}/`,
-    department: [j.teams, j.sub_teams].flat().filter(Boolean).join(" · "), description: [j.teams, j.sub_teams].flat().filter(Boolean).join(", ") }));
+  const jobs = [...found.values()].map((j): Posting => ({ id: String(j.id), company: "Meta", title: String(j.title), location: [j.locations].flat().filter(Boolean).map(String).join("; "),
+    url: `https://www.metacareers.com/profile/job_details/${j.id}/`, department: [j.teams, j.sub_teams].flat().filter(Boolean).join(" · "), description: "" }));
+  await pagesText(page, jobs.filter((j) => !known.has(j.id) && /new york|jersey|remote/i.test(j.location)), until);
+  return jobs;
 }
 
 /** Apple: the search's result pages (20 a page), then each new job's page for its JobPosting data. */
@@ -32,13 +44,8 @@ async function apple(page: any, until: number, known: Set<string>) {
     for (const g of got) { const id = g.href.match(/\/details\/([\w-]+)/)?.[1]; if (id && g.title && !/locationPicker/.test(g.href) && !rows.has(id)) rows.set(id, { title: g.title, url: g.href.replace(/\?.*$/, "") }); }
     if (rows.size === before) break;
   }
-  const jobs: Posting[] = [];
-  for (const [id, r] of rows) {
-    if (known.has(id) || Date.now() > until - 3000) { jobs.push({ id, company: "Apple", title: r.title, location: "New York, NY", url: r.url, description: "" }); continue; }
-    const html = await fetch(r.url, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(10_000) }).then((x) => x.text()).catch(() => ""), jp = jobPostingLd(html);
-    jobs.push({ id, company: "Apple", title: String(jp?.title ?? r.title), location: [jp?.jobLocation].flat().filter(Boolean).map((l: any) => [l.address?.addressLocality, l.address?.addressRegion].filter(Boolean).join(", ")).join("; ") || "New York, NY",
-      url: r.url, posted: Date.parse(jp?.datePosted ?? "") || undefined, description: String(jp?.description ?? "") });
-  }
+  const jobs: Posting[] = [...rows].map(([id, r]) => ({ id, company: "Apple", title: r.title, location: "New York, NY", url: r.url, description: "" }));
+  await pagesText(page, jobs.filter((j) => !known.has(j.id)), until); // Apple's job text only renders in a browser
   return jobs;
 }
 

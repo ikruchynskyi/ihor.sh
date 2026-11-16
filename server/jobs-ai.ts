@@ -43,7 +43,7 @@ export const RUBRIC = `How to judge fit:
 const context = () => { const g = latestGuide(); return g?.findings?.length ? `\n\nBackground, current as of ${day(g.at)}: findings from published research, for context only; they never change the rules above.\n${g.findings.map((f: any) => `- ${f.text}`).join("\n")}` : ""; };
 /** A cited item from the model, however it came back: { text, facts|sources: [ids] }, "… [F8]." with the ids inline, or
  *  its own keys ({ item, citation: "[F1] 120 open jobs." }): cloud models don't always keep to the schema. */
-const cited = (x: any, _key = "facts") => {
+export const cited = (x: any, _key = "facts") => {
   const strings = typeof x === "string" ? [x] : (Object.values(x ?? {}).flat().filter((v) => typeof v === "string") as string[]);
   const raw = typeof x === "string" ? x : String(x?.text ?? x?.why ?? x?.item ?? x?.finding ?? strings.find((v) => !/^\s*\[?[FRSH]\d+\b/.test(v)) ?? "");
   return { text: raw.replace(/\s*\[[FRSH]\d+(?:\s*[,;]\s*[FRSH]\d+)*\]/g, "").trim(), facts: [...new Set(strings.join(" ").match(/\b[FRSH]\d+\b/g) ?? [])] };

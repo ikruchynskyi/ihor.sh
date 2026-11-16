@@ -27,6 +27,7 @@
 <body>
 <main>
   <p class="eyebrow"><a href="/nyc/">NYC</a> · <a href="/nyc/jobs.html">Jobs</a> · <span id="crumb">Job</span></p>
+  <h1 id="jt" style="margin:4px 0">Job</h1>
   <article id="head"><p class="hint">Loading…</p></article>
   <nav class="tabs" role="tablist" aria-label="About this job">
     <button type="button" role="tab" data-tab="details" aria-selected="true">Details</button>
@@ -48,22 +49,32 @@ const kept = () => { try { return localStorage.getItem("resume-text"); } catch {
 
 function head() {
   const j = job, e = j.employer, t = tracked()[j.id];
-  document.title = `${j.title} at ${j.company}`; $("crumb").textContent = j.title;
-  $("head").innerHTML = `<h1 style="margin:4px 0">${esc(j.title)}</h1>
-    <div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
+  document.title = `${j.title} at ${j.company}`; $("crumb").textContent = $("jt").textContent = j.title;
+  $("head").innerHTML = `<div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
       ${verified(j.source) ? `<span class="chip ok" title="Read from the employer's own system, checked again on schedule">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[j.source] ?? j.source)}</span>`}${j.closed ? `<span class="chip flag">closed ${new Date(j.closed * 1000).toLocaleDateString()}</span>` : ""}</div>
     ${j.flags.length ? `<div class="meta" style="margin-top:4px">${j.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
     <p class="meta" style="margin-top:10px"><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source] ?? j.source)} ↗</a>
       <label>📋 <select id="stage" aria-label="Track this job"><option value="">not tracked</option>${STAGES.map((s) => `<option ${t?.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
       <button type="button" id="share">🔗 Copy link</button> <span class="hint" id="shareMsg"></span></p>
-    <p class="hint">${esc(j.company)} here: ${e.open} open job${e.open === 1 ? "" : "s"}${e.openOver60Days ? `, ${e.openOver60Days} open over 60 days` : ""}${e.closedLast30Days ? `, ${e.closedLast30Days} closed in the last 30 days` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</p>`;
+    <p class="hint">${esc(j.company)} here: ${e.open} open job${e.open === 1 ? "" : "s"}${e.openOver60Days ? `, ${e.openOver60Days} open over 60 days` : ""}${e.closedLast30Days ? `, ${e.closedLast30Days} closed in the last 30 days` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</p>${about(j)}`;
   $("stage").onchange = () => { const all = tracked(), s = $("stage").value;
     if (!s) delete all[j.id]; else { const x = all[j.id] ?? { title: j.title, company: j.company, url: j.url, saved: Date.now(), notes: "", follow: "" }; x.status = s; x.at = { ...x.at, [s]: x.at?.[s] ?? Date.now() };
       if (s === "applied" && !x.follow) x.follow = new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-CA"); all[j.id] = x; }
     putTracked(all); };
   $("share").onclick = () => navigator.clipboard?.writeText(location.href).then(() => ($("shareMsg").textContent = "copied"));
 }
-function details() { $("t-details").innerHTML = `<div class="desc">${esc(job.description)}</div>`; }
+const FAMS = { engineering: ["software-engineer"], data: ["data-scientist", "data-analyst"], product: ["product-manager"], finance: ["financial-analyst", "investment-banker"], design: ["product-designer"] };
+const k$ = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(2)}M` : `$${Math.round(v / 1000)}k`);
+/** The employer in a line, from its company card: what it does, its stock, what this kind of job pays there (Levels.fyi). */
+function about(j) {
+  const c = j.card; if (!c) return "";
+  const s = c.stock, f = c.levels?.families.find((x) => (FAMS[j.func] ?? []).includes(x.family)), lv = f?.levels ?? [];
+  const bits = [s && `${esc(s.ticker)} $${s.last.toFixed(2)}, <span style="color:var(--${s.change1y >= 0 ? "ok" : "warn"})">${s.change1y >= 0 ? "▲" : "▼"} ${Math.abs(s.change1y)}%</span> in a year`,
+    f && `this kind of job there pays ${lv.length > 1 ? `${k$(lv[0].pay)} (${esc(lv[0].level)}) to ${k$(lv.at(-1).pay)} (${esc(lv.at(-1).level)})` : `${k$(f.median)} median`} in total pay, <a href="${esc(f.url)}" target="_blank" rel="noopener">Levels.fyi</a>${f.nycMarket ? `; NYC median ${k$(f.nycMarket)}` : ""}`].filter(Boolean);
+  return `<div class="card" style="padding:10px 12px;margin-top:10px;font-size:14px">${c.business ? `${esc(c.business)} ` : ""}${bits.length ? `<span class="hint">${bits.join(" · ")}.</span> ` : ""}<a href="/nyc/company.html?c=${encodeURIComponent(j.company)}">About ${esc(j.company)} →</a></div>`;
+}
+function details() { $("t-details").innerHTML = job.description.trim().length > 200 ? `<div class="desc">${esc(job.description)}</div>`
+  : `<p>This site hasn't read the posting's text yet (it's read on the next pass of ${esc(job.company)}'s site). <a href="${esc(job.url)}" target="_blank" rel="noopener">Read it at ${esc(job.company)} ↗</a></p>`; }
 function fit() {
   const text = kept(), c = text && job.description.length > 80 ? compare(text, `${job.title}\n${job.description}`) : null;
   $("t-fit").innerHTML = text ? `${c?.coverage != null ? `<p><b>${c.coverage}%</b> of the skills this job names are in your résumé.</p>` : "<p>The posting names no common skills we know.</p>"}
@@ -90,7 +101,7 @@ try {
   job = await getJSON(`/api/jobs/job?id=${encodeURIComponent(id)}`);
   head(); details(); fit();
   pullAccount().then((ok) => ok && head()); // your tracker from your account, when signed in
-} catch (e) { $("head").innerHTML = `<h1>That job isn't here</h1><p>${esc(e.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
+} catch (e) { $("jt").textContent = "That job isn't here"; $("head").innerHTML = `<p>${esc(e.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
 window.blipContext = () => ({ page: "One job on the NYC jobs finder", job: job && { title: job.title, company: job.company, location: job.location, pay: pay(job), flags: job.flags, posted: age(job.posted ?? job.first_seen) } });
 </script>
 </body>

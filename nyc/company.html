@@ -17,23 +17,109 @@
     .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); margin: 2px; }
     .chip.ok { color: var(--ok); border-color: var(--ok); } .chip.flag { color: var(--warn); border-color: var(--warn); }
     .row { padding: 8px 12px; margin: 6px 0; } .row h3 { margin: 0; font-size: 15px; } .pay { font-weight: 700; color: var(--fg); }
+    .intro { padding: 16px 18px; margin: 10px 0 18px; } .intro h1 { margin: 0; } .ihead + #intro .lede { margin-top: 8px; } .intro h3 { margin: 0 0 6px; font-size: 14px; }
+    .ihead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; } .lede { font-size: 16px; margin: 8px 0 12px; max-width: 70ch; }
+    .tick { font-size: 14px; } .up { color: var(--ok); } .down { color: var(--warn); }
+    .igrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin: 14px 0; } .igrid > * { min-width: 0; }
+    figure { margin: 0; } figcaption { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+    .chart { position: relative; } .chart svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+    .chart .ax { fill: var(--muted); font-size: 11px; } @media (max-width: 640px) { .chart .ax { font-size: 19px; } } .chart .grid { stroke: var(--line); } .chart .ln { fill: none; stroke: var(--accent); stroke-width: 2; }
+    .chart .ar { fill: var(--accent); opacity: .12; } .chart .bar { fill: var(--accent); } .chart g:hover .bar { opacity: .7; } .chart .xh { stroke: var(--muted); stroke-dasharray: 3 3; }
+    .chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+    .tip { position: absolute; top: 0; transform: translateX(-50%); background: var(--fg); color: var(--bg); font-size: 12px; padding: 2px 7px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+    .lrow { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 8px; align-items: center; font-size: 13px; margin: 3px 0; }
+    .lrow .lv { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+    .track { position: relative; height: 12px; } .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 0 4px 4px 0; }
+    .mk, .mkey { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--fg); } .mkey { position: static; display: inline-block; height: 11px; margin: 0 4px -1px 2px; }
+    .ladder { margin-bottom: 12px; } .ladder h4 { margin: 0 0 4px; font-size: 13.5px; }
+    .news { list-style: none; padding: 0; margin: 0; } .news li { margin: 6px 0; font-size: 14px; } .news .hint { display: block; }
+    .ai p { margin: 0 0 8px; } .ai ul { margin: 0; padding-left: 18px; } .ai li { margin: 4px 0; } .badge { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="/nyc/">NYC</a> · <a href="/nyc/jobs.html">Jobs</a> · <span id="crumb">Employer</span></p>
-  <div id="out"><p class="hint">Loading…</p></div>
+  <section class="intro card"><div class="ihead"><h1 id="cname">Employer</h1><span id="tick"></span></div><div id="intro"><p class="hint">Loading…</p></div></section>
+  <div id="out"></div>
 </main>
 <script type="module">
-import { $, esc, getJSON, LABEL, pay, age, verified, jobLink } from "/nyc/jobs-ui.js";
-const name = new URLSearchParams(location.search).get("c") ?? "", k$ = (v) => (v == null ? "—" : `$${Math.round(v / 1000)}k`);
+import { $, esc, getJSON, post, poll, LABEL, pay, age, verified, jobLink } from "/nyc/jobs-ui.js";
+const name = new URLSearchParams(location.search).get("c") ?? "", k$ = (v) => (v == null ? "—" : v >= 1e6 ? `$${(v / 1e6).toFixed(2)}M` : `$${Math.round(v / 1000)}k`);
+const day = (t, o = { month: "short", day: "numeric", year: "numeric" }) => new Date(t * 1000).toLocaleDateString("en-US", o);
+const FAM = { "software-engineer": "Software engineers", "data-scientist": "Data scientists", "data-analyst": "Data analysts", "product-manager": "Product managers", "financial-analyst": "Financial analysts", "investment-banker": "Investment bankers", "product-designer": "Product designers" };
+const move = (v, span) => `<span class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "▲" : "▼"} ${Math.abs(v)}%</span> ${span}`;
 let e = null;
+
+/** Two years of the stock, a point a week, with a crosshair on hover. */
+const SW = 600, SH = 170, SP = { l: 46, r: 6, t: 10, b: 22 };
+function stockChart(s) {
+  const p = s.weekly, x0 = p[0][0], x1 = p.at(-1)[0], ys = p.map((q) => q[1]), lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.08 || 1;
+  const X = (t) => SP.l + ((t - x0) / (x1 - x0)) * (SW - SP.l - SP.r), Y = (c) => SP.t + (1 - (c - lo + pad) / (hi - lo + 2 * pad)) * (SH - SP.t - SP.b);
+  const line = p.map((q, i) => `${i ? "L" : "M"}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join("");
+  const ticks = [lo, (lo + hi) / 2, hi].map((v) => `<line class="grid" x1="${SP.l}" x2="${SW - SP.r}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${SP.l - 6}" y="${Y(v) + 4}" text-anchor="end">$${v.toFixed(v < 100 ? 2 : 0)}</text>`).join("");
+  stockChart.at = { p, X, Y };
+  return `<div class="chart" id="stock"><svg viewBox="0 0 ${SW} ${SH}" role="img" aria-label="${esc(s.ticker)} closing price, weekly, over two years: from $${p[0][1]} to $${s.last}">${ticks}
+    <path class="ar" d="${line}L${X(x1)},${SH - SP.b}L${X(x0)},${SH - SP.b}Z"/><path class="ln" d="${line}"/>
+    <text class="ax" x="${SP.l}" y="${SH - 6}">${day(x0, { month: "short", year: "numeric" })}</text><text class="ax" x="${SW - SP.r}" y="${SH - 6}" text-anchor="end">${day(x1, { month: "short", year: "numeric" })}</text>
+    <line class="xh" y1="${SP.t}" y2="${SH - SP.b}" visibility="hidden"/><circle class="dot" r="4" visibility="hidden"/></svg><div class="tip" hidden></div></div>`;
+}
+function wireStock() {
+  const box = $("stock"); if (!box) return;
+  const { p, X, Y } = stockChart.at, svg = box.querySelector("svg"), xh = svg.querySelector(".xh"), dot = svg.querySelector(".dot"), tip = box.querySelector(".tip");
+  svg.onpointermove = (ev) => {
+    const r = svg.getBoundingClientRect(), vx = ((ev.clientX - r.left) / r.width) * SW;
+    const q = p.reduce((a, b) => (Math.abs(X(b[0]) - vx) < Math.abs(X(a[0]) - vx) ? b : a));
+    xh.setAttribute("x1", X(q[0])); xh.setAttribute("x2", X(q[0])); dot.setAttribute("cx", X(q[0])); dot.setAttribute("cy", Y(q[1]));
+    xh.setAttribute("visibility", "visible"); dot.setAttribute("visibility", "visible");
+    tip.hidden = false; tip.textContent = `${day(q[0])}: $${q[1].toFixed(2)}`; tip.style.left = `${(X(q[0]) / SW) * 100}%`;
+  };
+  svg.onpointerleave = () => { xh.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.hidden = true; };
+}
+/** New postings a week over six months (this site's record), a bar a week. */
+function weeksChart(w) {
+  const W = 600, H = 110, B = 20, n = w.length, max = Math.max(1, ...w), bw = W / n;
+  const bars = w.map((v, i) => { const h = v ? Math.max(2, (v / max) * (H - B - 6)) : 0, from = Date.now() / 1000 - (n - i) * 7 * 86400;
+    return `<g><title>Week from ${day(from, { month: "short", day: "numeric" })}: ${v} new</title><rect x="${i * bw}" y="0" width="${bw}" height="${H - B}" fill="transparent"/><rect class="bar" x="${i * bw + 1}" y="${H - B - h}" width="${bw - 2}" height="${h}" rx="2"/></g>`; }).join("");
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="New postings a week, last 26 weeks: ${w.join(", ")}">${bars}<line class="grid" x1="0" x2="${W}" y1="${H - B}" y2="${H - B}"/>
+    <text class="ax" x="0" y="${H - 5}">6 months ago</text><text class="ax" x="${W}" y="${H - 5}" text-anchor="end">this week</text><text class="ax" x="0" y="10">${max} a week</text></svg></div>`;
+}
+/** Levels.fyi's pay by level for one job family, with the NYC median (all companies) as a dashed mark. */
+function ladder(f) {
+  const rows = f.levels.length ? f.levels : [{ level: "all levels (median)", pay: f.median }], max = Math.max(...rows.map((r) => r.pay), f.nycMarket ?? 0) * 1.04;
+  return `<div class="ladder"><h4>${esc(FAM[f.family] ?? f.family)} <span class="hint">· median ${k$(f.median)} total pay, US</span></h4>
+    ${rows.map((r) => `<div class="lrow"><span class="lv" title="${esc(r.level)}">${esc(r.level)}</span><span class="track"><span class="fill" style="width:${(r.pay / max) * 100}%"></span>${f.nycMarket ? `<span class="mk" style="left:${(f.nycMarket / max) * 100}%"></span>` : ""}</span><b>${k$(r.pay)}</b></div>`).join("")}
+    ${f.nycMarket ? `<p class="hint" style="margin:2px 0 0"><span class="mkey"></span>NYC median for the job, all companies: ${k$(f.nycMarket)}</p>` : ""}</div>`;
+}
+function introHTML(c) {
+  const s = c.stock, o = c.overview, w = c.weeks ?? e.weeks ?? [], last4 = w.slice(-4).reduce((a, b) => a + b, 0), prev4 = w.slice(-8, -4).reduce((a, b) => a + b, 0);
+  const lede = o?.business?.text ?? (c.wiki ? c.wiki.extract.split(/(?<=\.)\s+/).slice(0, 2).join(" ") : "");
+  $("tick").innerHTML = s ? `<span class="tick"><b>${esc(s.ticker)}</b> $${s.last.toFixed(2)} · ${move(s.change1y, "in a year")}</span>` : c.ticker === null ? `<span class="badge">not listed on a US exchange</span>` : "";
+  return `${lede ? `<p class="lede">${esc(lede)}${o?.business?.text ? "" : c.wiki ? ` <a class="hint" href="${esc(c.wiki.url)}" target="_blank" rel="noopener">Wikipedia</a>` : ""}</p>` : ""}
+    <div class="igrid">
+      ${s ? `<figure><h3>Stock, two years</h3>${stockChart(s)}<figcaption>${move(s.change2y, "in two years")} · 52-week range $${s.low52.toFixed(2)}–$${s.high52.toFixed(2)} · close ${day(s.asOf)}, Nasdaq</figcaption></figure>` : ""}
+      ${w.length ? `<figure><h3>New jobs posted here, a week</h3>${weeksChart(w)}<figcaption>${last4} in the last 4 weeks, ${prev4} in the 4 before${prev4 ? ` (${move(Math.round(((last4 - prev4) / prev4) * 100), "")})` : ""} · this site's record</figcaption></figure>` : ""}
+    </div>
+    <div class="igrid">
+      ${o && (o.hiring || o.market || o.tips?.length) ? `<div class="ai"><h3>Overview <span class="badge">AI</span></h3>${o.hiring ? `<p>${esc(o.hiring.text)}</p>` : ""}${o.market ? `<p>${esc(o.market.text)}</p>` : ""}
+        ${o.tips?.length ? `<h3 style="margin-top:10px">If you apply</h3><ul>${o.tips.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul>` : ""}
+        <details class="hint" style="margin-top:8px"><summary>The facts it was written from</summary><ol>${c.facts.map((f) => `<li>${esc(f.text)}</li>`).join("")}</ol></details></div>` : ""}
+      ${c.levels ? `<div><h3>What it pays, by level</h3>${c.levels.families.map(ladder).join("")}<p class="hint">Self-reported total pay (salary, stock, bonus) from <a href="https://www.levels.fyi/companies/${esc(c.levels.slug)}" target="_blank" rel="noopener">Levels.fyi</a>.</p></div>` : ""}
+    </div>
+    ${c.news?.length ? `<h3>In the news, last two weeks</h3><ul class="news">${c.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="hint">${esc(n.source)} · ${age(n.at)}</span></li>`).join("")}</ul>` : ""}
+    <p class="hint" style="margin:12px 0 0">Made ${age(c.at)} from Wikipedia, Nasdaq, Google News, Levels.fyi and this site's jobs; remade each morning. The overview is AI-written and keeps only lines whose facts and numbers check out.</p>`;
+}
+async function intro() {
+  const box = $("intro");
+  if (e.card) { box.innerHTML = introHTML(e.card); wireStock(); return; }
+  box.innerHTML = `<p class="hint" id="introStep" aria-live="polite">Making this employer's card: its business, news, stock and pay (up to two minutes)…</p>`;
+  try { const { id } = await post(`/api/jobs/company-card?c=${encodeURIComponent(e.name)}`, {}); e.card = await poll(id, (s) => ($("introStep").textContent = s)); box.innerHTML = introHTML(e.card); wireStock(); }
+  catch (err) { $("introStep").textContent = `The card couldn't be made right now (${err.message}).`; }
+}
 try {
   e = await getJSON(`/api/jobs/company?c=${encodeURIComponent(name)}`);
-  document.title = `${e.name}: jobs in New York`; $("crumb").textContent = e.name;
+  document.title = `${e.name}: jobs in New York`; $("crumb").textContent = $("cname").textContent = e.name;
   const tile = (v, label, sub = "") => `<div class="kpi card"><b>${v}</b><span>${label}${sub ? `<br>${sub}` : ""}</span></div>`;
-  $("out").innerHTML = `<h1 style="margin:4px 0">${esc(e.name)}</h1>
-    <p class="hint">Its jobs in New York City, New Jersey, the metro and remote in the US, as this site reads them. <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">Search them with filters</a>.</p>
+  $("out").innerHTML = `<h2>Hiring here</h2><p class="hint">Its jobs in New York City, New Jersey, the metro and remote in the US, as this site reads them. <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">Search them with filters</a>.</p>
     <div class="kpis">${tile(e.open, "open jobs", `${e.open ? Math.round((e.verified / e.open) * 100) : 0}% read from its own system`)}${tile(e.new30, "posted in 30 days")}${tile(e.gone30, "taken down in 30 days", "filled or withdrawn")}
       ${tile(`${e.stale}%`, "of open jobs up over 60 days", e.stale >= 50 ? "many may be evergreen" : "")}${tile(e.medianDaysUp != null ? `${e.medianDaysUp} days` : "—", "a job usually stays up", "median, last 6 months")}
       ${tile(e.pay ? k$(e.pay.median) : "—", "median stated pay", e.pay ? `middle half ${k$(e.pay.p25)}–${k$(e.pay.p75)} (${e.pay.n} salaries)` : "too few salaries stated")}</div>
@@ -42,8 +128,10 @@ try {
     <h2>Open jobs</h2>${e.jobs.map((r) => `<div class="row card"><h3>${jobLink(r)}</h3><div class="meta"><span>${esc(r.location)}</span><span>${esc(LABEL.seniority[r.seniority] ?? "")}</span>${pay(r) ? `<span class="pay">${pay(r)}</span>` : ""}<span>${age(r.posted ?? r.first_seen)}</span>
       ${verified(r.source) ? `<span class="chip ok">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}${r.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div></div>`).join("")}
     ${e.open > e.jobs.length ? `<p class="hint">Showing the newest ${e.jobs.length} of ${e.open}: <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">see all in search</a>.</p>` : ""}`;
-} catch (err) { $("out").innerHTML = `<h1>${esc(name || "Employer")}</h1><p>${esc(err.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
-window.blipContext = () => ({ page: "One employer on the NYC jobs finder", employer: e && { name: e.name, open: e.open, posted30: e.new30, takenDown30: e.gone30, openOver60DaysPct: e.stale, medianPay: e.pay?.median } });
+  intro();
+} catch (err) { $("cname").textContent = name || "Employer"; $("intro").innerHTML = `<p>${esc(err.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
+window.blipContext = () => ({ page: "One employer on the NYC jobs finder", employer: e && { name: e.name, open: e.open, posted30: e.new30, takenDown30: e.gone30, openOver60DaysPct: e.stale, medianPay: e.pay?.median,
+  business: e.card?.overview?.business?.text, stock: e.card?.stock && { ticker: e.card.stock.ticker, last: e.card.stock.last, change1yPct: e.card.stock.change1y }, news: e.card?.news?.slice(0, 3).map((n) => n.title) } });
 </script>
 </body>
 </html>
