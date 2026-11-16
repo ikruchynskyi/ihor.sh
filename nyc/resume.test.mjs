@@ -1,6 +1,6 @@
 // Run: node nyc/resume.test.mjs
 import assert from "node:assert/strict";
-import { extract, evaluate, compare, yearsOfExperience } from "./resume.js";
+import { extract, evaluate, compare, yearsOfExperience, mentions, addedSkills, composeTailored } from "./resume.js";
 
 const good = `Jane Rivera
 Brooklyn, NY · jane.rivera@example.com · (917) 555-0142 · linkedin.com/in/janerivera
@@ -44,4 +44,22 @@ Experience with Terraform and dbt is a plus. You will own pipelines, pipelines m
 const c = compare(good, jd);
 assert.ok(c.missing.includes("kubernetes") && c.missing.includes("terraform") && c.present.includes("python"), JSON.stringify(c));
 assert.equal(c.wantsYears, 5);
+// words on their own; filler flagged
+assert.ok(mentions("Java and SQL", "java") && !mentions("JavaScript", "java") && mentions("C++, Go", "c++") && mentions("node.js", "node.js"));
+const fluffy = evaluate(`${good}\n• Results-driven, detail-oriented team player passionate about leveraging cutting-edge tools`, { kind: "pdf", pages: 1 });
+assert.ok(fluffy.fixes.some((f) => /Filler/.test(f.problem)), "filler is flagged");
+assert.ok(!e.fixes.some((f) => /Filler/.test(f.problem)), "the good résumé has no filler");
+
+// a tailored draft: added skills found, and removing one takes it out of every line
+const t = { summary: "Data engineer with 6 years of pipelines. Runs Kubernetes clusters.", skills: ["Python", "Spark", "Kubernetes", "Terraform"],
+  roles: [{ heading: "Senior Data Engineer, Acme Health — Mar 2021 – Present", bullets: [
+    { text: "Built Spark pipelines on Kubernetes processing 2 TB a day", from: "Built a Spark and Airflow pipeline processing 2 TB a day, cutting report latency from 6 hours to 40 minutes" },
+    { text: "Provisioned infrastructure with Terraform", from: "" }] }] };
+assert.deepEqual(addedSkills(good, t, jd).map((s) => s.toLowerCase()).sort(), ["kubernetes", "terraform"]);
+const all = composeTailored(good, t), honest = composeTailored(good, t, ["Kubernetes", "Terraform"]);
+assert.ok(all.includes("Kubernetes") && all.includes("Terraform"));
+assert.ok(!/kubernetes|terraform/i.test(honest), honest);
+assert.ok(honest.startsWith("Jane Rivera") && honest.includes("cutting report latency") && honest.includes("B.S. Computer Science"), "header, original bullet and education kept");
+assert.ok(honest.includes("Data engineer with 6 years of pipelines.") && !honest.includes("Runs"), "the summary sentence naming a removed skill goes");
+assert.ok(compare(all, jd).coverage > compare(honest, jd).coverage);
 console.log(`resume ok: good ${e.score}, bad ${b.score}, coverage ${c.coverage}% missing ${c.missing.join(",")}`);

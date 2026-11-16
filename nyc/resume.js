@@ -12,7 +12,12 @@ const HEADINGS = {
   other: /^(awards|publications|volunteer(ing)?( experience)?|languages|interests|activities|leadership)$/i,
 };
 const CREATIVE = /^(my journey|what i do|where i've been|toolbox|superpowers|things i've built|my story|career highlights?)$/i;
-const VERBS = "achieved accelerated added advised analyzed architected automated balanced built championed closed coached collaborated completed consolidated converted coordinated created cut decreased defined delivered deployed designed developed directed doubled drove earned eliminated enabled engineered established exceeded expanded generated grew guided halved identified implemented improved increased initiated integrated introduced launched led maintained managed mentored migrated modernized negotiated optimized orchestrated organized oversaw owned partnered pioneered planned produced programmed raised reduced redesigned refactored released resolved restructured revamped saved scaled secured shipped simplified solved spearheaded standardized streamlined strengthened supervised supported taught tested trained transformed tripled troubleshot unified upgraded wrote".split(" ");
+const VERBS = "achieved accelerated added advised analyzed architected automated balanced built championed closed coached collaborated completed consolidated converted coordinated created cut decreased defined delivered deployed designed developed directed doubled drove earned eliminated enabled engineered established exceeded expanded generated grew guided halved identified implemented improved increased initiated integrated introduced launched led maintained managed mentored migrated modernized negotiated optimized orchestrated organized oversaw owned partnered pioneered planned produced programmed raised reduced redesigned refactored released resolved restructured revamped saved scaled secured shipped simplified solved standardized streamlined strengthened supervised supported taught tested trained transformed tripled troubleshot unified upgraded wrote".split(" ");
+// Filler that says nothing a result wouldn't show, and that AI writes a lot: most hiring managers say they spot AI-written
+// résumés (Resume Genius, 2026), and what they reject is the generic ones. The rewrite prompts forbid these too (jobs-ai.ts).
+export const CLICHES = ["results-driven", "results-oriented", "detail-oriented", "proven track record", "track record of success", "dynamic", "passionate", "self-starter", "self-motivated", "team player", "go-getter", "hard-working", "synergy", "think outside the box", "fast-paced environment", "cutting-edge", "best-in-class", "world-class", "seamless", "seamlessly", "leverage", "leveraged", "leveraging", "utilize", "utilized", "utilizing", "spearheaded", "delve", "tapestry", "showcasing", "adept at", "strategic thinker", "innovative solutions", "thought leader", "wear many hats", "excellent communication skills", "game-changer", "transformative", "meticulous", "visionary", "expert in"];
+/** Does the text name this word or phrase on its own ("Java" isn't in "JavaScript")? Any case. */
+export const mentions = (text, w) => new RegExp(`(^|[^a-z0-9])${w.toLowerCase().replace(/[.+#()[\]\\^$*?{}|/]/g, (c) => `\\${c}`)}([^a-z0-9]|$)`).test(text.toLowerCase());
 const WEAK = /^(responsible for|duties included|worked on|helped( with)?|assisted( with)?|participated in|involved in|tasked with)\b/i;
 const MONTHS = "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december";
 const DATE_RANGE = new RegExp(`((?:${MONTHS})\\.?\\s+\\d{4}|\\d{1,2}/\\d{4}|\\b(?:19|20)\\d{2})\\s*(?:-|–|—|to)\\s*((?:${MONTHS})\\.?\\s+\\d{4}|\\d{1,2}/\\d{4}|(?:19|20)\\d{2}|present|current|now)`, "gi");
@@ -79,6 +84,8 @@ export function evaluate(text, layout = {}) {
   add("content", b.length && verb.length / b.length >= 0.6, 6, b.length ? `${Math.round((verb.length / b.length) * 100)}% of bullets start with an action verb.` : "No bullets to check.", `Start bullets with a strong verb (Built, Led, Cut, Grew…).${weak.length ? ` Rewrite the ${weak.length} that start with "${weak[0].split(/\s+/).slice(0, 3).join(" ")}…".` : ""}`);
   add("content", b.length && nums.length / b.length >= 0.4, 8, b.length ? `${Math.round((nums.length / b.length) * 100)}% of bullets have a number (%, $, counts, time).` : "No bullets to check.", "Add a result with a number to more bullets: how much, how many, how fast. If you don't know the exact figure, a careful estimate (\"~30%\") is fine; never invent one.");
   add("content", !long.length && short.length <= b.length / 4, 3, long.length ? `${long.length} bullet${long.length > 1 ? "s" : ""} run over 35 words.` : "Bullets are a readable length.", "Keep each bullet to one or two lines (about 12–30 words).");
+  const filler = CLICHES.filter((c) => mentions(text, c));
+  add("content", filler.length <= 2, 4, filler.length > 2 ? `Filler phrases recruiters skim past (and AI writes a lot): ${filler.slice(0, 6).join(", ")}.` : "Little filler wording.", "Replace each with what you did and what came of it: \"results-driven\" says less than \"cut churn 12%\". Generic, AI-sounding wording is the top reason recruiters give for passing on a résumé.");
   add("content", firstPerson <= 2, 2, firstPerson > 2 ? `"I/my/me" appears ${firstPerson} times.` : "No first-person pronouns.", "Drop \"I\" and \"my\": résumés are written without them (\"Led the team…\", not \"I led…\").");
   add("content", x.words >= 250 && x.words <= 1100, 3, `${x.words} words${layout.pages ? ` on ${layout.pages} page${layout.pages > 1 ? "s" : ""}` : ""}.`, x.words < 250 ? "Too thin: add detail to each role (results, scope, tools)." : "Too long for most roles: cut to 1–2 pages, keeping the last 10 years in detail.");
   add("content", x.dates.length >= 2, 3, `${x.dates.length} date ranges found${yearsOfExperience(x.dates) != null ? ` (about ${yearsOfExperience(x.dates)} years from first to last)` : ""}.`, "Give every role a date range in one format, e.g. \"Mar 2021 – Present\".");
@@ -104,7 +111,7 @@ export function jobTerms(jd) {
 }
 /** Which of a job's terms the résumé has, literally (many ATS match exact words), and the years it asks for. */
 export function compare(resumeText, jd) {
-  const r = ` ${resumeText.toLowerCase()} `, j = jobTerms(jd), has = (w) => new RegExp(`[^a-z0-9]${w.replace(/[.+#]/g, (c) => `\\${c}`)}[^a-z0-9]`).test(r);
+  const j = jobTerms(jd), has = (w) => mentions(resumeText, w);
   const present = j.skills.filter(has), missing = j.skills.filter((s) => !has(s)), freqMissing = j.frequent.filter((w) => !has(w));
   const yrs = yearsOfExperience(extract(resumeText).dates);
   const coverage = j.skills.length ? Math.round((present.length / j.skills.length) * 100) : null;
@@ -114,4 +121,23 @@ export function compare(resumeText, jd) {
       freqMissing.length ? `Words the posting repeats that your résumé doesn't use: ${freqMissing.slice(0, 8).join(", ")}.` : null,
       j.years && yrs != null && yrs < j.years ? `The job asks for ${j.years}+ years; your dates span about ${yrs}. If you have more relevant time (school projects, freelance), list it.` : null,
     ].filter(Boolean) };
+}
+
+// ---------- the best-matching version for a job (the AI's draft from /api/jobs/tailor, put together here) ----------
+/** Skills in a tailored draft that the résumé doesn't show: the person keeps only the ones they really have. */
+export function addedSkills(text, t, jd = "") {
+  const said = [t.summary, ...t.roles.flatMap((r) => r.bullets.map((b) => b.text))].join("\n");
+  const all = new Map([...t.skills, ...jobTerms(jd).skills.filter((s) => mentions(said, s))].map((s) => [s.toLowerCase(), s]));
+  return [...all.values()].filter((s) => !mentions(text, s));
+}
+/** The tailored résumé as text: the original's header lines and its other sections (education, projects…) around the
+ *  draft's summary, skills and roles. drop: skills the person doesn't have. They leave the skills line, a bullet naming
+ *  one goes back to its original wording (or out, if it was new), and so does a summary sentence. */
+export function composeTailored(text, t, drop = []) {
+  const x = extract(text), L = x.lines, first = x.sections[0]?.line ?? 0, keep = (s) => !drop.some((d) => mentions(s, d));
+  const next = (s) => x.sections.find((n) => n.line > s.line)?.line ?? L.length;
+  const roles = t.roles.map((r) => [r.heading, ...r.bullets.map((b) => (keep(b.text) ? b.text : b.from)).filter(Boolean).map((b) => `• ${b}`)].join("\n"));
+  return [L.slice(0, first).join("\n"), `Summary\n${t.summary.split(/(?<=[.!?])\s+/).filter(keep).join(" ")}`,
+    `Skills\n${t.skills.filter(keep).join(", ")}`, `Experience\n${roles.join("\n\n")}`,
+    ...x.sections.filter((s) => !["summary", "skills", "experience"].includes(s.kind)).map((s) => L.slice(s.line, next(s)).join("\n"))].filter((b) => b.trim() && !/^Summary\n$/.test(b)).join("\n\n");
 }

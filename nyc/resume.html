@@ -47,20 +47,27 @@
       <div><h2 style="margin-top:0">Fix these first</h2><div id="fixes"></div></div>
     </div>
 
+    <h2>Against a job</h2>
+    <p class="hint">Paste a job posting (or open one from the <a href="/nyc/jobs.html">jobs page</a>) to see which of its words and skills your résumé has. Many systems match exact words, so "Kubernetes" in the posting needs "Kubernetes" in your résumé, not just "k8s". Add only what's true.</p>
+    <textarea id="jd" placeholder="Paste the job description here"></textarea>
+    <div id="match"></div>
+
+    <h2>🎯 The best-matching version for this job</h2>
+    <p class="hint">The AI rebuilds your résumé around the job above: your own roles and dates, the bullets that matter for it first and worded the way it words things, a summary, and the job's skills added to your skills list. Then <b>untick every skill you don't have</b>: it leaves the list, and any line that named it goes back to your own words. Tailored résumés get about 60% more interview callbacks than generic ones, but 63% of job seekers who used AI on theirs say it added false details (<a href="https://huntr.co/research/job-search-trends-q3-2026" target="_blank" rel="noopener">Huntr, 2026</a>), and an interviewer will ask about every line. Your résumé goes to this site's server for this request only: it isn't stored or logged.</p>
+    <p><button id="tailorGo" type="button">🎯 Build it</button> <span class="hint" id="tailorStatus" aria-live="polite"></span></p>
+    <div id="tailor"></div>
+
     <h2>Rewrite with AI</h2>
-    <p class="hint">Suggestions for your weakest bullets and a summary, tailored to the job below if you paste one. The AI is told never to invent facts: numbers it doesn't know become placeholders like <b>[X%]</b> for you to fill in, and anything it adds that isn't in your résumé is replaced with [X]. Your text goes to this site's server for the request only and isn't stored. Read every suggestion before you accept it: it's your name on the résumé.</p>
+    <p class="hint">Suggestions for your weakest bullets and a summary, tailored to the job above if you've given one. The AI is told never to invent facts: numbers it doesn't know become placeholders like <b>[X%]</b> for you to fill in, and anything it adds that isn't in your résumé is replaced with [X]. Your text goes to this site's server for the request only and isn't stored. Read every suggestion before you accept it: it's your name on the résumé.</p>
     <p><button id="aiGo" type="button">✨ Suggest rewrites</button> <span class="hint" id="aiStatus"></span></p>
     <div id="ai"></div>
     <div id="draftBox" hidden>
       <h3>Your improved résumé <span class="hint" id="draftScore"></span></h3>
       <textarea id="draft" style="min-height:260px"></textarea>
+      <p class="hint">Pick the skills first, then edit the text: changing the skills rebuilds it.</p>
       <p><button id="dlTxt" type="button">Download .txt</button> <button id="dlDocx" type="button">Download .docx</button> <button id="dlPdf" type="button">Print / save as PDF</button> <span class="hint">All single-column and plain, the way parsers like it.</span></p>
     </div>
 
-    <h2>Against a job</h2>
-    <p class="hint">Paste a job posting (or open one from the <a href="/nyc/jobs.html">jobs page</a>) to see which of its words and skills your résumé has. Many systems match exact words, so "Kubernetes" in the posting needs "Kubernetes" in your résumé, not just "k8s". Add only what's true.</p>
-    <textarea id="jd" placeholder="Paste the job description here"></textarea>
-    <div id="match"></div>
 
     <h2>What the system sees</h2>
     <table class="fields" id="fields"></table>
@@ -69,7 +76,7 @@
   </section>
 </main>
 <script type="module">
-import { evaluate, compare, extract } from "/nyc/resume.js";
+import { evaluate, compare, extract, addedSkills, composeTailored } from "/nyc/resume.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
@@ -170,7 +177,7 @@ const VERB = /^(achieved|accelerated|added|advised|analyzed|architected|automate
 let draft = "";
 const jobId = new URLSearchParams(location.search).get("job");
 function setDraft(t) { draft = t; $("draft").value = t; $("draftBox").hidden = false; const r = evaluate(t, { kind: "txt" }); $("draftScore").textContent = `(score now ${r.score}${current ? `, was ${evaluate(current.text, { kind: "txt" }).score}` : ""}, without layout checks)`; }
-$("draft").addEventListener("input", () => setDraft($("draft").value));
+$("draft").addEventListener("input", () => { setDraft($("draft").value); if (tailored) keepCv(draft); });
 $("aiGo").onclick = async () => {
   if (!current) return;
   const bullets = extract(current.text).bullets, weak = bullets.filter((b) => !VERB.test(b) || !/\d|%|\$/.test(b) || b.split(/\s+/).length > 30 || b.split(/\s+/).length < 6);
@@ -210,9 +217,59 @@ $("dlDocx").onclick = async () => {
 };
 $("dlPdf").onclick = () => { const w = window.open("", "_blank"); if (!w) return; w.document.write(`<!doctype html><title>Résumé</title><style>body{font:11pt/1.4 Arial,sans-serif;margin:0.7in;white-space:pre-wrap}</style><body>${esc(draft)}</body>`); w.document.close(); w.focus(); w.print(); };
 $("keep").onchange = () => { try { if ($("keep").checked && current) localStorage.setItem("resume-text", current.text); else localStorage.removeItem("resume-text"); } catch {} };
-// a job opened from the jobs page: ?job=<id>
-const jid = new URLSearchParams(location.search).get("job");
-if (jid) fetch(`/api/jobs/job?id=${encodeURIComponent(jid)}`).then((r) => r.json()).then((j) => { if (j.description) { $("jd").value = `${j.title} at ${j.company}\n\n${j.description}`; match(); } }).catch(() => {});
+// ---------- the best-matching version for one job: the AI's draft, then you remove the skills you don't have ----------
+// Kept with the job in the jobs page's tracker (localStorage "jobs-tracker", entry.cv), so its dashboard lists it.
+let tailored = null, jobMeta = null;
+const TK = "jobs-tracker", trackerGet = () => { try { return JSON.parse(localStorage.getItem(TK) ?? "{}"); } catch { return {}; } };
+const trackId = () => jobId ?? `paste:${[...$("jd").value.trim().slice(0, 400)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0).toString(36)}`;
+const postJSON = (u, body) => fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (x) => { const d = await x.json().catch(() => ({})); if (!x.ok || d.error) throw new Error(d.error ?? `HTTP ${x.status}`); return d; });
+const poll = async (id, step) => { for (;;) { await new Promise((r) => setTimeout(r, 2500)); const r = await fetch(`/api/nyc/brief-job?id=${id}`), j = await r.json().catch(() => ({})); if (j.error) throw new Error(j.error); if (j.result) return j.result; step(j.step); } };
+$("tailorGo").onclick = async () => {
+  if (!current) return;
+  const jd = $("jd").value.trim(); if (jd.length < 80) { $("tailorStatus").textContent = "Paste the job posting above first, or open one from the jobs page."; return; }
+  $("tailorGo").disabled = true; $("tailorStatus").textContent = "Sending your résumé and the job to the AI…";
+  try {
+    const { id } = await postJSON("/api/jobs/tailor", { resume: current.text, job: jobId ?? undefined, jd: jobId ? undefined : jd.slice(0, 8000) });
+    tailored = await poll(id, (step) => ($("tailorStatus").textContent = step));
+    tailored.added = addedSkills(current.text, tailored, jd); renderTailor(); $("tailorStatus").textContent = "";
+  } catch (e) { $("tailorStatus").textContent = e.message; } finally { $("tailorGo").disabled = false; }
+};
+function renderTailor() {
+  const added = new Set(tailored.added.map((a) => a.toLowerCase())), have = tailored.skills.filter((sk) => !added.has(sk.toLowerCase())), notes = tailored.roles.flatMap((r) => r.bullets.filter((b) => b.notes.length));
+  $("tailor").innerHTML = `<div class="card" style="padding:10px 14px">
+    <p><b>Match with this job:</b> <span id="covLine"></span></p>
+    <p class="hint" style="margin:0">From your résumé</p><p style="margin-top:2px">${have.map((sk) => `<span class="chip have">✓ ${esc(sk)}</span>`).join("") || "—"}</p>
+    ${tailored.added.length ? `<p style="margin:0"><b>Added from the job: untick every one you don't have</b></p><p id="addedList" style="margin-top:2px">${tailored.added.map((sk) => `<label class="chip miss" style="cursor:pointer"><input type="checkbox" value="${esc(sk)}" checked> ${esc(sk)}</label>`).join(" ")}</p>`
+      : `<p class="hint">It added no skills your résumé doesn't already show.</p>`}
+    ${notes.length ? `<details><summary>${notes.length} line${notes.length > 1 ? "s" : ""} to double-check</summary><ul>${notes.map((b) => `<li>${esc(b.text)}<br><span class="hint">⚠ ${esc(b.notes.join("; "))}</span></li>`).join("")}</ul></details>` : ""}
+    <p class="hint">Built by ${esc(tailored.by ?? "the AI")}; your roles and dates are copied from your résumé, and numbers it doesn't have became [X] for you to fill in or delete.</p>
+    <label class="hint"><input type="checkbox" id="keepCv" checked> keep this version with the job in <a href="/nyc/jobs.html#mine">📋 My applications</a> (in this browser)</label></div>`;
+  applyTailor();
+}
+function applyTailor() {
+  const drop = [...document.querySelectorAll("#addedList input:not(:checked)")].map((i) => i.value);
+  setDraft(composeTailored(current.text, tailored, drop)); $("draftBox").scrollIntoView({ block: "nearest" }); keepCv(draft);
+}
+/** Saves (or, unticked, removes) this version with the job in the jobs page's tracker, with the skills match before and after. */
+function keepCv(text) {
+  const jd = $("jd").value, c0 = compare(current.text, jd).coverage, c1 = compare(text, jd).coverage;
+  $("covLine").innerHTML = c0 == null ? "the posting names no common skills we know" : `<b>${c0}%</b> of the skills it names are in your résumé → <b>${c1}%</b> in this version`;
+  try {
+    const t = trackerGet(), id = trackId(), e = t[id];
+    if (!$("keepCv")?.checked) { if (e?.cv) { delete e.cv; localStorage.setItem(TK, JSON.stringify(t)); } return; }
+    t[id] = { status: "saved", saved: Date.now(), notes: "", follow: "", at: { saved: Date.now() }, ...e, title: e?.title ?? jobMeta?.title ?? jd.trim().split("\n")[0].slice(0, 120), company: e?.company ?? jobMeta?.company ?? "", url: e?.url ?? jobMeta?.url ?? "", cv: { text, cov0: c0, cov1: c1, at: Date.now() } };
+    localStorage.setItem(TK, JSON.stringify(t));
+  } catch {}
+}
+$("tailor").addEventListener("change", (e) => { if (e.target.closest("#addedList")) applyTailor(); else if (e.target.id === "keepCv") keepCv(draft); });
+
+// a job opened from the jobs page: ?job=<id> (and the version you built for it before, if you kept one)
+const jid = jobId;
+if (jid) fetch(`/api/jobs/job?id=${encodeURIComponent(jid)}`).then((r) => r.json()).then((j) => {
+  if (j.description) { jobMeta = { title: j.title, company: j.company, url: j.url }; $("jd").value = `${j.title} at ${j.company}\n\n${j.description}`; match(); }
+  const cv = trackerGet()[jid]?.cv;
+  if (cv && current) { setDraft(cv.text); $("tailorStatus").textContent = `You built a version for this job on ${new Date(cv.at).toLocaleDateString()}: it's in the editor below. Build again to start over.`; }
+}).catch(() => {});
 try { const kept = localStorage.getItem("resume-text"); if (kept) { $("keep").checked = true; current = { text: kept, layout: { kind: "txt" } }; $("status").textContent = "Using the résumé you kept in this browser (open the file again for the layout checks)."; show(); } } catch {}
 window.blipContext = () => ({ page: "Résumé check (how an ATS reads a résumé; runs in the browser)", score: current ? evaluate(current.text, current.layout).score : null, topFixes: current ? evaluate(current.text, current.layout).fixes.slice(0, 5).map((f) => f.problem) : [] });
 </script>

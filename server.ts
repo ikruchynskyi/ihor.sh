@@ -20,8 +20,8 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./server/jobs.ts";
-import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./server/jobs-ai.ts";
+import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, type Query as JobQuery } from "./server/jobs.ts";
+import { startEmbedding, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
@@ -477,9 +477,24 @@ const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
-type BriefJob = { at: number; step: string; result?: unknown; error?: string };
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+type BriefJob = { at: number; step: string; result?: unknown; error?: string; once?: boolean };
 const briefJobs = new Map<string, BriefJob>();
+/** A slow AI answer as a job the page polls at /api/nyc/brief-job?id= (Cloudflare drops a reply that takes over 100 s).
+ *  once: the result holds a visitor's text (a résumé), so it's forgotten as soon as it's read. */
+function startJob(res: http.ServerResponse, run: (step: (s: string) => void) => Promise<unknown>, first = "Waiting for the AI…", once = false) {
+  for (const [k, j] of briefJobs) if (j.at < Date.now() - 15 * 60_000) briefJobs.delete(k);
+  if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return json403(res, "The AI is writing a few answers already. Try again in a minute.", 429);
+  const id = randomUUID(), job: BriefJob = { at: Date.now(), step: first, once };
+  briefJobs.set(id, job);
+  run((s) => (job.step = s)).then((r: any) => { if (r?.error) job.error = r.error; else job.result = r; })
+    .catch((e) => (job.error = e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : (e as Error).message));
+  return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ id }));
+}
+/** The jobs page's filters from a query string (search, market, RSS). */
+const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => Number(p.get(k)) || undefined;
+  return { q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"), salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"),
+    seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" }; };
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -513,8 +528,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;
     if (!spend(`rss:${clientIp(req)}`, 60, 3600_000)) return res.writeHead(429).end("Too many requests.");
-    const xml = jobRss({ q: g("q"), company: g("company"), exclude: g("exclude"), region: g("region"), remote: g("remote"), salaryMin: Number(p.get("salary")) || undefined, hideNoSalary: p.get("nosalary") === "0", seniority: g("seniority"), func: g("func"), source: g("source"), hideFlagged: p.get("flagged") === "0", titleOnly: p.get("title") === "1" },
-      `https://ihor.sh/nyc/jobs.html?${p}`, `Jobs: ${g("name") ?? g("q") ?? "saved search"}`);
+    const xml = jobRss({ ...jobQuery(p), days: undefined, sort: undefined, page: undefined }, `https://ihor.sh/nyc/jobs.html?${p}`, `Jobs: ${g("name") ?? g("q") ?? "saved search"}`);
     return res.writeHead(200, { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=900" }).end(xml);
   }
   if (url.pathname.startsWith("/api/memegen/")) { // public (meme links go out through Blip and /mcp), so read-only
@@ -1001,12 +1015,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
       const b = boxOf((() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })());
       if (!b) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first." }));
-      for (const [k, j] of briefJobs) if (j.at < Date.now() - 15 * 60_000) briefJobs.delete(k);
-      if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "The local AI is writing a few briefs already. Try again in a minute." }));
-      const id = randomUUID(), job: BriefJob = { at: Date.now(), step: "Waiting for the local AI…" };
-      briefJobs.set(id, job);
-      areaBrief(b, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = e instanceof LineFull ? "The local AI is busy with visitors. Try again in a minute." : (e as Error).message));
-      return cityJson({ id }, 0);
+      return startJob(res, (step) => areaBrief(b, step), "Waiting for the local AI…");
     }
     // 📰 Research this, in an incident's drawer: a job like the area brief (web search, pages, the model: about a minute)
     if (url.pathname === "/api/nyc/incident-brief" && req.method === "POST") {
@@ -1014,16 +1023,13 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
       const iid = String((() => { try { return JSON.parse(raw || "{}").id; } catch { return ""; } })() ?? "").slice(0, 300);
       if (!iid) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Which incident?" }));
-      if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "A few briefs are being written already. Try again in a minute." }));
-      const id = randomUUID(), job: BriefJob = { at: Date.now(), step: "Starting…" };
-      briefJobs.set(id, job);
-      researchIncident(iid, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = (e as Error).message));
-      return cityJson({ id }, 0);
+      return startJob(res, (step) => researchIncident(iid, step), "Starting…");
     }
     if (url.pathname === "/api/nyc/timeline") { const h = url.searchParams.get("hours") === "72" ? 72 : 24; return cityJson({ hours: h, events: timeline(h) }, 120); }
     if (url.pathname === "/api/nyc/security") return cityJson({ incidents: securityIncidents().slice(0, 300).map(incidentView) }, 60);
     if (url.pathname === "/api/nyc/brief-job") {
-      const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));
+      const jid = String(url.searchParams.get("id") ?? ""), job = briefJobs.get(jid);
+      if (job?.once && (job.result || job.error)) briefJobs.delete(jid);
       return job ? cityJson({ step: job.step, result: job.result ?? null, error: job.error ?? null }, 0) : res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "That brief is gone; ask again." }));
     }
     if (url.pathname === "/api/nyc/safety") { // an area's official public-safety record (NYPD, FDNY; weeks to months late)
@@ -1065,18 +1071,17 @@ const server = http.createServer(async (req, res) => {
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), away = Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
     }
-    if (url.pathname === "/api/jobs/search") {
-      const p = url.searchParams, s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => (Number(p.get(k)) || undefined);
-      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch({ q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"),
-        salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"), seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" })));
-    }
+    if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
     if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
-    if ((url.pathname === "/api/jobs/match" || url.pathname === "/api/jobs/suggest") && req.method === "POST") {
+    if ((url.pathname === "/api/jobs/match" || url.pathname === "/api/jobs/suggest" || url.pathname === "/api/jobs/tailor") && req.method === "POST") {
       // the résumé is used for this request only: not stored, not logged (errors log the message, never the body)
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
       let b: any; try { b = JSON.parse(raw || "{}"); } catch { return res.writeHead(400).end(); }
       const resume = String(b.resume ?? "").slice(0, 20_000);
+      if (url.pathname === "/api/jobs/tailor") return startJob(res, () => jobTailor(resume, b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Rebuilding your résumé for this job (up to two minutes)…", true);
       try {
         const d: any = url.pathname === "/api/jobs/match"
           ? await jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, b.rank !== false)

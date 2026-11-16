@@ -8,15 +8,14 @@ export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.8:27b-mlx";
 export const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
 
 /** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"). */
-export const supportsEffort = (model = LOCAL_MODEL) =>
-  model.startsWith("gpt-oss") || model.startsWith("qwen3.5") || model.startsWith("qwen");
+export const supportsEffort = (model = LOCAL_MODEL) => model.startsWith("qwen");
 
 /** Thinking for the local model:
- *  - When a schema'd JSON answer is wanted (json = true): gpt-oss takes "low" effort, while models like qwen3.5
- *    skip thinking (false) so thinking doesn't consume the reply's token budget before JSON is written.
+ *  - When a schema'd JSON answer is wanted (json = true): no thinking, so it doesn't consume the reply's token budget
+ *    before the JSON is written (the local Qwen answers the schema directly; checked 2026-11-16).
  *  - In conversational chat (json = false, e.g. Blip): reasoning models default to "low", or "high" when thinking hard. */
 export const localThink = (json: boolean, deep = false, model = LOCAL_MODEL) => {
-  if (json) return model.startsWith("gpt-oss") ? "low" : false;
+  if (json) return false;
   if (supportsEffort(model)) return deep ? "high" : "low";
   return true;
 };
@@ -81,3 +80,8 @@ export async function llmJson(system: string, user: string, schema: object, maxT
   if (!r.ok) throw new Error(`model ${r.status}`);
   return { ...parse((await r.json()).message.content), _model: LOCAL_MODEL };
 }
+
+const nums = (s: string) => (s.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+/** A bullet stays only if it cites facts that exist and every number in it appears in those facts. */
+export const faithful = (b: { text: string; facts: string[] }, F: Map<string, string>) =>
+  !!b.facts?.length && b.facts.every((id) => F.has(id)) && nums(b.text).every((n) => b.facts.some((id) => nums(F.get(id)!).includes(n)));

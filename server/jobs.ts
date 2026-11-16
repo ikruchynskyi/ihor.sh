@@ -10,13 +10,15 @@ import path from "node:path";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
-const db = new DatabaseSync(path.join(dir, "jobs.db"));
+const db = new DatabaseSync(process.env.JOBS_DB ?? path.join(dir, "jobs.db")); // tests: JOBS_DB=:memory:
 db.exec(`
   create table if not exists companies (ats text, slug text, name text, added int, last_ok int, last_err text, open int, primary key (ats, slug));
   create table if not exists jobs (id text primary key, source text, company text, ckey text, title text, location text, region text, remote text,
     salary_min real, salary_max real, salary_period text, salary_est int, posted int, url text, department text, employment text, seniority text,
     func text, description text, first_seen int, last_seen int, missed int default 0, closed int, fp text, dup_of text, flags text, also text);
   create index if not exists jobs_open on jobs (closed, dup_of);
+  -- the market's scans read these without walking each description's overflow pages (372 → 294 ms on 50k jobs)
+  create index if not exists jobs_mk on jobs (dup_of, closed, posted, first_seen, ckey, title, func, seniority, region, remote, source, salary_min, salary_max, salary_period, salary_est, flags, company, id);
   create virtual table if not exists jobs_fts2 using fts5(id unindexed, title, company, body, tokenize = 'porter unicode61'); -- porter: engineers = engineer
   create table if not exists runs (at int, what text, ok int, n int, note text);
   create table if not exists probed (ckey text primary key, at int, found text);
@@ -28,8 +30,14 @@ const env = (k: string) => process.env[k] ?? "";
 const getJson = async (u: string, ms = 30_000) => { const r = await fetch(u, { headers: UA, signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<any>; };
 
 // ---------- understanding a posting ----------
-export const stripHtml = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, "&")
-  .replace(/<(br|\/p|\/li|\/h\d|\/div)[^>]*>/gi, "\n").replace(/<li[^>]*>/gi, "• ").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*/g, "\n\n").trim();
+const ENT: Record<string, string> = { nbsp: " ", mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", hellip: "…", bull: "•", middot: "·", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+export const entities = (s: string) => s.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+  if (e[0] !== "#") return ENT[e.toLowerCase()] ?? m;
+  const n = /^#x/i.test(e) ? parseInt(e.slice(2), 16) : +e.slice(1); return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+});
+// Greenhouse sends HTML escaped as text, with its own entities escaped again ("&amp;mdash;"): decode, drop tags, decode again
+export const stripHtml = (s: string) => entities(entities(s).replace(/<(br|\/p|\/li|\/h\d|\/div)[^>]*>/gi, "\n").replace(/<li[^>]*>/gi, "• ").replace(/<[^>]+>/g, ""))
+  .replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*/g, "\n\n").trim();
 const NYC = /\b(new york,? ?(ny|n\.y\.|city)|nyc|manhattan|brooklyn|queens|bronx|staten island|long island city|astoria|williamsburg|dumbo)\b/i;
 // a bare "New York" means the city when it's the whole place ("New York", "New York, United States"), not "Albany, New York"
 const NYC_BARE = /^\s*new york\s*(,\s*(united states|us|usa|u\.s\.))?\s*(\(.*\))?\s*$/i;
@@ -56,9 +64,12 @@ export const remoteType = (loc: string, text: string, hint?: string) => {
   if (/\bremote\b/i.test(loc)) return "remote"; if (/\bhybrid\b/i.test(loc) || /\bhybrid\b/i.test(text.slice(0, 3000))) return "hybrid";
   return "onsite";
 };
-/** A pay range in text: "$120,000 – $150,000", "$150K-$200K", "$45/hr – $60/hr". Annual or hourly, sanity-checked. */
+/** A pay range in text: "$120,000 – $150,000", "$150K-$200K", "$45/hr – $60/hr", "$85,000.00 - $95,000.00", "between
+ *  $90,000 and $110,000". Annual or hourly, sanity-checked. */
 export function parseSalary(text: string): { min: number; max: number; period: "year" | "hour" } | null {
-  const m = text.replace(/–|—/g, "-").match(/\$\s?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?([kK])?\s*(?:\/\s?(?:hr|hour)|per hour|an hour)?\s*(?:-|to)\s*\$?\s?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?([kK])?(\s*(?:\/\s?(?:hr|hour)|per hour|an hour|hourly))?/);
+  const N = "(\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)", HOUR = "(?:\\/\\s?(?:hr|hour)|per hour|an hour)";
+  const m = text.replace(/–|—/g, "-").replace(/between\s+(\$\s?[\d,.]+\s?[kK]?)\s+and\s+/gi, "$1 - ")
+    .match(new RegExp(`\\$\\s?${N}\\s?([kK])?\\s*${HOUR}?\\s*(?:-|to)\\s*\\$?\\s?${N}\\s?([kK])?(\\s*(?:${HOUR}|hourly))?`));
   if (!m) return null;
   const n = (s: string, k?: string) => parseFloat(s.replace(/,/g, "")) * (k ? 1000 : 1);
   const a = n(m[1], m[2]), b = n(m[3], m[4] ?? m[2]), hourly = !!m[5] || (b < 500 && !m[4]);
@@ -130,6 +141,13 @@ function batch<T>(fn: () => T): T {
   db.exec("begin");
   try { const out = fn(); db.exec("commit"); return out; } catch (e) { db.exec("rollback"); throw e; }
 }
+// 2026-11-16: "$200,000&mdash;$265,000" (see stripHtml) and two more pay formats went unread, so ~1,700 open jobs showed no pay
+// and a "no salary" flag. Unchanged jobs are never read again, so stored ones are repaired here (a few ms per start).
+const repaired = db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = ?, flags = ? where id = ?");
+batch(() => { for (const r of db.prepare("select * from jobs where closed is null and salary_min is null and description like '%$%'").all() as any[]) {
+  const d = entities(r.description), sal = parseSalary(d);
+  if (sal || d !== r.description) repaired.run(d, sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, JSON.stringify(flagsFor({ ...r, description: d, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null })), r.id);
+} });
 function save(j: In) {
   const reg = j.regionHint ?? region(j.location, j.isRemote);
   if (!reg) return false;
@@ -152,6 +170,7 @@ function sweep(source: string, seenIds: Set<string>, prefix: string) {
 // ---------- sources ----------
 const SEED: [string, string][] = JSON.parse(`[["greenhouse","stripe"],["greenhouse","oscar"],["greenhouse","datadog"],["greenhouse","brex"],["greenhouse","coinbase"],["greenhouse","affirm"],["ashby","ramp"],["greenhouse","twilio"],["greenhouse","pinterest"],["greenhouse","hellofresh"],["greenhouse","instacart"],["ashby","plaid"],["greenhouse","elastic"],["greenhouse","point72"],["greenhouse","janestreet"],["greenhouse","figma"],["greenhouse","airbnb"],["ashby","notion"],["ashby","headway"],["greenhouse","ripple"],["greenhouse","justworks"],["greenhouse","robinhood"],["greenhouse","mercury"],["greenhouse","braze"],["greenhouse","chime"],["greenhouse","mongodb"],["greenhouse","via"],["greenhouse","fanduel"],["greenhouse","zocdoc"],["greenhouse","clear"],["greenhouse","vercel"],["greenhouse","hearst"],["lever","spotify"],["ashby","hex"],["greenhouse","duolingo"],["greenhouse","schonfeld"],["greenhouse","seatgeek"],["lever","ro"],["greenhouse","dropbox"],["greenhouse","gemini"],["greenhouse","okta"],["ashby","kayak"],["greenhouse","axios"],["greenhouse","betterment"],["greenhouse","talkspace"],["greenhouse","squarespace"],["ashby","amplitude"],["greenhouse","newrelic"],["greenhouse","lyft"],["greenhouse","peloton"],["lever","anchorage"],["greenhouse","taboola"],["greenhouse","attentive"],["ashby","hopper"],["ashby","lemonade"],["ashby","paxos"],["ashby","substack"],["greenhouse","ziprecruiter"],["greenhouse","voxmedia"],["greenhouse","virtu"],["greenhouse","convene"],["greenhouse","cockroachlabs"],["ashby","industrious"],["greenhouse","harrys"],["greenhouse","mejuri"],["lever","wealthfront"],["greenhouse","asana"],["lever","theathletic"],["ashby","titan"],["greenhouse","pagerduty"],["ashby","patreon"],["ashby","acorns"],["greenhouse","consensys"],["greenhouse","sweetgreen"],["ashby","capsule"],["greenhouse","discord"],["greenhouse","glossier"],["greenhouse","modernhealth"],["ashby","ledger"],["ashby","away"],["greenhouse","insider"],["ashby","brooklinen"],["greenhouse","yext"],["greenhouse","greenhouse"],["ashby","column"],["lever","nomihealth"],["greenhouse","tripadvisor"],["ashby","sonder"],["greenhouse","thirdlove"],["greenhouse","everlane"],["greenhouse","flatironhealth"],["greenhouse","airtable"],["greenhouse","a24"],["greenhouse","misfitsmarket"],["greenhouse","kickstarter"]]`);
 for (const [ats, slug] of SEED) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
+const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab" }; // job ids are <prefix>:<slug>:<id>
 const titleCase = (s: string) => s.replace(/(^|[-_ ])(\w)/g, (_, a, b) => `${a ? " " : ""}${b.toUpperCase()}`);
 
 async function readBoard(ats: string, slug: string): Promise<In[]> {
@@ -188,7 +207,7 @@ export async function refreshBoards() {
       const jobs = await readBoard(ats, slug), seen = new Set<string>();
       batch(() => {
         for (const j of jobs) if (save(j)) { seen.add(j.id); n++; }
-        sweep(ats, seen, `${{ greenhouse: "gh", lever: "lv", ashby: "ab" }[ats]}:${slug}:`);
+        sweep(ats, seen, `${PREFIX[ats]}:${slug}:`);
         db.prepare("update companies set name = ?, last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
       });
     } catch (e) { bad++; db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
@@ -296,7 +315,7 @@ export async function discover(max = 40) {
 export function dedupe() {
   const rank: Record<string, number> = { greenhouse: 0, lever: 0, ashby: 0, nycjobs: 1, remotive: 2, himalayas: 2, adzuna: 3 };
   const open = db.prepare("select id, source, ckey, title, region, fp from jobs where closed is null").all() as any[];
-  db.exec("update jobs set dup_of = null, also = null");
+  db.exec("update jobs set dup_of = null, also = null where closed is null"); // closed ones keep theirs: the market's history counts each job once
   const by = new Map<string, any[]>();
   for (const j of open) (by.get(j.ckey) ?? by.set(j.ckey, []).get(j.ckey)!).push(j);
   let dups = 0;
@@ -327,8 +346,9 @@ const FT = (q: string, titleOnly: boolean) => {
   const pos = parts.filter((p) => !p.neg).map((p) => `${col}"${p.t}"`), neg = parts.filter((p) => p.neg).map((p) => `NOT ${col}"${p.t}"`);
   return pos.length ? [pos.join(" AND "), ...neg].join(" ") : "";
 };
-export function search(qy: Query) {
-  const where = ["j.closed is null", "j.dup_of is null"], args: any[] = [];
+/** The SQL for a query's filters, shared by search, résumé matching and the market. open = false keeps closed jobs (history). */
+function filters(qy: Query, open = true) {
+  const where = [open ? "j.closed is null" : "1", "j.dup_of is null"], args: any[] = [];
   let from = "jobs j";
   const fts = qy.q ? FT(qy.q, !!qy.titleOnly) : "";
   if (fts) { from = "jobs_fts2 f join jobs j on j.id = f.id"; where.push("jobs_fts2 match ?"); args.push(fts); }
@@ -340,9 +360,13 @@ export function search(qy: Query) {
   if (qy.hideNoSalary) where.push("j.salary_min is not null and j.salary_est = 0");
   if (qy.days) { where.push("coalesce(j.posted, j.first_seen) >= ?"); args.push(now() - qy.days * 86400); }
   if (qy.hideFlagged) where.push("(j.flags is null or j.flags = '[]')");
+  return { from, w: where.join(" and "), args, fts };
+}
+export function search(qy: Query) {
+  const { from, w, args, fts } = filters(qy);
   // with words, best match first (title words count 10×, the company 3×, the description 1×), else newest first
   const order = qy.sort === "salary" ? "(case when j.salary_period = 'hour' then j.salary_max * 2080 else j.salary_max end) desc nulls last" : qy.sort === "newest" || !fts ? "coalesce(j.posted, j.first_seen) desc" : "bm25(jobs_fts2, 0, 10, 3, 1)";
-  const w = where.join(" and "), page = Math.max(0, qy.page ?? 0);
+  const page = Math.max(0, qy.page ?? 0);
   const total = (db.prepare(`select count(*) n from ${from} where ${w}`).get(...args) as any).n;
   const cols = "j.id, j.source, j.company, j.title, j.location, j.region, j.remote, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.posted, j.first_seen, j.last_seen, j.url, j.department, j.employment, j.seniority, j.func, j.flags, j.also, substr(j.description, 1, 400) snippet";
   let rows: any[];
@@ -370,6 +394,69 @@ export function stats() {
   return { open: (db.prepare("select count(*) n from jobs where closed is null and dup_of is null").get() as any).n, bySource: by, lastRuns: runs, closedLastDay: closed, companies: (db.prepare("select count(*) n from companies").get() as any).n };
 }
 
+// ---------- the market: what's open, what it pays, and how postings move week to week ----------
+const pct = (sorted: number[], p: number) => (sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]) : null); // nearest rank
+/** A position without its level or team: "Senior Data Engineer, Payments" → "data engineer". */
+export const role = (title: string) => tkey(/^\s*\S+\s*(,| - | – | — |\||:)/.test(title) ? title : title.split(/,| - | – | — |\||:/)[0]).replace(/\b(senior|sr|junior|jr|lead|staff|principal|associate|entry level|head of|[iv]{1,3}|\d+)\b/g, " ").replace(/\s+/g, " ").trim();
+const marketCache = new Map<string, ReturnType<typeof marketNow>>(); // emptied by each refresh: the jobs only change then
+/** The market for a query's filters (not its date filter: time is the trends' axis). */
+export function market(qy: Query) {
+  const key = JSON.stringify([qy.q, qy.titleOnly, qy.region, qy.remote, qy.seniority, qy.func, qy.source, qy.company, qy.exclude, qy.salaryMin, qy.hideNoSalary, qy.hideFlagged]);
+  if (!marketCache.has(key)) { if (marketCache.size > 300) marketCache.clear(); marketCache.set(key, marketNow(qy)); }
+  return marketCache.get(key)!;
+}
+/** Open now: jobs, stated pay (yearly; hourly × 2080; Adzuna's estimates left out). Trends count distinct postings
+ *  (company + title, so one job listed for five offices is one), dated by the employer's posting date, and leave out
+ *  employer boards added after tracking began: their older postings would show up as growth that is only coverage.
+ *  The weekly series (up to a year) is counted by SQLite; JS only reads open jobs and the last 30 days. */
+function marketNow(qy: Query) {
+  const t = now(), D = 86400, W = 7 * D, start = (db.prepare("select min(at) t from runs").get() as any).t ?? t;
+  const late = (db.prepare("select ats, slug from companies where added > ?").all(start + D) as any[]).map((c) => `${PREFIX[c.ats]}:${c.slug}:`);
+  const { from, w, args } = filters({ ...qy, days: undefined }, false);
+  const T0 = "coalesce(j.posted, j.first_seen)", PAY = "(j.salary_min + coalesce(j.salary_max, j.salary_min)) / 2.0 * (case when j.salary_period = 'hour' then 2080 else 1 end)";
+  const STEADY = `substr(j.id, 1, 3 + instr(substr(j.id, 4), ':')) not in (${late.map(() => "?").join(",")})`; // "gh:slug:"; "az:", "nyc:" are never late
+  const GONE = "j.closed - j.first_seen >= 86400"; // closed the day it was seen = a repost we hid, not a job taken down
+  const rows = (db.prepare(`select j.id, j.company, j.ckey, j.title, j.func, j.seniority, ${T0} t0, j.closed, j.closed is not null and ${GONE} gone, ${STEADY} steady,
+    case when j.salary_min is not null and j.salary_est = 0 then ${PAY} end pay from ${from} where ${w} and (j.closed is null or j.closed >= ? or ${T0} >= ?)`).all(...late, ...args, t - 30 * D, t - 30 * D) as any[])
+    .map((r) => ({ ...r, k: `${r.ckey}|${r.title.toLowerCase()}` }));
+  const distinct = (l: any[]) => new Set(l.map((r) => r.k)).size, pays = (l: any[]) => l.map((r) => r.pay).filter((p) => p != null).sort((a, b) => a - b);
+  const nW = Math.max(0, Math.min(52, Math.floor((t - start) / W))), back = Math.min(3, nW - 1);
+  /** New postings in the last 7 days, and how that compares with the weekly average of the (up to) 3 weeks before. */
+  const trend = (l: any[]) => { const s = l.filter((r) => r.steady), base = back > 0 ? distinct(s.filter((r) => r.t0 >= t - (back + 1) * W && r.t0 < t - W)) / back : 0;
+    return { new7: distinct(l.filter((r) => r.t0 >= t - W)), change: base >= 5 ? Math.round((distinct(s.filter((r) => r.t0 >= t - W)) / base - 1) * 100) : null }; };
+  const summary = (l: any[]) => { const open = l.filter((r) => r.closed == null), p = pays(open), ok = p.length >= 5; // a median of 1–4 salaries is noise
+    return { open: open.length, ...trend(l), pay: ok ? pct(p, 0.5) : null, p25: ok ? pct(p, 0.25) : null, p75: ok ? pct(p, 0.75) : null, withPay: p.length }; };
+  const group = (l: any[], keyOf: (r: any) => string) => { const m = new Map<string, any[]>(); for (const r of l) { const k = keyOf(r); (m.get(k) ?? m.set(k, []).get(k)!).push(r); } return m; };
+  const by = (keyOf: (r: any) => string, more = (_l: any[]) => ({})) => [...group(rows, keyOf)].map(([key, l]) => ({ key, ...summary(l), ...more(l) })).filter((g) => g.open).sort((a, b) => b.open - a.open);
+  // weeks back from now (0 = the last 7 days), each a full week after tracking began
+  const weekly = (col: string, extra: string) => new Map((db.prepare(`select cast((? - ${col}) / ${W} as int) ago, count(distinct j.ckey || '|' || lower(j.title)) n from ${from}
+    where ${w} and ${STEADY} and ${extra} and ${col} >= ? group by ago`).all(t, ...args, ...late, t - nW * W) as any[]).map((r) => [r.ago, r.n]));
+  const born = weekly(T0, "1"), gone = weekly("j.closed", `j.closed is not null and ${GONE}`);
+  const paid = new Map((db.prepare(`with p as (select cast((? - ${T0}) / ${W} as int) ago, ${PAY} pay from ${from} where ${w} and ${STEADY} and j.salary_min is not null and j.salary_est = 0 and ${T0} >= ?),
+    r as (select ago, pay, row_number() over (partition by ago order by pay) rn, count(*) over (partition by ago) n from p) select ago, pay from r where rn = n / 2 + 1 and n >= 5`)
+    .all(t, ...args, ...late, t - nW * W) as any[]).map((r) => [r.ago, Math.round(r.pay)]));
+  const open = rows.filter((r) => r.closed == null);
+  return { since: start, at: t, ...summary(rows),
+    weeks: Array.from({ length: nW }, (_, i) => { const ago = nW - 1 - i; return { from: t - (ago + 1) * W, new: born.get(ago) ?? 0, closed: gone.get(ago) ?? 0, pay: paid.get(ago) ?? null }; }),
+    fields: by((r) => r.func), levels: by((r) => r.seniority),
+    companies: by((r) => r.ckey, (l) => { const o = l.filter((r) => r.closed == null);
+      return { name: o[0]?.company ?? l[0].company, new30: distinct(l.filter((r) => r.t0 >= t - 30 * D)), closed30: distinct(l.filter((r) => r.gone && r.closed >= t - 30 * D)), stale: o.length ? Math.round((o.filter((r) => r.t0 < t - 60 * D).length / o.length) * 100) : 0 }; }).slice(0, 20),
+    roles: by((r) => role(r.title)).filter((g) => g.key).slice(0, 20),
+    grid: Object.fromEntries([...group(open, (r) => r.func)].map(([f, l]) => [f, Object.fromEntries([...group(l, (r) => r.seniority)].map(([s, m]) => [s, pays(m)] as const).filter(([, p]) => p.length >= 5).map(([s, p]) => [s, { pay: pct(p, 0.5), n: p.length }]))])) };
+}
+
+/** Jobs are kept a year after they close (the market's trends reach back that far), then deleted with their search
+ *  rows. Embeddings only serve open jobs, so a closed job's goes at once (a reopened job is embedded again). */
+// ponytail: a year of full-text rows is ~7 GB at today's rate (546 MB of FTS for 37 days); drop closed jobs' FTS bodies if disk gets tight
+export function prune() {
+  const old = now() - 365 * 86400;
+  batch(() => {
+    db.prepare("delete from jobs_fts2 where id in (select id from jobs where closed < ?)").run(old);
+    db.prepare("delete from jobs where closed < ?").run(old);
+    db.exec("delete from emb where id in (select id from jobs where closed is not null)");
+  });
+}
+
 /** Hourly: employer boards and city jobs (liveness), dedupe. Daily (at the first run after 6 am): Adzuna and remote boards. */
 let running = false;
 export async function jobsTick() {
@@ -379,8 +466,8 @@ export async function jobsTick() {
     await refreshNycJobs().catch((e) => console.log("jobs nyc:", e.message));
     const last = (db.prepare("select max(at) t from runs where what = 'adzuna'").get() as any)?.t ?? 0;
     if (now() - last > 20 * 3600) { await refreshAdzuna().catch((e) => console.log("jobs adzuna:", e.message)); await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); await discover().catch((e) => console.log("jobs discover:", e.message)); }
-    dedupe();
-  } finally { running = false; }
+    dedupe(); prune();
+  } finally { running = false; marketCache.clear(); }
 }
 export function startJobs() { setTimeout(jobsTick, 30_000); setInterval(jobsTick, 3600_000); }
 
@@ -399,13 +486,8 @@ export const needEmbedding = (limit = 64) => (db.prepare("select j.id, j.title, 
 export const saveEmbedding = (id: string, v: Float32Array) => db.prepare("insert or replace into emb values (?, ?)").run(id, new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
 /** Every open job matching the filters (no text query), with its embedding, for ranking against a résumé. */
 export function candidates(qy: Query) {
-  const where = ["j.closed is null", "j.dup_of is null"], args: any[] = [];
-  const inList = (col: string, v?: string) => { const l = (v ?? "").split(",").filter(Boolean); if (l.length) { where.push(`${col} in (${l.map(() => "?").join(",")})`); args.push(...l); } };
-  inList("j.region", qy.region); inList("j.remote", qy.remote); inList("j.seniority", qy.seniority); inList("j.func", qy.func); inList("j.source", qy.source);
-  if (qy.salaryMin) { where.push("(case when j.salary_period = 'hour' then j.salary_max * 2080 else j.salary_max end) >= ?"); args.push(qy.salaryMin); }
-  if (qy.days) { where.push("coalesce(j.posted, j.first_seen) >= ?"); args.push(now() - qy.days * 86400); }
-  if (qy.hideFlagged) where.push("(j.flags is null or j.flags = '[]')");
-  return (db.prepare(`select j.id, j.title, j.company, j.region, j.remote, j.url, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.flags, j.source, j.posted, j.first_seen, e.v from jobs j join emb e on e.id = j.id where ${where.join(" and ")}`).all(...args) as any[])
+  const { w, args } = filters({ ...qy, q: undefined });
+  return (db.prepare(`select j.id, j.title, j.company, j.region, j.remote, j.url, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.flags, j.source, j.posted, j.first_seen, e.v from jobs j join emb e on e.id = j.id where ${w}`).all(...args) as any[])
     .map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), v: new Float32Array(new Uint8Array(r.v).buffer) }));
 }
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;

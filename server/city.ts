@@ -11,7 +11,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { geocode, inNyc, trafficCameras, camerasNow, lookAtCameras, webSearch } from "./nycapi.ts";
 import { aircraft, km } from "./sky.ts";
-import { OLLAMA, LOCAL_MODEL, whenIdle, inLine, llmJson } from "./llm.ts";
+import { OLLAMA, LOCAL_MODEL, whenIdle, inLine, llmJson, faithful } from "./llm.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
@@ -825,10 +825,7 @@ export function facts(scope = "city") {
   add(`In total: ${inc.length} incidents now (${inc.filter((c) => c.sev >= 2).length} of severity 2 or more), ${closures} road or street closures`);
   return F;
 }
-const nums = (s: string) => (s.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
-/** A bullet stays only if it cites facts that exist and every number in it appears in those facts. */
-export const faithful = (b: { text: string; facts: string[] }, F: Map<string, string>) =>
-  !!b.facts?.length && b.facts.every((id) => F.has(id)) && nums(b.text).every((n) => b.facts.some((id) => nums(F.get(id)!).includes(n)));
+export { faithful }; // in llm.ts, shared with the jobs market overview
 const BRIEF = { type: "object", required: ["bullets"], properties: { bullets: { type: "array", items: { type: "object", required: ["text", "facts"],
   properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } } } } };
 /** The local Qwen words a brief from numbered facts; bullets that don't check out against their facts are dropped,

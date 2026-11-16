@@ -13,6 +13,8 @@
     h1 { margin: 0 0 4px; }
     .hint { color: var(--muted); font-size: 13px; }
     .layout { display: grid; grid-template-columns: 270px 1fr; gap: 18px; margin-top: 14px; }
+    [hidden] { display: none !important; } /* the tabs hide whole views; .layout's display: grid would otherwise win */
+    .layout > *, .grid2 > * { min-width: 0; } /* a wide table scrolls in its box instead of widening the page */
     @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
     aside fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 8px 0; }
     aside legend { font-weight: 700; font-size: 13px; padding: 0; }
@@ -37,6 +39,32 @@
     .saved li { display: flex; gap: 6px; align-items: center; font-size: 14px; }
     .saved li a { flex: 1; }
     .new { color: var(--accent); font-weight: 700; font-size: 12px; }
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 14px 0 0; overflow-x: auto; }
+    .tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+    .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+    .kpi { padding: 10px 12px; } .kpi b { display: block; font-size: 26px; line-height: 1.15; } .kpi span { color: var(--muted); font-size: 12.5px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; } @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+    figure.card { margin: 0; padding: 10px 14px; } figcaption { font-size: 14px; margin-bottom: 8px; }
+    .cols { display: flex; align-items: flex-end; gap: 3px; height: 130px; border-bottom: 1px solid var(--line); }
+    .cols > div { flex: 1; display: flex; gap: 1px; align-items: flex-end; height: 100%; }
+    .cols i { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 1px; } .cols i.b, .sw.b { background: var(--muted); opacity: .6; }
+    .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--accent); vertical-align: -1px; margin: 0 2px 0 8px; }
+    .axis { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .scrollx { overflow-x: auto; }
+    table.mk { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.mk th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 4px 6px; white-space: nowrap; }
+    table.mk td { padding: 5px 6px; border-bottom: 1px solid var(--line); } table.mk .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.mk tr[data-go] { cursor: pointer; } table.mk tr[data-go]:hover, table.mk tr[data-go]:focus { background: color-mix(in srgb, var(--accent) 9%, transparent); outline: none; }
+    .paybar { position: relative; height: 8px; background: var(--line); border-radius: 4px; min-width: 90px; }
+    .paybar i { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 4px; } .paybar b { position: absolute; top: -3px; width: 3px; height: 14px; margin-left: -1px; background: var(--fg); border-radius: 2px; }
+    .up { color: var(--ok); } .down { color: var(--warn); }
+    .funnel div { display: grid; grid-template-columns: 80px 1fr 70px; gap: 8px; align-items: center; font-size: 14px; margin: 5px 0; }
+    .funnel i { display: block; height: 14px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .trkrow { align-items: center; gap: 6px 10px; margin-top: 6px; } .trkrow input[type=text] { flex: 1 1 180px; }
+    .seg button[aria-pressed="true"] { font-weight: 700; outline: 2px solid var(--accent); }
+    h2.sec { font-size: 18px; margin: 20px 0 6px; }
+    .brief li { margin: 4px 0; } .brief sup { color: var(--muted); cursor: help; }
   </style>
 </head>
 <body>
@@ -45,11 +73,35 @@
   <h1>Jobs that are real and still open</h1>
   <p class="lede">New York City, New Jersey and the metro, and remote in the US. Most jobs come straight from employers' own job boards and are re-checked <b>every hour</b>: when an employer takes a job down, it drops off here. City jobs come from NYC's open data; Adzuna adds more, without gig ads or reposts. Duplicates are merged, and anything that looks off is flagged with the reason.</p>
   <p class="hint" id="stats"></p>
-  <p><a href="/nyc/resume.html">📄 Check how a hiring system reads your résumé</a> <span class="hint">(runs in your browser)</span> · <button id="matchBtn" type="button">✨ Jobs that fit my résumé</button></p>
-  <section id="matchBox" class="card" style="padding:10px 14px" hidden></section>
-  <details class="card" id="trackBox" style="padding:10px 14px;margin-top:10px"><summary><b>📋 My applications</b> <span class="hint" id="trackSum"></span></summary><div id="track"></div></details>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" data-tab="jobs" aria-selected="true">🔎 Jobs</button>
+    <button type="button" role="tab" data-tab="market" aria-selected="false">📊 Market</button>
+    <button type="button" role="tab" data-tab="mine" aria-selected="false">📋 My applications <span class="hint" id="mineN"></span></button>
+  </nav>
+  <div id="v-top">
+    <p><a href="/nyc/resume.html">📄 Check and tailor your résumé</a> <span class="hint">(runs in your browser)</span> · <button id="matchBtn" type="button">✨ Jobs that fit my résumé</button></p>
+    <section id="matchBox" class="card" style="padding:10px 14px" hidden></section>
+  </div>
 
-  <div class="layout">
+  <section id="v-mine" hidden>
+    <h2 class="sec">My applications</h2>
+    <p class="hint">Kept only in this browser. Save jobs with ☆ on the Jobs tab, or build a tailored résumé for one on the <a href="/nyc/resume.html">résumé page</a>: it lands here with its match score.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2"><figure class="card"><figcaption><b>How far your applications got</b></figcaption><div class="funnel" id="funnel"></div></figure>
+      <figure class="card"><figcaption><b>Applications sent, by week</b></figcaption><div id="perWeek"></div></figure></div>
+    <div class="bar">
+      <span class="seg" role="group" aria-label="Show"><button type="button" data-show="all" aria-pressed="true">All</button> <button type="button" data-show="active" aria-pressed="false">In progress</button> <button type="button" data-show="cv" aria-pressed="false">With a tailored résumé</button> <button type="button" data-show="due" aria-pressed="false">Follow-up due</button></span>
+      <span style="margin-left:auto"><button type="button" id="addJob">+ Add a job from elsewhere</button> <button type="button" id="backup">⤓ Back up</button> <label class="button" style="cursor:pointer">⤒ Restore<input type="file" id="restoreFile" accept=".json,application/json" hidden></label></span>
+    </div>
+    <form id="addForm" class="card" style="padding:10px 14px" hidden>
+      <div class="bar"><input id="aTitle" required placeholder="Job title" aria-label="Job title"> <input id="aCompany" placeholder="Company" aria-label="Company"> <input id="aUrl" type="url" placeholder="Link (optional)" aria-label="Link">
+        <select id="aStatus" aria-label="Stage"></select> <button type="submit">Add</button></div>
+    </form>
+    <p class="hint" id="restoreMsg" aria-live="polite"></p>
+    <div id="track"></div>
+  </section>
+
+  <div class="layout" id="v-search">
     <details class="rail" open>
       <summary>Filters</summary>
       <aside id="rail">
@@ -82,6 +134,7 @@
         <label class="hint"><input type="checkbox" id="title"> titles only</label>
         <label class="hint">sort <select id="sort"><option value="">best match / newest</option><option value="newest">newest</option><option value="salary">highest pay</option></select></label>
       </form>
+      <div id="v-list">
       <p class="hint" id="count" aria-live="polite"></p>
       <div id="list"></div>
       <div class="pager"><button id="prev" type="button">← Previous</button><span class="hint" id="pageInfo"></span><button id="next" type="button">Next →</button></div>
@@ -93,6 +146,8 @@
           <li>Salaries are what the employer posted; Adzuna's estimates are marked "est." and don't count as stated pay.</li>
         </ul>
       </details>
+      </div>
+      <div id="v-market" hidden aria-live="polite"></div>
     </section>
   </div>
 </main>
@@ -149,7 +204,8 @@ async function run(keepPage = false) {
   filterSummary();
   if (!keepPage) page = 0;
   const p = state(); restore(p);
-  history.replaceState(null, "", `${location.pathname}${p.toString() ? `?${p}` : ""}`);
+  history.replaceState(null, "", `${location.pathname}${p.toString() ? `?${p}` : ""}${location.hash}`);
+  if (tab === "market") loadMarket();
   if ($("newOnly").checked && lastVisit) p.set("days", String(Math.max(1, Math.ceil((Date.now() / 1000 - lastVisit) / 86400))));
   p.set("page", String(page));
   $("count").textContent = "Searching…";
@@ -173,7 +229,7 @@ async function run(keepPage = false) {
 }
 $("list").addEventListener("click", async (e) => {
   const tb = e.target.closest("[data-track]");
-  if (tb) { const r = last.rows[+tb.dataset.track], t = tracked(); if (!t[r.id]) { t[r.id] = { title: r.title, company: r.company, url: r.url, status: "saved", saved: Date.now(), notes: "", follow: "" }; putTracked(t); } tb.textContent = `📋 ${t[r.id].status}`; renderTrack(); $("trackBox").open = true; return; }
+  if (tb) { const r = last.rows[+tb.dataset.track], t = tracked(); if (!t[r.id]) { t[r.id] = { title: r.title, company: r.company, url: r.url, status: "saved", saved: Date.now(), notes: "", follow: "" }; putTracked(t); } tb.textContent = `📋 ${t[r.id].status}`; renderTrack(); return; }
   const card = e.target.closest(".job"); if (!card || e.target.closest("a, button")) return;
   const box = card.querySelector(".detail"), r = last.rows[+card.dataset.i];
   if (!box.hidden) { box.hidden = true; card.classList.remove("open"); return; }
@@ -195,27 +251,172 @@ for (const id of ["title", "sort"]) $(id).addEventListener("change", () => run()
 for (const id of ["company", "exclude"]) $(id).addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 500); });
 $("prev").onclick = () => { page--; run(true); scrollTo(0, 0); }; $("next").onclick = () => { page++; run(true); scrollTo(0, 0); };
 
-// ---------- my applications (this browser) ----------
-const TK = "jobs-tracker", STAGES = ["saved", "applied", "interview", "offer", "rejected", "withdrawn"];
+// ---------- my applications (this browser): a dashboard ----------
+// An entry: { title, company, url, status, saved, notes, follow, at: { stage: when first reached }, cv: { text, cov0, cov1, at } }.
+// cv is the tailored résumé built for this job on resume.html (which writes it here). "applied" (a number) is the old field.
+const TK = "jobs-tracker", STAGES = ["saved", "applied", "interview", "offer", "rejected", "withdrawn"], DONE = ["rejected", "withdrawn", "offer"];
 const tracked = () => { try { return JSON.parse(localStorage.getItem(TK) ?? "{}"); } catch { return {}; } };
-const putTracked = (t) => { try { localStorage.setItem(TK, JSON.stringify(t)); } catch {} };
-async function renderTrack() {
-  const t = tracked(), ids = Object.keys(t), today = new Date().toISOString().slice(0, 10);
-  const due = ids.filter((id) => t[id].follow && t[id].follow <= today && !["rejected", "withdrawn", "offer"].includes(t[id].status)).length;
-  $("trackSum").textContent = ids.length ? `${ids.length} job${ids.length > 1 ? "s" : ""} · ${STAGES.map((s) => [s, ids.filter((id) => t[id].status === s).length]).filter(([, n]) => n).map(([s, n]) => `${n} ${s}`).join(", ")}${due ? ` · ${due} follow-up${due > 1 ? "s" : ""} due` : ""}` : "none yet: press ☆ Save on a job";
-  $("track").innerHTML = ids.length ? `<table style="width:100%;font-size:14px"><tr><th align="left">Job</th><th>Stage</th><th>Follow up</th><th align="left">Notes</th><th></th></tr>${ids.sort((a, b) => STAGES.indexOf(t[a].status) - STAGES.indexOf(t[b].status)).map((id) => `<tr data-id="${esc(id)}">
-    <td><a href="${esc(t[id].url)}" target="_blank" rel="noopener">${esc(t[id].title)}</a><br><span class="hint">${esc(t[id].company)}</span> <span class="hint" data-closed></span></td>
-    <td><select data-f="status">${STAGES.map((s) => `<option ${s === t[id].status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
-    <td><input type="date" data-f="follow" value="${esc(t[id].follow)}" ${t[id].follow && t[id].follow <= today ? 'style="outline:2px solid var(--accent)"' : ""}></td>
-    <td><input type="text" data-f="notes" value="${esc(t[id].notes)}" placeholder="recruiter, referral, salary…" style="width:100%"></td>
-    <td><button type="button" data-rm="1" title="Remove">✕</button></td></tr>`).join("")}</table>` : "";
-  // a job you're tracking that the employer has taken down
-  for (const id of ids) getJSON(`/api/jobs/job?id=${encodeURIComponent(id)}`).then((j) => { if (j.closed) mark(id, `closed ${new Date(j.closed * 1000).toLocaleDateString()}`); }).catch(() => mark(id, "no longer listed"));
+const putTracked = (t) => { try { localStorage.setItem(TK, JSON.stringify(t)); } catch { $("restoreMsg").textContent = "This browser wouldn't save that (storage full or blocked): back up and remove old entries."; } };
+const RANK = { saved: 0, applied: 1, interview: 2, offer: 3 };
+const appliedAt = (e) => e.at?.applied ?? e.applied ?? null;
+/** The furthest stage an application reached (a rejection after an interview still counts the interview). */
+const reached = (e) => Math.max(RANK[e.status] ?? 0, e.at?.offer ? 3 : e.at?.interview ? 2 : appliedAt(e) ? 1 : 0);
+const today = () => new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd, local
+const isDue = (e) => e.follow && e.follow <= today() && !DONE.includes(e.status);
+const daysAgo = (ms) => { const d = Math.floor((Date.now() - ms) / 86400000); return d < 1 ? "today" : d === 1 ? "yesterday" : `${d} days ago`; };
+const closedSeen = new Map(); // job id → "closed …" text, checked once per visit (not on every edit)
+let show = "all";
+function renderTrack() {
+  const t = tracked(), ids = Object.keys(t), E = ids.map((id) => t[id]), due = E.filter(isDue).length;
+  $("mineN").textContent = ids.length ? `${ids.length}${due ? ` · ${due} due` : ""}` : "";
+  if ($("v-mine").hidden) return;
+  const applied = E.filter((e) => reached(e) >= 1), inter = E.filter((e) => reached(e) >= 2), offers = E.filter((e) => reached(e) >= 3), cvs = E.filter((e) => e.cv);
+  const week = Date.now() - 7 * 86400000, rate = applied.length ? Math.round((inter.length / applied.length) * 100) : null;
+  const tile = (n, label, sub = "", warn = false) => `<div class="kpi card"><b${warn ? ' style="color:var(--accent)"' : ""}>${n}</b><span>${label}${sub ? `<br>${sub}` : ""}</span></div>`;
+  $("kpis").innerHTML = tile(ids.length, "jobs tracked", `${E.filter((e) => reached(e) === 0 && !DONE.includes(e.status)).length} not applied yet`)
+    + tile(applied.length, "applied", `${applied.filter((e) => appliedAt(e) >= week).length} in the last 7 days`)
+    + tile(rate == null ? "—" : `${rate}%`, "got an interview", "focused searchers average about 8% (<a href=\"https://huntr.co/research/job-search-trends-q3-2026\" target=\"_blank\" rel=\"noopener\">Huntr, Q3 2026</a>)")
+    + tile(offers.length, offers.length === 1 ? "offer" : "offers")
+    + tile(due, "follow-ups due", due ? "highlighted below" : "", due > 0)
+    + tile(cvs.length, "tailored résumés", cvs.length ? `skills match ${Math.round(cvs.reduce((a, e) => a + (e.cv.cov0 ?? 0), 0) / cvs.length)}% → ${Math.round(cvs.reduce((a, e) => a + (e.cv.cov1 ?? 0), 0) / cvs.length)}% on average` : "build one on the résumé page");
+  const steps = [["Saved", ids.length], ["Applied", applied.length], ["Interview", inter.length], ["Offer", offers.length]];
+  $("funnel").innerHTML = ids.length ? steps.map(([l, n], i) => `<div><span>${l}</span><i style="width:${(n / ids.length) * 100}%" title="${n} of ${ids.length}"></i><span class="hint">${n}${i ? ` · ${steps[i - 1][1] ? Math.round((n / steps[i - 1][1]) * 100) : 0}%` : ""}</span></div>`).join("") : `<p class="hint">Nothing yet.</p>`;
+  const W = 7 * 86400000, weeks = Array.from({ length: 8 }, (_, i) => { const a = Date.now() - (8 - i) * W; return { a, n: applied.filter((e) => appliedAt(e) >= a && appliedAt(e) < a + W).length }; }), top = Math.max(1, ...weeks.map((w) => w.n));
+  $("perWeek").innerHTML = `<div class="cols" style="height:90px">${weeks.map((w) => `<div title="Week of ${new Date(w.a).toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${w.n} sent"><i style="height:${(w.n / top) * 100}%"></i></div>`).join("")}</div><div class="axis"><span>8 weeks ago</span><span>this week</span></div>
+    <p class="hint">Fewer, tailored applications do better: people who sent 11–20 a quarter got interviews from 8% of them, people who sent 100+ from 2.4% (Huntr, Q3 2026).</p>`;
+  for (const b of document.querySelectorAll(".seg [data-show]")) b.setAttribute("aria-pressed", String(b.dataset.show === show));
+  const pick = { all: () => true, active: (e) => !DONE.includes(e.status), cv: (e) => e.cv, due: isDue }[show];
+  const list = ids.filter((id) => pick(t[id])).sort((a, b) => (isDue(t[b]) - isDue(t[a])) || STAGES.indexOf(t[a].status) - STAGES.indexOf(t[b].status) || (t[b].saved ?? 0) - (t[a].saved ?? 0));
+  $("track").innerHTML = list.map((id) => { const e = t[id], real = !/^(paste|manual):/.test(id);
+    return `<article class="job card" data-id="${esc(id)}" style="cursor:default">
+    <h3>${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a>` : esc(e.title)}</h3>
+    <div class="meta"><b>${esc(e.company)}</b><span>${appliedAt(e) ? `applied ${daysAgo(appliedAt(e))}` : e.saved ? `saved ${daysAgo(e.saved)}` : ""}</span><span data-closed>${closedSeen.get(id) ? `<span class="chip flag">${esc(closedSeen.get(id))}</span>` : ""}</span>
+      ${e.cv ? `<span class="chip ok" title="Skills this job names that your résumé shows: before → the version you built">📄 tailored résumé · match ${e.cv.cov0 ?? "?"}% → ${e.cv.cov1 ?? "?"}%</span>` : ""}</div>
+    <div class="meta trkrow"><select data-f="status" aria-label="Stage">${STAGES.map((s) => `<option ${s === e.status ? "selected" : ""}>${s}</option>`).join("")}</select>
+      <label>follow up <input type="date" data-f="follow" value="${esc(e.follow)}" ${isDue(e) ? 'style="outline:2px solid var(--accent)"' : ""}></label>
+      <input type="text" data-f="notes" value="${esc(e.notes)}" placeholder="recruiter, referral, salary…" aria-label="Notes">
+      ${e.cv ? `<button type="button" data-cv="1">⤓ Résumé</button>` : ""}${real ? `<a href="/nyc/resume.html?job=${encodeURIComponent(id)}">${e.cv ? "Edit résumé" : "🎯 Tailor a résumé"}</a>` : ""}
+      <button type="button" data-rm="1" title="Remove" aria-label="Remove ${esc(e.title)}">✕</button></div></article>`; }).join("")
+    || `<p class="hint">${ids.length ? "Nothing in this view." : "Nothing tracked yet: press ☆ Save on a job, add one from elsewhere, or tailor a résumé to a job."}</p>`;
+  // a job you're tracking that the employer has taken down (asked once per visit)
+  for (const id of list.filter((id) => !/^(paste|manual):/.test(id) && !closedSeen.has(id))) {
+    closedSeen.set(id, "");
+    getJSON(`/api/jobs/job?id=${encodeURIComponent(id)}`).then((j) => j.closed && note(id, `closed ${new Date(j.closed * 1000).toLocaleDateString()}`)).catch(() => note(id, "no longer listed"));
+  }
 }
-const mark = (id, text) => { const el = document.querySelector(`#track tr[data-id="${CSS.escape(id)}"] [data-closed]`); if (el) el.innerHTML = `<span class="chip flag">${esc(text)}</span>`; };
-$("track").addEventListener("change", (e) => { const tr = e.target.closest("[data-id]"), f = e.target.dataset.f; if (!tr || !f) return; const t = tracked(); t[tr.dataset.id][f] = e.target.value.slice(0, 300); if (f === "status" && e.target.value === "applied") t[tr.dataset.id].applied = Date.now(); putTracked(t); if (f !== "notes") renderTrack(); });
-$("track").addEventListener("click", (e) => { const tr = e.target.closest("[data-id]"); if (tr && e.target.dataset.rm) { const t = tracked(); delete t[tr.dataset.id]; putTracked(t); renderTrack(); } });
-renderTrack();
+const note = (id, text) => { closedSeen.set(id, text); const el = document.querySelector(`#track [data-id="${CSS.escape(id)}"] [data-closed]`); if (el) el.innerHTML = `<span class="chip flag">${esc(text)}</span>`; };
+$("track").addEventListener("change", (e) => {
+  const card = e.target.closest("[data-id]"), f = e.target.dataset.f; if (!card || !f) return;
+  const t = tracked(), x = t[card.dataset.id]; x[f] = e.target.value.slice(0, 300);
+  if (f === "status") { x.at = { ...x.at }; x.at[x.status] ??= Date.now();
+    if (x.status === "applied" && !x.follow) x.follow = new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-CA"); } // no word in a week: follow up
+  putTracked(t); if (f !== "notes") renderTrack();
+});
+$("track").addEventListener("click", (e) => {
+  const card = e.target.closest("[data-id]"); if (!card) return; const t = tracked(), x = t[card.dataset.id];
+  if (e.target.dataset.rm && confirm(`Remove “${x.title}” from your applications?${x.cv ? " Its tailored résumé goes too." : ""}`)) { delete t[card.dataset.id]; putTracked(t); renderTrack(); }
+  if (e.target.dataset.cv) download(`resume-${(x.company || x.title).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.txt`, new Blob([x.cv.text], { type: "text/plain" }));
+});
+document.querySelector(".seg").addEventListener("click", (e) => { if (e.target.dataset.show) { show = e.target.dataset.show; renderTrack(); } });
+$("aStatus").innerHTML = STAGES.slice(0, 3).map((s) => `<option>${s}</option>`).join("");
+$("addJob").onclick = () => { $("addForm").hidden = !$("addForm").hidden; if (!$("addForm").hidden) $("aTitle").focus(); };
+$("addForm").onsubmit = (e) => {
+  e.preventDefault(); const t = tracked(), now = Date.now(), status = $("aStatus").value;
+  t[`manual:${now}`] = { title: $("aTitle").value.trim().slice(0, 200), company: $("aCompany").value.trim().slice(0, 120), url: /^https?:\/\//.test($("aUrl").value) ? $("aUrl").value : "", status, saved: now, notes: "", follow: status === "applied" ? new Date(now + 7 * 86400000).toLocaleDateString("en-CA") : "", at: { [status]: now } };
+  putTracked(t); $("addForm").reset(); $("addForm").hidden = true; renderTrack();
+};
+const download = (name, blob) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+$("backup").onclick = () => download(`jobs-backup-${today()}.json`, new Blob([JSON.stringify({ kind: "ihor.sh jobs", tracker: tracked(), saved: saved() }, null, 1)], { type: "application/json" }));
+$("restoreFile").onchange = async () => {
+  const f = $("restoreFile").files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text()); if (d.kind !== "ihor.sh jobs" || typeof d.tracker !== "object") throw new Error("not a backup from this page");
+    const t = tracked(), had = Object.keys(t).length; for (const [id, e] of Object.entries(d.tracker)) if (!t[id] && e && typeof e.title === "string") t[id] = e; // what's here already wins
+    putTracked(t); const s = saved(); putSaved([...s, ...(d.saved ?? []).filter((x) => x?.q && !s.some((y) => y.q === x.q))]);
+    $("restoreMsg").textContent = `Restored ${Object.keys(t).length - had} job${Object.keys(t).length - had === 1 ? "" : "s"} (the ones already here were kept as they are).`; renderTrack(); renderSaved();
+  } catch (err) { $("restoreMsg").textContent = `Couldn't restore that file: ${err.message}.`; }
+  $("restoreFile").value = "";
+};
+
+// ---------- the market: the same filters, as numbers ----------
+let lastMarket = null, mkReq = 0;
+const k$ = (v) => (v == null ? "—" : `$${Math.round(v / 1000)}k`);
+const day = (t) => new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const vsTxt = (c) => (c == null ? `<span class="hint">—</span>` : `<span class="${c >= 0 ? "up" : "down"}">${c >= 0 ? "▲" : "▼"} ${Math.abs(c)}%</span>`);
+const titleCase = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+async function loadMarket() {
+  const p = state(); p.delete("days"); p.delete("sort");
+  const my = ++mkReq; $("brief") && ($("brief").innerHTML = "");
+  if (!lastMarket) $("v-market").innerHTML = `<p class="hint">Counting the market…</p>`;
+  try { const m = await getJSON(`/api/jobs/market?${p}`); if (my === mkReq) { lastMarket = m; renderMarket(m); } }
+  catch (e) { if (my === mkReq) $("v-market").innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
+}
+function renderMarket(m) {
+  const all = [...m.fields, ...m.levels, ...m.companies, ...m.roles], max = Math.max(1, ...all.map((g) => g.p75 ?? 0));
+  const payBar = (g) => (g.pay == null ? `<span class="hint">${g.withPay ? `only ${g.withPay} stated` : "none stated"}</span>`
+    : `<div class="paybar" title="middle half ${k$(g.p25)}–${k$(g.p75)}, median ${k$(g.pay)}, from ${g.withPay} salaries"><i style="left:${(g.p25 / max) * 100}%;width:${((g.p75 - g.p25) / max) * 100}%"></i><b style="left:${(g.pay / max) * 100}%"></b></div>`);
+  const table = (rows, cols, go) => `<div class="scrollx"><table class="mk"><thead><tr>${cols.map(([h, , n]) => `<th${n ? ' class="n"' : ""}>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr${go ? ` data-go="${esc(go(r))}" tabindex="0" title="Show these jobs"` : ""}>${cols.map(([, f, n]) => `<td${n ? ' class="n"' : ""}>${f(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const base = [["Open", (r) => r.open.toLocaleString(), 1], ["New, 7 days", (r) => r.new7.toLocaleString(), 1], ["vs. the 3 weeks before", (r) => vsTxt(r.change), 1], ["Median pay", (r) => k$(r.pay), 1], ["Middle half of pay", payBar]];
+  const wk = m.weeks, top = Math.max(1, ...wk.flatMap((w) => [w.new, w.closed])), topPay = Math.max(1, ...wk.map((w) => w.pay ?? 0));
+  const levels = Object.keys(LABEL.seniority).filter((l) => Object.values(m.grid).some((g) => g[l])), cells = Object.values(m.grid).flatMap((g) => Object.values(g).map((c) => c.pay)), lo = Math.min(...cells), hi = Math.max(...cells);
+  $("v-market").innerHTML = !m.open ? `<p>No open jobs match these filters. Loosen one on the left.</p>` : `
+    <div class="kpis">
+      <div class="kpi card"><b>${m.open.toLocaleString()}</b><span>open jobs</span></div>
+      <div class="kpi card"><b>${m.new7.toLocaleString()}</b><span>new in the last 7 days ${vsTxt(m.change)}<br>vs. the weekly average of the 3 weeks before</span></div>
+      <div class="kpi card"><b>${k$(m.pay)}</b><span>median stated pay a year<br>middle half ${k$(m.p25)}–${k$(m.p75)}</span></div>
+      <div class="kpi card"><b>${m.open ? Math.round((m.withPay / m.open) * 100) : 0}%</b><span>state their pay (${m.withPay.toLocaleString()})</span></div>
+    </div>
+    <div class="card" style="padding:10px 14px"><b>✨ AI overview and advice</b> <span class="hint">for the filters you've set</span> <button type="button" id="briefBtn">Write it</button> <span class="hint" id="briefStep" aria-live="polite"></span><div id="brief" class="brief"></div></div>
+    ${wk.length ? `<div class="grid2">
+      <figure class="card"><figcaption><b>Postings by week</b><span class="sw"></span>new<span class="sw b"></span>taken down</figcaption>
+        <div class="cols" role="img" aria-label="New and taken-down postings for each of the last ${wk.length} weeks">${wk.map((w) => `<div title="Week of ${day(w.from)}: ${w.new.toLocaleString()} new, ${w.closed.toLocaleString()} taken down"><i style="height:${(w.new / top) * 100}%"></i><i class="b" style="height:${(w.closed / top) * 100}%"></i></div>`).join("")}</div>
+        <div class="axis"><span>week of ${day(wk[0].from)}</span><span>${wk.length} weeks</span><span>this week</span></div></figure>
+      <figure class="card"><figcaption><b>Median pay of new postings, by week</b></figcaption>
+        <div class="cols" role="img" aria-label="Median stated pay of the postings that were new each week">${wk.map((w) => `<div title="Week of ${day(w.from)}: ${w.pay ? `median ${k$(w.pay)}` : "too few salaries"}"><i style="height:${((w.pay ?? 0) / topPay) * 100}%"></i></div>`).join("")}</div>
+        <div class="axis"><span>${k$(wk.find((w) => w.pay)?.pay)}</span><span>bars start at $0</span><span>${k$(wk.at(-1).pay)}</span></div></figure></div>` : ""}
+    <h2 class="sec">By field</h2>${table(m.fields, [["Field", (r) => esc(LABEL.func[r.key] ?? r.key)], ...base], (r) => `func=${r.key}`)}
+    <h2 class="sec">By level</h2>${table(m.levels, [["Level", (r) => esc(LABEL.seniority[r.key] ?? r.key)], ...base], (r) => `seniority=${r.key}`)}
+    <h2 class="sec">Who's hiring</h2><p class="hint">The 20 employers with the most open jobs here. Many postings that are old and few taken down can mean evergreen or ghost postings; many new and many filled means real hiring.</p>
+    ${table(m.companies, [["Employer", (r) => esc(r.name)], ["Open", (r) => r.open.toLocaleString(), 1], ["Posted, 30 days", (r) => r.new30, 1], ["Taken down, 30 days", (r) => r.closed30, 1], ["Open over 60 days", (r) => `<span class="${r.stale >= 50 ? "down" : ""}">${r.stale}%</span>`, 1], ["Median pay", (r) => k$(r.pay), 1], ["Middle half of pay", payBar]], (r) => `company=${r.name}`)}
+    <h2 class="sec">Positions</h2>${table(m.roles, [["Position (any level)", (r) => esc(titleCase(r.key))], ...base], (r) => `q="${r.key}"&title=1`)}
+    ${levels.length ? `<h2 class="sec">Median pay by field and level</h2><div class="scrollx"><table class="mk"><thead><tr><th>Field</th>${levels.map((l) => `<th class="n">${esc(LABEL.seniority[l])}</th>`).join("")}</tr></thead><tbody>${m.fields.filter((f) => m.grid[f.key] && Object.keys(m.grid[f.key]).length).map((f) => `<tr><td>${esc(LABEL.func[f.key] ?? f.key)}</td>${levels.map((l) => { const c = m.grid[f.key][l];
+      return c ? `<td class="n" style="background:color-mix(in srgb, var(--accent) ${Math.round(6 + (hi > lo ? (c.pay - lo) / (hi - lo) : 0.5) * 44)}%, transparent)" title="${c.n} salaries">${k$(c.pay)}</td>` : `<td class="n hint">·</td>`; }).join("")}</tr>`).join("")}</tbody></table></div><p class="hint">Cells with fewer than 5 stated salaries are left out.</p>` : ""}
+    <p class="hint">How it's counted: open jobs and pay are what's open now (stated pay only, hourly × 2,080; Adzuna's estimates left out). Trends count distinct postings (company + title), dated by the employer's posting date, since ${day(m.since)}; employers this page started reading later are in today's numbers but not in the trends, so new coverage doesn't look like growth. The date filter doesn't apply here: time is the charts' axis. Click a row to see its jobs.</p>`;
+}
+$("v-market").addEventListener("click", (e) => {
+  if (e.target.id === "briefBtn") return writeBrief();
+  const tr = e.target.closest("[data-go]"); if (!tr) return;
+  const p = state(); for (const [k, v] of new URLSearchParams(tr.dataset.go)) p.set(k, v);
+  restore(p); facets(last?.facets); setTab("jobs"); run();
+});
+$("v-market").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.go) e.target.click(); });
+const poll = async (id, step) => { for (;;) { await new Promise((r) => setTimeout(r, 2500)); const j = await getJSON(`/api/nyc/brief-job?id=${id}`); if (j.error) throw new Error(j.error); if (j.result) return j.result; step(j.step); } };
+async function writeBrief() {
+  const p = state(); p.delete("days"); p.delete("sort");
+  $("briefBtn").disabled = true; $("briefStep").textContent = "The AI is reading the numbers (up to a minute)…";
+  try {
+    const { id } = await post(`/api/jobs/brief?${p}`, {}), r = await poll(id, (s) => ($("briefStep").textContent = s)), F = new Map(r.facts.map((f) => [f.id, f.text]));
+    const cite = (x) => `<sup title="${esc(x.facts.map((id) => `${id}: ${F.get(id)}`).join("\n"))}">[${x.facts.map(esc).join(", ")}]</sup>`;
+    $("brief").innerHTML = `${r.overview ? `<p>${esc(r.overview.text)} ${cite(r.overview)}</p>` : ""}
+      ${r.points.length ? `<b>What the numbers say</b><ul>${r.points.map((x) => `<li>${esc(x.text)} ${cite(x)}</li>`).join("")}</ul>` : ""}
+      ${r.advice.length ? `<b>What to do</b><ul>${r.advice.map((x) => `<li>${esc(x.text)} ${cite(x)}</li>`).join("")}</ul>` : ""}
+      <p class="hint">Written by ${esc(r.by)} from ${r.facts.length} numbered facts (hover a [F…] to see them; R facts are published research). A line whose numbers don't match the facts it cites is dropped before you see it.</p>`;
+    $("briefStep").textContent = "";
+  } catch (e) { $("briefStep").textContent = e.message; } finally { $("briefBtn") && ($("briefBtn").disabled = false); }
+}
+
+// ---------- tabs: search, market, my applications (#market, #mine in the address) ----------
+let tab = "jobs";
+function setTab(t) {
+  tab = ["market", "mine"].includes(t) ? t : "jobs";
+  for (const b of document.querySelectorAll(".tabs [data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
+  $("v-search").hidden = tab === "mine"; $("v-mine").hidden = tab !== "mine"; $("v-list").hidden = tab !== "jobs"; $("v-market").hidden = tab !== "market"; $("v-top").hidden = tab === "mine";
+  $("matchBox").hidden = tab !== "jobs" || !$("matchBox").innerHTML;
+  history.replaceState(null, "", `${location.pathname}${location.search}${tab === "jobs" ? "" : `#${tab}`}`);
+  if (tab === "market") loadMarket();
+  renderTrack();
+}
+document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 
 // ---------- saved searches (this browser) ----------
 const SK = "jobs-saved";
@@ -250,7 +451,8 @@ $("matchBtn").onclick = async () => {
     const fast = await post("/api/jobs/match", { ...body, rank: false });
     box.innerHTML = `<h2 style="margin:4px 0">Closest to your résumé</h2><p class="hint" id="rankNote">The AI is now reading the top 15 against your résumé to score them and say what fits and what's missing (about a minute)…</p>${matchCards(fast)}`;
     const ranked = await post("/api/jobs/match", body);
-    box.innerHTML = `<h2 style="margin:4px 0">Best fits for your résumé</h2><p class="hint">Scored by AI from your résumé and each posting only: ✓ what it found in your résumé, ✗ what the job asks for that your résumé doesn't show. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`;
+    box.innerHTML = ranked.ranked ? `<h2 style="margin:4px 0">Best fits for your résumé</h2><p class="hint">Scored by AI from your résumé and each posting only: ✓ what it found in your résumé, ✗ what the job asks for that your résumé doesn't show. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`
+      : `<h2 style="margin:4px 0">Closest to your résumé</h2><p class="hint">The AI couldn't score them this time (try again in a minute); these are ranked by meaning only. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`;
   } catch (e) { box.innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
 };
 
@@ -258,8 +460,9 @@ getJSON("/api/jobs/stats").then((s) => {
   const ago = Math.round((Date.now() / 1000 - Math.max(...s.lastRuns.filter((r) => r.what === "boards").map((r) => r.at))) / 60);
   $("stats").textContent = `${s.open.toLocaleString()} open jobs from ${s.companies} employer job boards, NYC's listings, Adzuna and remote boards · employer boards re-checked ${ago <= 1 ? "just now" : `${ago} min ago`} · ${s.closedLastDay} closed and removed in the last day`;
 }).catch(() => {});
-restore(new URLSearchParams(location.search)); facets(null); run();
-window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags)", search: Object.fromEntries(state()), results: last ? { total: last.total, top: last.rows.slice(0, 10).map((r) => `${r.title} at ${r.company} (${LABEL.region[r.region]}${r.salary_min ? `, ${money(r.salary_min, r.salary_period)}–${money(r.salary_max, r.salary_period)}` : ""})${r.flags.length ? ` flags: ${r.flags.join(", ")}` : ""}`) } : null });
+restore(new URLSearchParams(location.search)); facets(null); setTab(location.hash.slice(1)); run();
+window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags; a Market tab with trends and pay; My applications)", tab, search: Object.fromEntries(state()),
+  market: tab === "market" && lastMarket ? { open: lastMarket.open, new7: lastMarket.new7, changeVs3WeeksBefore: lastMarket.change, medianPay: lastMarket.pay, fields: lastMarket.fields.slice(0, 6).map((f) => `${f.key}: ${f.open} open, ${f.new7} new this week${f.change != null ? ` (${f.change}%)` : ""}, median ${k$(f.pay)}`), topEmployers: lastMarket.companies.slice(0, 6).map((c) => `${c.name}: ${c.open} open, ${c.new30} new in 30 days`) } : undefined, results: last ? { total: last.total, top: last.rows.slice(0, 10).map((r) => `${r.title} at ${r.company} (${LABEL.region[r.region]}${r.salary_min ? `, ${money(r.salary_min, r.salary_period)}–${money(r.salary_max, r.salary_period)}` : ""})${r.flags.length ? ` flags: ${r.flags.join(", ")}` : ""}`) } : null });
 </script>
 </body>
 </html>
