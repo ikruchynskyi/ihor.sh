@@ -56,14 +56,13 @@ async function wiki(name: string) {
 }
 
 // ---------- pay: Levels.fyi (its MCP server's free tools, and the LLM-readable pages its robots.txt offers agents) ----------
-let lvNext = 0; // Levels.fyi throttles a burst: a call every 2 s at most
-const lvPace = async () => { const wait = lvNext - Date.now(); lvNext = Math.max(Date.now(), lvNext) + 2000; if (wait > 0) await new Promise((r) => setTimeout(r, wait)); };
+let lvNext = 0; // Levels.fyi throttles a burst and a busy hour: a call every 4 s at most
+const lvPace = async () => { const wait = lvNext - Date.now(); lvNext = Math.max(Date.now(), lvNext) + 4000; if (wait > 0) await new Promise((r) => setTimeout(r, wait)); };
 async function levelsTool(tool: string, args: object) {
   const call = async (method: string, params: object, id: number) => { await lvPace(); const t = await (await fetch("https://mcp.levels.fyi/", { method: "POST", signal: AbortSignal.timeout(20_000),
     headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)" }, body: JSON.stringify({ jsonrpc: "2.0", id, method, params }) })).text();
     const line = t.split("\n").find((l) => l.startsWith("data: ")); return JSON.parse(line ? line.slice(6) : t); };
-  await call("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "ihor.sh", version: "1" } }, 1);
-  const r = await call("tools/call", { name: tool, arguments: args }, 2), text = r.result?.content?.map((c: any) => c.text).join("\n") ?? "";
+  const r = await call("tools/call", { name: tool, arguments: args }, 1), text = r.result?.content?.map((c: any) => c.text).join("\n") ?? "";
   try { return JSON.parse(text); } catch { return null; } // a "sign in to use this" answer isn't data
 }
 const FAMILY: Record<string, string[]> = { engineering: ["software-engineer"], data: ["data-scientist", "data-analyst"], product: ["product-manager"], finance: ["financial-analyst", "investment-banker"], design: ["product-designer"] };
@@ -104,8 +103,9 @@ const FAMILY_NAME: Record<string, string> = { "software-engineer": "software eng
 /** Gathers the facts, has the model word an overview from them (each line checked), and stores the card (the page shows its date). */
 export async function companyCard(name: string) {
   const e = employer(name); if (!e) throw new Error("No open jobs from that employer here.");
-  const nm = plain(e.name), [w, n, sym] = await Promise.all([wiki(nm).catch(() => null), news(nm).catch(() => []), ticker(nm).catch(() => null)]);
-  const [st, lv] = await Promise.all([sym ? stock(sym).catch(() => null) : null, levels(nm, e.fields as [string, number][]).catch(() => null)]);
+  const before = getCompanyInfo(e.name); // what it does and its pay by level change slowly: kept when today's read fails
+  const nm = plain(e.name), [w, n, sym] = await Promise.all([wiki(nm).catch(() => before?.wiki ?? null), news(nm).catch(() => []), ticker(nm).catch(() => null)]);
+  const [st, lv] = await Promise.all([sym ? stock(sym).catch(() => null) : null, levels(nm, e.fields as [string, number][]).catch(() => null).then((x) => x ?? before?.levels ?? null)]);
   const F: { id: string; text: string }[] = [], add = (text: string) => { F.push({ id: `F${F.length + 1}`, text }); };
   if (w) add(`About ${e.name} (Wikipedia): ${w.extract.split(/(?<=\.)\s+/).slice(0, 3).join(" ")}`);
   add(`On this site ${e.name} has ${e.open} open jobs in the NYC area and remote US; ${e.new30} were posted and ${e.gone30} taken down in the last 30 days; ${e.stale}% of its open jobs have been up over 60 days.`);
