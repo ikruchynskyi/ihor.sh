@@ -81,8 +81,18 @@ export async function crawl(site: string, known: string[] = [], ms = 60_000) {
   } finally { clearTimeout(stop); await browser.close().catch(() => {}); }
 }
 
-/** One job's page, read now (someone opened it on the site before a crawl got to it): its text from the title on. */
 const PAGE_HOSTS = /^(www\.metacareers\.com|jobs\.apple\.com|bloomberg\.avature\.net)$/;
+/** Stored jobs' pages whose text was never read, 6 tabs at a time for a minute (the hourly backfill, jobs.ts): text and place. */
+export async function jobTexts(items: { url: string; title: string }[], ms = 60_000) {
+  const ok = items.filter((i) => { try { return PAGE_HOSTS.test(new URL(i.url).hostname); } catch { return false; } }).slice(0, 200);
+  const { chromium } = createRequire(PW_DIR)("playwright"), browser = await chromium.launch({ executablePath: CHROME }), stop = setTimeout(() => browser.close().catch(() => {}), ms + 15_000);
+  try {
+    const page = await (await browser.newContext({ userAgent: UA, locale: "en-US" })).newPage(), jobs: Posting[] = ok.map((i) => ({ id: "", company: "", title: i.title, location: "", url: i.url, description: "" }));
+    await pagesText(page, jobs, Date.now() + ms);
+    return jobs.filter((j) => j.description).map((j) => ({ url: j.url, description: j.description, location: j.location }));
+  } finally { clearTimeout(stop); await browser.close().catch(() => {}); }
+}
+/** One job's page, read now (someone opened it on the site before a crawl got to it): its text from the title on. */
 export async function jobText(url: string, title: string) {
   const u = new URL(url); if (u.protocol !== "https:" || !PAGE_HOSTS.test(u.hostname)) throw new Error("not a page this reader serves");
   const { chromium } = createRequire(PW_DIR)("playwright"), browser = await chromium.launch({ executablePath: CHROME });

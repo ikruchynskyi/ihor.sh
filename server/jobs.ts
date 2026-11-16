@@ -771,6 +771,7 @@ export const jobsTasks = (): [string, string, string, () => Promise<unknown>][] 
   ["jobs-usajobs", "50 */6 * * *", "USAJOBS", () => refreshUsajobs()],
   ["jobs-big-boards", "0 3 * * *", "the big employers' own systems (Workday, Oracle, Eightfold, Amazon, SmartRecruiters): paced lanes in parallel", async () => { await refreshBoards(BIG, "boards-slow", 12); dedupe(); marketCache.clear(); }],
   ["jobs-custom", "15 9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async () => { await refreshBoards(["custom"], "boards-custom", 8); dedupe(); marketCache.clear(); }],
+  ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", () => backfillTexts()],
   ["jobs-discover", "0 5 * * *", "new employer boards, from Adzuna's employers", () => discover()],
 ];
 
@@ -877,13 +878,25 @@ export function readJobText(id: string) {
     const slug = id.split(":")[1]; let d = "";
     if (!PLAIN[slug] && process.env.HOST_BRIDGE) d = String((await (await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ page: j.url, title: j.title }), signal: AbortSignal.timeout(45_000) })).json() as any).description ?? "");
     else { const jp = jobPostingLd(await (await fetch(j.url, { headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" }, signal: AbortSignal.timeout(20_000) })).text()); d = stripHtml(String(jp?.description ?? "")); }
-    if (d.length < 300) return j.description;
-    const place = d.match(/(?:^|\n)\s*Location\s*\n\s*([^\n]{2,80})/)?.[1]?.trim(); // Bloomberg's list isn't by place: the page says where
-    if (place && !region(usPlace(place))) { db.prepare("update jobs set closed = ?, location = ? where id = ?").run(now(), place, id); return `${d}\n\n(This job is in ${place}, outside the New York area, so it's no longer listed here.)`; }
-    const sal = j.salary_min == null ? parseSalary(d) : null, row = { ...j, description: d, salary_min: sal?.min ?? j.salary_min, salary_max: sal?.max ?? j.salary_max };
-    db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = coalesce(?, salary_period), flags = ? where id = ?").run(d, row.salary_min, row.salary_max, sal?.period ?? null, JSON.stringify(flagsFor({ ...row, reposts: reposts(j.ckey, j.title, j.region, j.id) })), id);
-    return d;
+    return applyText(j, d);
   })().finally(() => reading.delete(id)));
   return reading.get(id)!;
+}
+/** A job's text as read from its page: kept with the pay and flags it gives, or the job closed when the page says it's elsewhere. */
+function applyText(j: any, d: string, place = d.match(/(?:^|\n)\s*Location\s*\n\s*([^\n]{2,80})/)?.[1]?.trim()) {
+  if (d.length < 300) return j.description;
+  if (place && !region(usPlace(place))) { db.prepare("update jobs set closed = ?, location = ? where id = ?").run(now(), place, j.id); return `${d}\n\n(This job is in ${place}, outside the New York area, so it's no longer listed here.)`; } // Bloomberg's list isn't by place
+  const sal = j.salary_min == null ? parseSalary(d) : null, row = { ...j, description: d, salary_min: sal?.min ?? j.salary_min, salary_max: sal?.max ?? j.salary_max };
+  db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = coalesce(?, salary_period), flags = ? where id = ?").run(d, row.salary_min, row.salary_max, sal?.period ?? null, JSON.stringify(flagsFor({ ...row, reposts: reposts(j.ckey, j.title, j.region, j.id) })), j.id);
+  return d;
+}
+/** Hourly (cron): stored jobs from the browser-only sites (Meta, Apple, Bloomberg) whose text was never read, a minute of the Mac's browser. */
+export async function backfillTexts(n = 60) {
+  if (!process.env.HOST_BRIDGE) return 0;
+  const rows = db.prepare("select * from jobs where source = 'custom' and closed is null and length(description) < 300 and (id like 'cu:meta:%' or id like 'cu:apple:%' or id like 'cu:bloomberg:%') order by first_seen desc limit ?").all(n) as any[];
+  if (!rows.length) return 0;
+  const got = await (await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ pages: rows.map((r) => ({ url: r.url, title: r.title })) }), signal: AbortSignal.timeout(100_000) })).json() as { url: string; description: string; location: string }[];
+  let n2 = 0; for (const g of got) { const j = rows.find((r) => r.url === g.url); if (j && g.description.length >= 300) { applyText(j, g.description, g.location || undefined); n2++; } }
+  return n2;
 }
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;
