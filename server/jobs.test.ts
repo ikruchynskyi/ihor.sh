@@ -26,7 +26,7 @@ assert.equal(region("Brooklyn, NY"), "nyc"); assert.equal(region("Remote, Manila
 assert.equal(usPlace("New York New York United States"), "New York, NY"); assert.equal(usPlace("Jersey City, New Jersey"), "Jersey City, NJ");
 assert.equal(usPlace("US-NY-New York"), "New York, NY"); assert.equal(usPlace("Woodbury, NY, United States"), "Woodbury, NY");
 assert.equal(region(usPlace("New York New York United States")), "nyc"); assert.equal(region(usPlace("Newark-NJ-USA")), "nj");
-assert.equal(usPlace("NY-New York"), "New York, NY"); assert.equal(region(usPlace("US-Remote")), "remote"); assert.equal(region("New York, 120 Wall Street, Song"), "nyc"); assert.equal(region("Albany, New York"), null); // PwC, Accenture
+assert.equal(region(usPlace("Princeton")), "nj"); assert.equal(region(usPlace("London")), null); assert.equal(usPlace("NY-New York"), "New York, NY"); assert.equal(region(usPlace("US-Remote")), "remote"); assert.equal(region("New York, 120 Wall Street, Song"), "nyc"); assert.equal(region("Albany, New York"), null); // PwC, Accenture
 // one company under two names across platforms, and not two companies that share letters
 assert.ok(sameCompany("citi", "citibank") && sameCompany("anthropiclimited", "anthropic") && sameCompany("jpmorganchase", "jpmorganchasebankna") && sameCompany("prudential", "prudentialfinancial"));
 assert.ok(!sameCompany("meta", "metabolix") && !sameCompany("data", "datadog") && !sameCompany("abc", "abcbank"));

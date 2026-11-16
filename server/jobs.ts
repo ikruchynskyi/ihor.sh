@@ -94,7 +94,9 @@ export function region(loc: string, remoteHint = false): string | null {
 const ST: Record<string, string> = { "new york": "NY", "new jersey": "NJ", connecticut: "CT" };
 /** Places as Workday and USAJOBS write them ("New York New York United States", "Jersey City, New Jersey", "US-NY-New
  *  York", "Newark-NJ-USA") in the shape region() reads ("New York, NY"). */
+const BARE_TOWN: Record<string, string> = { princeton: "Princeton, NJ", skillman: "Skillman, NJ", "middle village": "Queens, NY" }; // Bloomberg writes its offices' towns alone
 export const usPlace = (s: string) => {
+  const bare = BARE_TOWN[String(s ?? "").trim().toLowerCase()]; if (bare) return bare;
   const st = String(s ?? "").trim().match(/^([A-Z]{2})-(?![A-Z]{2}-)(\S.*)$/); if (st) return st[1] === "US" ? `${st[2]}, US` : `${st[2]}, ${st[1]}`; // PwC: "NY-New York", "US-Remote"
   const t = String(s ?? "").replace(/[-_]+/g, " ").replace(/[,\s]+(united states( of america)?|usa|us)\s*$/i, "").trim(), us = t.match(/^us\s+(ny|nj|ct)\s+(.+)$/i);
   if (us) return `${us[2]}, ${us[1].toUpperCase()}`;
@@ -221,6 +223,8 @@ if (!db.prepare("select 1 from runs where what = 'migrate-flags-2'").get()) batc
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-flags-2", 1, 0, "");
 });
 db.prepare("delete from companies where ats = 'workday' and slug = 'pwc|3|Global_Experienced_Careers'").run(); // PwC's global site: 3 New York jobs; its US one has them
+// 2026-11-16, once: Bloomberg's jobs were all stored as New York (its search ignores the place): read each page again
+if (!db.prepare("select 1 from runs where what = 'migrate-bloomberg-place'").get()) { db.prepare("update jobs set description = '' where id like 'cu:bloomberg:%' and closed is null").run(); db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-bloomberg-place", 1, 0, ""); }
 // 2026-11-16: amazon.jobs names each job's legal entity ("Amazon.com Services LLC", "Amazon Web Services, Inc."…), which split Amazon into a dozen employers here
 db.exec("update jobs set company = 'Amazon', ckey = 'amazon' where source = 'amazon' and company != 'Amazon'; update companies set name = 'Amazon' where ats = 'amazon'");
 function save(j: In) {
@@ -374,7 +378,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
       const parts = usPlace(String(p.location ?? "")).split(/\s*;\s*/).map(usPlace), ours = parts.filter((x) => region(x)); // Deloitte lists 40 cities: ours, then how many more
       const id = `cu:${slug}:${p.id}`, location = parts.length > 6 && ours.length ? `${ours.join("; ")}; +${parts.length - ours.length} more` : parts.join("; ");
       if (stored.includes(String(p.id)) && !p.description) { out.push(brief(id, company, location)); continue; }
-      if (!region(location) || !FOCUS(p.title ?? "")) continue;
+      if (!region(location) || !FOCUS(p.title ?? "")) { if (p.description && location && !region(location)) db.prepare("update jobs set closed = ? where id = ? and closed is null").run(now(), id); continue; } // its page says it's elsewhere
       out.push({ id, source: "custom", company, title: String(p.title), location, url: String(p.url), posted: p.posted, department: p.department ?? "", salary: p.salary ?? null, description: stripHtml(String(p.description ?? "")) || `${p.title}. ${p.department ?? ""}` });
     }
     if (r.partial) (out as any).partial = "a minute's reading";
@@ -874,6 +878,8 @@ export function readJobText(id: string) {
     if (!PLAIN[slug] && process.env.HOST_BRIDGE) d = String((await (await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ page: j.url, title: j.title }), signal: AbortSignal.timeout(45_000) })).json() as any).description ?? "");
     else { const jp = jobPostingLd(await (await fetch(j.url, { headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" }, signal: AbortSignal.timeout(20_000) })).text()); d = stripHtml(String(jp?.description ?? "")); }
     if (d.length < 300) return j.description;
+    const place = d.match(/(?:^|\n)\s*Location\s*\n\s*([^\n]{2,80})/)?.[1]?.trim(); // Bloomberg's list isn't by place: the page says where
+    if (place && !region(usPlace(place))) { db.prepare("update jobs set closed = ?, location = ? where id = ?").run(now(), place, id); return `${d}\n\n(This job is in ${place}, outside the New York area, so it's no longer listed here.)`; }
     const sal = j.salary_min == null ? parseSalary(d) : null, row = { ...j, description: d, salary_min: sal?.min ?? j.salary_min, salary_max: sal?.max ?? j.salary_max };
     db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = coalesce(?, salary_period), flags = ? where id = ?").run(d, row.salary_min, row.salary_max, sal?.period ?? null, JSON.stringify(flagsFor({ ...row, reposts: reposts(j.ckey, j.title, j.region, j.id) })), id);
     return d;

@@ -2,7 +2,7 @@
 // headless Chromium (Playwright) behind the host bridge's /crawl (host.ts; the web container has no browser). A minute
 // at most per employer per run; whatever was read by then comes back (user, 2026-11-16).
 import { createRequire } from "node:module";
-import { jobPostingLd, type Posting } from "./bigtech.ts";
+import { type Posting } from "./bigtech.ts";
 
 const PW_DIR = process.env.PLAYWRIGHT_DIR ?? `${process.env.HOME}/.npm/_npx/9833c18b2d85bc59/node_modules/`;
 const CHROME = process.env.PLAYWRIGHT_CHROME ?? `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
@@ -14,7 +14,8 @@ async function pagesText(page: any, jobs: Posting[], until: number) {
   const ctx = page.context(), queue = jobs.filter((j) => !j.description), tabs = await Promise.all(Array.from({ length: Math.min(6, queue.length) }, () => ctx.newPage()));
   await Promise.all(tabs.map(async (tab: any) => {
     for (let j = queue.shift(); j && Date.now() < until - 4000; j = queue.shift()) {
-      try { await tab.goto(j.url, { waitUntil: "domcontentloaded", timeout: 15_000 }); await tab.waitForTimeout(1500); const t = await tab.$eval("main, [role=main], body", (e: any) => e.innerText).catch(() => ""), at = t.indexOf(j.title); j.description = (at >= 0 ? t.slice(at) : t).slice(0, 20_000); } catch {} // from the title on: no site menu
+      try { await tab.goto(j.url, { waitUntil: "domcontentloaded", timeout: 15_000 }); await tab.waitForTimeout(1500); const t = await tab.$eval("main, [role=main], body", (e: any) => e.innerText).catch(() => ""), at = t.indexOf(j.title); j.description = (at >= 0 ? t.slice(at) : t).slice(0, 20_000);
+        const place = t.match(/(?:^|\n)\s*Location\s*\n\s*([^\n]{2,80})/)?.[1]?.trim(); if (place) j.location = place; } catch {} // from the title on: no site menu; the page's own "Location" when it has one (Bloomberg's list isn't by place)
     }
   }));
 }
@@ -59,14 +60,10 @@ async function bloomberg(page: any, until: number, known: Set<string>) {
     for (const g of got) { const id = g.href.match(/\/(\d{3,})(?:[/?#]|$)/)?.[1]; if (id && g.title && !rows.has(id)) rows.set(id, { title: g.title, url: g.href }); }
     if (rows.size === before) break;
   }
-  const jobs: Posting[] = [];
-  for (const [id, r] of rows) {
-    if (known.has(id) || Date.now() > until - 3000) { jobs.push({ id, company: "Bloomberg", title: r.title, location: "New York, NY", url: r.url, description: "" }); continue; }
-    await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 15_000 }).catch(() => null);
-    const jp = jobPostingLd(await page.content()), body = jp?.description ?? await page.$eval("main, article, .article, body", (e: any) => e.innerText).catch(() => "");
-    jobs.push({ id, company: "Bloomberg", title: String(jp?.title ?? r.title), location: "New York, NY", url: r.url, posted: Date.parse(jp?.datePosted ?? "") || undefined, description: String(body).slice(0, 20_000) });
-  }
-  return jobs;
+  // its search ignores the place (2026-11-16: London jobs came back): each new job's page says where it is
+  const jobs: Posting[] = [...rows].map(([id, r]) => ({ id, company: "Bloomberg", title: r.title, location: "", url: r.url, description: "" }));
+  await pagesText(page, jobs.filter((j) => !known.has(j.id)), until);
+  return jobs.map((j) => (known.has(j.id) ? { ...j, location: "New York, NY" } : j)); // a known one was ours when it was read
 }
 
 const SITES: Record<string, (page: any, until: number, known: Set<string>) => Promise<Posting[]>> = { meta, apple, bloomberg };
