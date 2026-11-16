@@ -317,10 +317,10 @@ export async function refreshNycJobs() {
 }
 
 // Adzuna's trial plan is 2,500 calls a month (user, 2026-11-16). ADZUNA_MONTHLY_CALLS (default 2,300, a margin) is spent
-// evenly: NYC newest first every 2 hours, stopping at a page we already have; remote US every 6 hours. Before, one daily
+// evenly: NYC newest first every 4 hours, stopping at a page we already have; remote US every 6 hours. Before, one daily
 // burst read the 1,000 newest (about 4 hours of the ~6,600 NYC postings a day) and dropped each a week later.
-// NYC 12 sweeps a day of ADZ_NYC pages, remote 4 of ADZ_REMOTE: 12 × 5 + 4 × 3 = 72 calls a day, 2,232 in a 31-day month.
-const ADZ_MONTH = Number(env("ADZUNA_MONTHLY_CALLS")) || 2300, ADZ_REMOTE = 3, ADZ_NYC = Math.max(1, Math.floor((ADZ_MONTH / 31 - 4 * ADZ_REMOTE) / 12));
+// NYC 6 sweeps a day of ADZ_NYC pages, remote 4 of ADZ_REMOTE: 6 × 10 + 4 × 3 = 72 calls a day, 2,232 in a 31-day month.
+const ADZ_MONTH = Number(env("ADZUNA_MONTHLY_CALLS")) || 2300, ADZ_REMOTE = 3, ADZ_NYC = Math.max(1, Math.floor((ADZ_MONTH / 31 - 4 * ADZ_REMOTE) / 6));
 const adzCalls = () => { const d = new Date(); return (db.prepare("select coalesce(sum(n), 0) n from runs where what = 'adzuna-calls' and at >= ?").get(Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000)) as any).n as number; };
 const adzKey = db.prepare("select n from adz_keys where k = ?"), adzCount = db.prepare("insert into adz_keys values (?, 1, ?) on conflict(k) do update set n = n + 1");
 const adzSkipped = db.prepare("select 1 from adz_skip where id = ?"), adzSkip = db.prepare("insert or ignore into adz_skip values (?, ?)");
@@ -584,7 +584,7 @@ export function prune() {
 }
 
 /** Every source at least 4 times a day, each within its limits: employer boards on Greenhouse, Lever, Ashby and Workable
- *  and NYC's jobs hourly (free; liveness); Adzuna NYC every 2 hours (its monthly calls); Workday, SmartRecruiters,
+ *  and NYC's jobs hourly (free; liveness); Adzuna NYC every 4 hours (its monthly calls); Workday, SmartRecruiters,
  *  USAJOBS, Adzuna remote, Remotive and Himalayas every 6 hours; new employer boards daily. Then dedupe and prune. */
 let running = false, slowLane = false;
 export async function jobsTick() {
@@ -593,7 +593,7 @@ export async function jobsTick() {
     await refreshBoards().catch((e) => console.log("jobs boards:", e.message));
     await refreshNycJobs().catch((e) => console.log("jobs nyc:", e.message));
     const due = (what: string, h: number) => now() - lastAt(what) > h * 3600 - 300;
-    if (due("adzuna-nyc", 2)) await refreshAdzuna("nyc").catch((e) => console.log("jobs adzuna:", e.message));
+    if (due("adzuna-nyc", 4)) await refreshAdzuna("nyc").catch((e) => console.log("jobs adzuna:", e.message));
     // boards that cost a request per new job (SmartRecruiters, Workday), and USAJOBS: every 6 hours (two misses still close a job)
     if (due("boards-slow", 6) && !slowLane) { // paced (an hour or so): its own lane, so the hourly sources never wait on it
       slowLane = true; refreshBoards(["smartrecruiters", "workday"], "boards-slow").catch((e) => console.log("jobs boards-slow:", e.message)).finally(() => { slowLane = false; marketCache.clear(); });
