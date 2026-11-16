@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New York today</title>
+  <meta name="description" content="Today in New York on one screen: what's on, the weather, alerts, the subway, top news and critical incidents, rewritten every hour. Made to hang on a wall or sit in a Home Assistant dashboard." />
+  <meta name="ihor-bare" content="a wall display (Home Assistant and the like): no site bar or Blip" />
+  <style>
+    :root { --bg: #f6f4ef; --fg: #1d1d1b; --muted: #6b6a66; --line: #dcd8cf; --card: #fff; --accent: #c2410c; --warn: #b4232c; --ok: #1e6b35; --hi: #fff3e8; }
+    :root[data-theme="dark"] { --bg: #0e0f11; --fg: #ecebe6; --muted: #9a978f; --line: #26272b; --card: #17181b; --accent: #ff8a3d; --warn: #ff6b6b; --ok: #69db7c; --hi: #2a1d13; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0e0f11; --fg: #ecebe6; --muted: #9a978f; --line: #26272b; --card: #17181b; --accent: #ff8a3d; --warn: #ff6b6b; --ok: #69db7c; --hi: #2a1d13; } }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--fg); font: clamp(15px, 1.05vw + 4px, 24px)/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .page { min-height: 100%; display: flex; flex-direction: column; gap: 1.1em; padding: clamp(14px, 2vw, 40px); max-width: 2200px; margin: 0 auto; }
+    .kiosk body { cursor: none; } .kiosk .back { display: none; }
+    header { display: flex; align-items: flex-end; gap: 1.2em; flex-wrap: wrap; }
+    .title { flex: 1 1 auto; min-width: 0; } .title h1 { margin: 0; font-size: 1.05em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+    .title .date { font-size: 1.6em; font-weight: 650; line-height: 1.1; }
+    .back { font-size: .7em; color: var(--muted); text-decoration: none; } .back:hover { color: var(--fg); }
+    .clock { font-size: 3.4em; font-weight: 300; line-height: .9; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+    .wx { text-align: right; } .wx b { font-size: 2.6em; font-weight: 300; line-height: .9; display: block; } .wx span { color: var(--muted); font-size: .85em; }
+    .headline { font-size: 1.45em; font-weight: 550; line-height: 1.3; margin: 0; padding: .7em .9em; background: var(--hi); border-left: 5px solid var(--accent); border-radius: 8px; }
+    .grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.1em; align-items: start; }
+    @media (min-width: 1500px) { .grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.7fr); } #right { display: block; columns: 2; column-gap: 1.1em; } #right .card { break-inside: avoid; margin-bottom: 1.1em; } }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } .clock { font-size: 2.6em; } }
+    .col { display: flex; flex-direction: column; gap: 1.1em; min-width: 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .8em 1em .6em; }
+    .card h2 { margin: 0 0 .35em; font-size: .78em; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+    .card.main h2 { color: var(--accent); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li button { all: unset; display: block; width: 100%; padding: .42em 0; border-top: 1px solid var(--line); cursor: pointer; }
+    li:first-child button { border-top: 0; }
+    li button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    li button:active { opacity: .6; }
+    .main li button { font-size: 1.12em; padding: .55em 0; }
+    .alerts li button, .incidents li button { color: var(--warn); }
+    .more { color: var(--muted); font-size: .8em; margin-left: .3em; }
+    footer { color: var(--muted); font-size: .72em; display: flex; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+    .stale { color: var(--warn); }
+    dialog { border: 0; border-radius: 14px; padding: 0; max-width: min(860px, 94vw); width: 100%; background: var(--card); color: var(--fg); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+    .dlg { padding: 1.2em 1.4em; } .dlg h3 { margin: 0 0 .6em; font-size: 1.25em; line-height: 1.3; }
+    .fact { display: flex; gap: 1em; align-items: flex-start; padding: .6em 0; border-top: 1px solid var(--line); } .fact p { margin: 0; flex: 1; }
+    .qr { flex: none; background: #fff; padding: 6px; border-radius: 6px; line-height: 0; } .qr img, .qr canvas { width: 120px; height: 120px; }
+    .dlg .close { all: unset; float: right; cursor: pointer; font-size: 1.4em; line-height: 1; padding: .1em .3em; color: var(--muted); }
+    .hint { color: var(--muted); font-size: .8em; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="title"><a class="back" href="/nyc/">← NYC live map</a><h1>New York · today</h1><div class="date" id="date"></div></div>
+    <div class="clock" id="clock" aria-label="Time in New York"></div>
+    <div class="wx" id="wx"></div>
+  </header>
+  <p class="headline" id="headline" hidden></p>
+  <div class="grid"><div class="col" id="left"></div><div class="col" id="right"></div></div>
+  <footer><span id="updated">Loading…</span><span>From NYC's alerts and open data, the National Weather Service, the MTA, local newsrooms and event listings · worded by AI, every line checked against them · tap a line for its sources</span></footer>
+</div>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<script>
+// ?kiosk=1 for a wall (no cursor, no links away, dark unless ?theme=light); ?theme=light|dark
+const q = new URLSearchParams(location.search), kiosk = q.has("kiosk");
+if (kiosk) document.documentElement.classList.add("kiosk");
+const theme = q.get("theme") ?? (kiosk ? "dark" : ""); if (theme) document.documentElement.dataset.theme = theme;
+</script>
+<script type="module">
+const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const NY = { timeZone: "America/New_York" }, ICON = { happening: "🎟", weather: "☁", alerts: "🚨", transit: "🚇", news: "📰", incidents: "⚠" };
+let data = null, failedSince = 0;
+function tick() {
+  const d = new Date();
+  $("clock").textContent = d.toLocaleTimeString("en-US", { ...NY, hour: "numeric", minute: "2-digit" });
+  $("date").textContent = d.toLocaleDateString("en-US", { ...NY, weekday: "long", month: "long", day: "numeric" });
+}
+const hhmm = (t) => new Date(t * 1000).toLocaleTimeString("en-US", { ...NY, hour: "numeric", minute: "2-digit" });
+function render() {
+  const d = data; if (!d) return;
+  const w = d.weather;
+  $("wx").innerHTML = w?.tempF != null ? `<b>${w.tempF}°F</b><span>${esc(w.sky ?? "")}${w.windKmh != null ? ` · wind ${w.windKmh} km/h` : ""}</span>` : "";
+  $("headline").hidden = !d.headline; $("headline").textContent = d.headline ?? "";
+  const by = (k) => d.bullets.map((b, i) => ({ ...b, i })).filter((b) => b.section === k);
+  const card = (k, label, main = false) => { const l = by(k); if (!l.length) return "";
+    return `<section class="card ${k}${main ? " main" : ""}"><h2>${ICON[k] ?? ""} ${esc(label)}</h2><ul>${l.map((b) => `<li><button data-i="${b.i}">${esc(b.text)}</button></li>`).join("")}</ul></section>`; };
+  const [first, ...rest] = d.sections;
+  $("left").innerHTML = card(first[0], first[1], true) || `<section class="card main"><h2>${ICON.happening} ${esc(first[1])}</h2><p class="hint">No events listed for the rest of today.</p></section>`;
+  $("right").innerHTML = rest.map(([k, l]) => card(k, l)).join("");
+  const age = d.at ? Date.now() / 1000 - d.at : Infinity;
+  fit();
+  $("updated").innerHTML = `${d.at ? `Updated ${hhmm(d.at)}` : "Not written yet"}${age > 3 * 3600 ? ' <span class="stale">· older than 3 hours</span>' : ""}${failedSince ? ` <span class="stale">· offline since ${new Date(failedSince).toLocaleTimeString("en-US", { ...NY, hour: "numeric", minute: "2-digit" })}</span>` : ""}`;
+}
+/** On a wall (kiosk) everything shows at once: the type shrinks until the page fits the screen. */
+function fit() {
+  if (!kiosk) return;
+  let px = Math.min(30, Math.max(14, innerWidth / 70)); document.body.style.fontSize = `${px}px`;
+  while (document.documentElement.scrollHeight > innerHeight + 1 && px > 10) document.body.style.fontSize = `${(px -= 0.5)}px`;
+}
+addEventListener("resize", () => { clearTimeout(fit.t); fit.t = setTimeout(fit, 200); });
+async function load() {
+  try { const r = await fetch("/nyc/today.json", { cache: "no-store" }); if (!r.ok) throw new Error(r.status); data = await r.json(); failedSince = 0; }
+  catch { failedSince ||= Date.now(); }
+  render();
+}
+// a line's sources: each fact it cites, with a QR code to open its link on a phone
+let qrLib = null, closeTimer = 0;
+const loadQr = () => (qrLib ??= new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; s.onload = ok; s.onerror = no; document.head.append(s); }));
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-i]"); if (!btn) return;
+  const b = data.bullets[+btn.dataset.i], facts = b.facts.map((id) => data.facts.find((f) => f.id === id)).filter(Boolean);
+  $("dlgBody").innerHTML = `<button class="close" aria-label="Close">✕</button><h3>${esc(b.text)}</h3>${facts.map((f, n) => `<div class="fact"><p>${esc(f.text)}${f.url && !kiosk ? `<br><a href="${esc(f.url)}" target="_blank" rel="noopener">Open ↗</a>` : ""}</p>${f.url ? `<div class="qr" id="qr${n}" title="Scan to open on your phone"></div>` : ""}</div>`).join("")}
+    ${facts.some((f) => f.url) ? '<p class="hint">Scan a code to open it on your phone.</p>' : ""}`;
+  $("dlg").showModal();
+  clearTimeout(closeTimer); if (kiosk) closeTimer = setTimeout(() => $("dlg").close(), 60_000); // a wall goes back to the overview
+  if (facts.some((f) => f.url)) { await loadQr().catch(() => null); facts.forEach((f, n) => { if (f.url && window.QRCode) new QRCode($(`qr${n}`), { text: f.url, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M }); }); }
+});
+$("dlg").addEventListener("click", (e) => { if (e.target === $("dlg") || e.target.closest(".close")) $("dlg").close(); });
+tick(); setInterval(tick, 1000);
+load(); setInterval(load, 5 * 60_000);
+</script>
+</body>
+</html>

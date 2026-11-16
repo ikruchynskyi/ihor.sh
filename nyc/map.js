@@ -1099,7 +1099,7 @@ function drawBar() {
     p.flooding || Math.abs(p.surgeFt ?? 0) >= 1 ? chip("floods", `🌊 ${p.flooding ? `${p.flooding} flooding` : "Harbor"}${p.surgeFt != null ? ` <small>${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft</small>` : ""}`, "Street flooding now (FloodNet sensors) · harbor water at the Battery against the predicted tide (NOAA)", "warm") : "",
     p.aqi > 100 ? chip("aqi", `🌫 Air ${p.aqi}`, "US air quality index: over 100 is unhealthy for sensitive groups", "warm") : "",
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut} without power`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
-    chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
+    chip("brief", `☀ NYC today <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "Today in New York, hourly: what's on, the weather, alerts, the subway, top news and critical incidents; written by the local model from facts the code gathered, every line checked against them"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
     `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 or 72 hours on the map: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ Replay</button>`,
     zones.length ? chip("zones", `⭐ My places${zoneNew() ? ` <small class="new">${zoneNew()} new</small>` : ""}`, `Your watched places (${zones.map((z) => z.name).join(", ")}): what happened there in 24 hours`, zoneNew() ? "warm" : "") : "",
@@ -1133,12 +1133,15 @@ function clearCity() {
 }
 function briefHtml() {
   const b = pulseNow?.brief;
-  if (!b) return { title: "📝 Brief", body: "No brief yet: the first one is written a minute or two after the server starts." };
-  return { title: `📝 NYC now <span class="muted">· ${hhmm(b.at)} · by ${esc(b.by)}</span>`, body: `<ul>${bulletsHtml(b, "brief")}</ul>
-    ${b.dropped ? `<p class="muted">${b.dropped} bullet${b.dropped > 1 ? "s were" : " was"} dropped for not matching the facts.</p>` : ""}<details><summary class="muted">The facts it was given</summary><ol>${b.facts.map((f) => `<li value="${f.id.slice(1)}">${esc(f.text)}</li>`).join("")}</ol></details>` };
+  if (!b) return { title: "☀ NYC today", body: "No brief yet: the first one is written a minute or two after the server starts." };
+  // the city brief by section (city.ts makeDayBrief); a bullet's index stays its place in b.bullets, for the map links
+  const secs = b.sections ?? [["", ""]], idx = b.bullets.map((x, i) => ({ ...x, i }));
+  const sec = ([k, label]) => { const l = idx.filter((x) => (x.section ?? "") === k); return l.length ? `${label ? `<p class="muted" style="margin:.6em 0 .2em"><b>${esc(label)}</b></p>` : ""}<ul>${bulletsHtml({ ...b, bullets: l }, "brief", l.map((x) => x.i))}</ul>` : ""; };
+  return { title: `☀ NYC today <span class="muted">· ${hhmm(b.at)} · <a href="/nyc/today.html" target="_blank" rel="noopener">full screen ↗</a></span>`, body: `${b.headline ? `<p><b>${esc(b.headline.text)}</b></p>` : ""}${secs.map(sec).join("")}
+    ${b.dropped ? `<p class="muted">${b.dropped} line${b.dropped > 1 ? "s were" : " was"} dropped for not matching the facts.</p>` : ""}<details><summary class="muted">The facts it was given</summary><ol>${b.facts.map((f) => `<li value="${f.id.slice(1)}">${esc(f.text)}</li>`).join("")}</ol></details>` };
 }
 // A bullet whose facts have places is a link: it pins them (hover a fact number for the fact).
-const bulletsHtml = (b, from) => { const fact = new Map(b.facts.map((f) => [f.id, f])); return b.bullets.map((x, i) => { const placed = x.facts.some((id) => fact.get(id)?.lat != null);
+const bulletsHtml = (b, from, at = null) => { const fact = new Map(b.facts.map((f) => [f.id, f])); return b.bullets.map((x, n) => { const placed = x.facts.some((id) => fact.get(id)?.lat != null), i = at ? at[n] : n;
   return `<li>${placed ? `<a href="#" data-bullet="${from}|${i}" title="Show on the map">${esc(x.text)}</a>` : esc(x.text)} ${x.facts.map((id) => `<sup class="fact" title="${esc(fact.get(id)?.text ?? "")}">${esc(id)}</sup>`).join(" ")}</li>`; }).join(""); };
 let areaBriefData = null;
 function listHtml(act) {

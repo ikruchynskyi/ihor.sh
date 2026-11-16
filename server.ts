@@ -46,7 +46,7 @@ import { upscale } from "./server/upscale.ts";
 import { photoPlaces } from "./server/ocr.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, publicSpaces, buildingReport, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, DAY_SECTIONS, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -574,6 +574,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
   res.setHeader("content-security-policy", "frame-ancestors 'self'; object-src 'none'; base-uri 'self'");
   res.setHeader("referrer-policy", "strict-origin-when-cross-origin");
   if (/(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0])) res.setHeader("strict-transport-security", "max-age=31536000");
+  // The NYC today display (nyc/today.html) may sit in another site's frame: a Home Assistant dashboard on a wall (user, 2026-11-16)
+  if (url.pathname === "/nyc/today.html") { res.removeHeader("x-frame-options"); res.setHeader("content-security-policy", "frame-ancestors *; object-src 'none'; base-uri 'self'"); }
   // One host for search: www.ihor.sh pages are copies of ihor.sh ones (Search Console lists them as alternates).
   if (/^www\.ihor\.sh$/i.test(String(req.headers.host ?? "").split(":")[0]) && (req.method === "GET" || req.method === "HEAD")) {
     res.writeHead(301, { location: SITE + (req.url ?? "/") }); res.end(); return;
@@ -609,6 +611,13 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const done = await googleFinish(SESSION_SECRET, back, String(url.searchParams.get("code") ?? ""), String(url.searchParams.get("state") ?? ""), cookie(req.headers.cookie, "ihg"));
       return res.writeHead(302, { location: done.next, "cache-control": "no-store", "set-cookie": withCookies(res, signedIn(req, done.id), "ihg=; Path=/auth; Max-Age=0") }).end();
     } catch (e) { return page((e as Error).message); }
+  }
+  if (url.pathname === "/nyc/today.json") { // the city brief for the today display and for Home Assistant's REST sensors: no session (a framed page has no cookies), any origin
+    if (!spend(`today:${clientIp(req)}`, 240, 3600_000)) return res.writeHead(429).end("Too many requests.");
+    const b = latestBrief("city"), w: any = await weather().catch(() => null);
+    return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120", "access-control-allow-origin": "*" }).end(JSON.stringify({ at: b?.at ?? null, headline: b?.headline?.text ?? null, sections: DAY_SECTIONS,
+      bullets: (b?.bullets ?? []).map((x: any) => ({ text: x.text, section: x.section ?? "incidents", facts: x.facts })), facts: (b?.facts ?? []).map((f: any) => ({ id: f.id, text: f.text, url: f.url, lat: f.lat, lon: f.lon })),
+      weather: w && { tempF: w.tempF, sky: w.sky, windKmh: w.windKmh, humidity: w.humidity, station: w.station, at: w.at, forecast: (w.forecast ?? []).slice(0, 2) } }));
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;

@@ -513,11 +513,11 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   city_brief: {
-    description: "The command post's latest situation brief for all of NYC or one borough (written every 15 minutes by the local model from facts the code gathered; each bullet cites its facts), plus the city's vital signs now: Notify NYC alerts, incidents and how many are serious or corroborated, closures, street flooding, harbor surge, air quality, Con Ed outages, helicopters circling, and unusual counts.",
+    description: "Today in NYC (scope city, rewritten hourly: what's on, the weather, alerts, the subway, top news, critical incidents) or a borough's situation brief (every 15 minutes, incidents), by the local model from facts the code gathered, each bullet citing its facts; plus the city's vital signs now: Notify NYC alerts, incidents and how many are serious or corroborated, closures, street flooding, harbor surge, air quality, Con Ed outages, helicopters circling, and unusual counts.",
     parameters: { scope: { type: "string", description: "city (default) or a borough", enum: ["city", ...BOROUGHS] } },
     run: async ({ scope }) => {
       const b = latestBrief(BOROUGHS.includes(String(scope)) ? String(scope) : "city");
-      return { brief: b && { writtenAt: new Date(b.at * 1000).toISOString(), by: b.by, bullets: b.bullets.map((x: any) => x.text), facts: b.facts }, vitalSigns: pulse(),
+      return { brief: b && { writtenAt: new Date(b.at * 1000).toISOString(), by: b.by, headline: b.headline?.text, bullets: b.bullets.map((x: any) => (x.section ? `${x.section}: ${x.text}` : x.text)), facts: b.facts }, fullScreen: "/nyc/today.html", vitalSigns: pulse(),
         unusual: anomalies().slice(0, 8).map((u) => ({ text: u.text, mapLink: mapAt(u.lat, u.lon) })), map: "/nyc/#view=40.72,-73.95,11,incidents" };
     },
   },

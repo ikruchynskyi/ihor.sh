@@ -10,7 +10,8 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { geocode, inNyc, trafficCameras, camerasNow, lookAtCameras, webSearch } from "./nycapi.ts";
-import { aircraft, km } from "./sky.ts";
+import { aircraft, km, weather } from "./sky.ts";
+import { summary as subwaySummary } from "./archive.ts";
 import { OLLAMA, LOCAL_MODEL, whenIdle, inLine, llmJson, faithful } from "./llm.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
@@ -804,7 +805,7 @@ export function pulse() {
 // ---------- briefs: facts by code, words by the local Qwen, every bullet checked against its facts ----------
 const hhmm = (t: number) => new Date(t * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 const SOURCE_NAMES: Record<string, string> = { notify: "Notify NYC", "511ny": "511NY", waze: "Waze drivers", adsb: "aircraft tracking", floodnet: "FloodNet", noaa: "NOAA", nws: "NWS", vision: "a camera check", air: "air sensors" };
-export type Fact = { id: string; text: string; lat?: number; lon?: number };
+export type Fact = { id: string; text: string; lat?: number; lon?: number; sec?: string; url?: string };
 const factList = () => { const F: Fact[] = []; return { F, add: (text: string, at?: { lat: number | null; lon: number | null }) => void F.push({ id: `F${F.length + 1}`, text, ...(at?.lat != null ? { lat: at.lat, lon: at.lon! } : {}) }) }; };
 export function facts(scope = "city") {
   const inScope = (x: { lat: number | null; lon: number | null }) => scope === "city" || (x.lat != null && borough(x.lat, x.lon!) === scope);
@@ -848,6 +849,75 @@ export async function makeBrief(scope = "city") {
   const F = facts(scope), b = await write(F, scope === "city" ? "all of New York City" : scope, whenIdle);
   db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run(scope, now(), JSON.stringify(b), JSON.stringify(F));
   return latestBrief(scope);
+}
+// ---------- the city brief (user, 2026-11-16): today in New York, mostly what's on, hourly ----------
+// The facts by code: today's events from the evening planner (Ticketmaster, Parks, permitted street events, NYC for Free,
+// Eventbrite), the weather and its forecast, Notify NYC and NWS alerts, the subway's unplanned trouble, the top local
+// news (the stories the most newsrooms carry), and only critical incidents (serious and likely real). The local Qwen
+// words it in sections, every line citing facts that carry its numbers; a section it leaves out or gets wrong shows its
+// facts instead. Borough briefs stay the incident briefs above.
+export const DAY_SECTIONS: [string, string][] = [["happening", "What's on today"], ["weather", "Weather"], ["alerts", "Alerts"], ["transit", "Getting around"], ["news", "Top news"], ["incidents", "Critical incidents"]];
+const nyHHMM = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/New_York" });
+const PRIORITY: Record<string, number> = { ticketmaster: 0, city: 1, permits: 1, parks: 2, free: 3, eventbrite: 4 }; // the big ones first
+// Only big or hot events (user, 2026-11-16): the city's major venues, or a citywide occasion; not a park's afterschool program
+const BIG_VENUE = /madison square garden|\bmsg\b|barclays|radio city|lincoln center|metropolitan opera|david geffen|carnegie hall|yankee stadium|citi field|metlife|ubs arena|prudential center|beacon theatre|apollo theat|kings theatre|terminal 5|brooklyn paramount|hammerstein|forest hills stadium|arthur ashe|javits|brooklyn academy of music|\bbam\b|webster hall|irving plaza|the town hall|summerstage|red bull arena|belmont park|rockefeller center/i;
+const BIG_KIND = /parade|marathon|half.?marathon|festival|tree lighting|lighting ceremony|fireworks|street fair|feast of|pride march|grand opening|world cup|championship|playoff|thanksgiving|new year/i;
+const SMALL = /\btours?\b|training|\bclass(es)?\b|lessons?|practice|\bcamp\b|afterschool|permit/i; // a venue tour or a field permit isn't an event to go to
+const isBig = (e: any) => (BIG_VENUE.test(`${e.venue ?? ""} ${e.address ?? ""}`) && !SMALL.test(e.title)) || (BIG_KIND.test(e.title) && e.source !== "eventbrite");
+export async function dayFacts() {
+  const { F, add } = factList(), put = (sec: string, text: string, at?: { lat: number | null; lon: number | null }, url?: string) => { add(text, at); Object.assign(F[F.length - 1], { sec }, /^https?:\/\//.test(url ?? "") ? { url } : {}); };
+  const { events } = await import("./evening.ts"); // evening.ts imports this file: loaded when it's needed, not at the top
+  const ev = await events({ from: nyHHMM() } as any).catch(() => null), list = (ev?.events ?? []) as any[];
+  if (list.length) {
+    const cats: Record<string, number> = {}; for (const e of list) cats[e.category] = (cats[e.category] ?? 0) + 1;
+    const big = list.filter(isBig);
+    put("happening", `Events still to come today in the city: ${list.length} (${Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, n]) => `${n} ${c}`).join(", ")}); ${big.length} at a major venue or a citywide occasion`);
+    // happenings before attractions: a museum's timed entries, all-day listings and things that started earlier come last
+    const score = (e: any) => (PRIORITY[e.source] ?? 5) + ((e.times?.length ?? 1) > 2 ? 6 : 0) + (e.all_day ? 4 : 0) + (e.ongoing ? 3 : 0) + (/museum|exhibit|experience|immersive/i.test(`${e.title} ${e.venue ?? ""}`) ? 3 : 0);
+    const per: Record<string, number> = {}, picks = [...big].sort((a, b) => score(a) - score(b) || a.start.localeCompare(b.start)).filter((e) => (per[e.category] = (per[e.category] ?? 0) + 1) <= 3).slice(0, 10);
+    for (const e of picks) put("happening", `${e.title}${e.venue ? ` at ${e.venue}` : ""}${e.borough ? ` (${e.borough})` : ""}, ${e.all_day ? "all day" : `from ${hhmm(Date.parse(`${e.start}-05:00`) / 1000)}`}${e.free ? ", free" : e.price_min ? `, from $${Math.round(e.price_min)}` : ""} [${e.category}]`, e, e.url);
+  }
+  const w = await weather().catch(() => null) as any;
+  if (w) {
+    put("weather", `Now at ${w.station}: ${String(w.sky ?? "").toLowerCase() || "conditions not reported"}${w.tempF != null ? `, ${w.tempF}°F` : ""}${w.windKmh != null ? `, wind ${w.windKmh} km/h` : ""}`);
+    for (const f of (w.forecast ?? []).slice(0, 2)) put("weather", `Forecast, ${f}`);
+    for (const a of (w.alerts ?? []).slice(0, 3)) put("alerts", `National Weather Service: ${a.headline ?? a.event}`);
+  }
+  for (const e of active().filter((e) => e.source === "notify").slice(0, 5)) put("alerts", `Notify NYC: ${e.title}${e.lat != null ? ` (${[neighborhood(e.lat, e.lon!), borough(e.lat, e.lon!)].filter(Boolean).join(", ")})` : " (citywide)"}`, e);
+  const sub = (() => { try { return subwaySummary(1) as any; } catch { return null; } })();
+  if (sub) {
+    const live = (sub.recent ?? []).filter((a: any) => a.active && !String(a.type).startsWith("Planned"));
+    put("transit", `Subway: ${live.length} unplanned service alerts active now; ${sub.counts?.outagesNow ?? 0} elevators or escalators out of service`);
+    for (const a of live.slice(0, 4)) put("transit", `Subway ${String(a.routes ?? "").split(",").filter(Boolean).join("/")} trains: ${String(a.header ?? a.type).slice(0, 160)}`);
+  }
+  const p = pulse();
+  if (p.closures) put("transit", `${p.closures} road closures, construction zones and permitted street events on now`);
+  if (p.aqi != null && p.aqi > 100) put("alerts", `Air quality index ${p.aqi}: unhealthy for sensitive groups or worse`);
+  if ((p.customersOut ?? 0) >= 1000) put("alerts", `Con Ed: ${p.outages} power outages with ${p.customersOut} customers out`);
+  const news = todaysNews().sort((a, b) => b.outlets.length - a.outlets.length || b.starts - a.starts).slice(0, 6);
+  for (const n of news) put("news", `${n.title} (${n.outlets.join(", ")}, ${hhmm(n.starts)})`, n, n.url);
+  for (const c of incidents().filter((c) => c.sev >= 2 && (c.probability ?? 0) >= 0.7).slice(0, 3))
+    put("incidents", `${c.title}${c.lat != null ? ` (${[neighborhood(c.lat, c.lon), borough(c.lat, c.lon)].filter(Boolean).join(", ")})` : ""}: severity ${c.sev} of 3, ${c.events.length} report${c.events.length > 1 ? "s" : ""}, since ${hhmm(c.starts)}`, c);
+  return F;
+}
+export async function makeDayBrief() {
+  const F = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
+  const schema = { type: "object", required: ["headline", ...DAY_SECTIONS.map(([k]) => k)], properties: { headline: item, ...Object.fromEntries(DAY_SECTIONS.map(([k]) => [k, { type: "array", items: item }])) } };
+  let out: any = null;
+  try {
+    out = await whenIdle(() => llmJson(`You write today's brief for people in New York City, as of ${hhmm(now())}: mostly what's on. Use only the numbered facts (each says its section). 'headline': one sentence on the best of today, mostly events, with the weather if it matters. 'happening' (the main part): up to 6 bullets on today's big events (the facts list only those: major venues and citywide occasions), a mix of kinds, each naming the event, place and time; [] when there are none. 'weather': 1 or 2 bullets (now, and what to wear or carry). 'alerts', 'transit', 'news', 'incidents': up to 3 bullets each, only what matters to someone out in the city today; [] when their facts are empty or minor. Each bullet is one short plain sentence (under 25 words) and lists the ids of the facts it uses; copy numbers and times exactly as the facts write them; add nothing the facts don't say. Reply as JSON.`,
+      F.map((f) => `${f.id} [${f.sec}]: ${f.text}`).join("\n"), schema, 4000));
+  } catch (e) { console.warn("city brief:", (e as Error).message); }
+  const ok = (x: any) => x && typeof x.text === "string" && Array.isArray(x.facts) && faithful(x, byId);
+  const bullets: { text: string; facts: string[]; section: string; byCode?: boolean }[] = []; let dropped = 0;
+  for (const [k] of DAY_SECTIONS) {
+    const got = Array.isArray(out?.[k]) ? out[k] : [], kept = got.filter(ok).slice(0, k === "happening" ? 6 : 3); dropped += got.length - kept.length;
+    if (kept.length) bullets.push(...kept.map((x: any) => ({ text: x.text, facts: x.facts, section: k })));
+    else if (k !== "news" && k !== "incidents" || got.length) bullets.push(...F.filter((f) => f.sec === k).slice(0, k === "happening" ? 4 : 2).map((f) => ({ text: f.text, facts: [f.id], section: k, byCode: true }))); // the model's missing or wrong: its facts
+  }
+  const b = { headline: ok(out?.headline) ? { text: out.headline.text, facts: out.headline.facts } : null, bullets, sections: DAY_SECTIONS, by: out ? LOCAL_MODEL : "code (the model didn't answer)", dropped };
+  db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run("city", now(), JSON.stringify(b), JSON.stringify(F));
+  return latestBrief("city");
 }
 export function latestBrief(scope = "city") {
   const r = db.prepare("select * from briefs where scope = ? order by at desc limit 1").get(scope) as { at: number; body: string; facts: string } | undefined;
@@ -993,11 +1063,11 @@ export async function startCity() {
   every("511ny", 2, roads); every("notify", 2, notify); every("nws", 5, nws); every("noaa", 6, tide); every("coned", 15, coned);
   every("air", 10, air); every("floodnet", 10, floods); every("permits", 60, permits); every("film", 60, film); every("311", 60, reports311);
   every("adsb", 0.5, helicopters); every("unusual", 15, refreshUnusual); every("vision", 2, triage); every("news", 15, news); every("fdny", 6 * 60, fdny); every("truth", 24 * 60, checkTruth);
-  every("brief", 15, async () => { // every 15 minutes: today's incidents again, then the city's brief, and a borough's when it has something going on
+  every("brief", 15, async () => { // every 15 minutes: today's incidents again, and a borough's brief when it has something going on
     refreshIncidents();
-    await makeBrief("city");
     for (const b of BOROUGHS) if (incidents().some((c) => borough(c.lat, c.lon) === b)) await makeBrief(b);
   });
+  every("daybrief", 60, makeDayBrief); // the city brief: today in New York, mostly what's on (user, 2026-11-16)
   every("prune", 24 * 60, async () => {
     const at = now();
     db.prepare("delete from events where source = '311' and starts < ?").run(at - 90 * 86400);
