@@ -31,6 +31,13 @@ const now = () => Math.floor(Date.now() / 1000);
 const UA = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json" };
 const env = (k: string) => process.env[k] ?? "";
 const getJson = async (u: string, ms = 30_000, body?: object) => { const r = await fetch(u, { method: body ? "POST" : "GET", headers: body ? { ...UA, "content-type": "application/json" } : UA, body: body && JSON.stringify(body), signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<any>; };
+// Workday's Cloudflare answered 429 to every board after a burst (2026-11-16): requests to one platform go one at a time
+// at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>();
+const pace = async (ats: string, ms: number) => {
+  if ((resting.get(ats) ?? 0) > Date.now()) throw new Error(`HTTP 429 earlier: ${ats} rests until ${new Date(resting.get(ats)!).toISOString().slice(11, 16)} UTC`);
+  const t = Math.max(Date.now(), (nextSlot.get(ats) ?? 0) + ms); nextSlot.set(ats, t); await new Promise((r) => setTimeout(r, t - Date.now()));
+};
 const lastAt = (what: string) => (db.prepare("select max(at) t from runs where what = ?").get(what) as any)?.t ?? 0;
 
 // ---------- understanding a posting ----------
@@ -215,13 +222,13 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
   if (ats === "smartrecruiters") { // the list is filtered to NY, NJ and CT by SmartRecruiters; a description costs one request
     const out: In[] = [];
     for (const st of ["NY", "NJ", "CT"]) for (let off = 0; off < 1000; off += 100) {
-      const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us&region=${st}`);
+      await pace(ats, 500); const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us&region=${st}`);
       for (const p of d.content ?? []) {
         const id = `sr:${slug}:${p.id}`, loc = `${p.location?.city ?? ""}, ${p.location?.region ?? st}`;
         if (!region(loc)) continue;
         if (known(id)) { out.push(brief(id, p.company?.name ?? slug, loc)); continue; }
-        if (out.filter((j) => !j.known).length >= 300) continue; // the rest next time
-        const j = await getJson(p.ref).catch(() => null); if (!j) continue;
+        if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
+        await pace(ats, 500); const j = await getJson(p.ref).catch(() => null); if (!j) continue;
         out.push({ id, source: "smartrecruiters", company: j.company?.name ?? slug, title: j.name, location: loc, remoteHint: p.location?.remote ? "remote" : p.location?.hybrid ? "hybrid" : "", posted: Date.parse(j.releasedDate), url: j.postingUrl ?? j.applyUrl,
           department: j.department?.label ?? j.function?.label ?? "", employment: j.typeOfEmployment?.label ?? "", description: stripHtml(Object.values(j.jobAd?.sections ?? {}).map((x: any) => `${x.title ?? ""}\n${x.text ?? ""}`).join("\n\n")) });
       }
@@ -231,18 +238,18 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
   }
   if (ats === "workday") { // asked only for the board's places in our area (its own location facets); a description costs one request
     const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant);
-    const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
+    await pace(ats, 1500); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
     const places = vals.filter((v) => v.p === "locations" && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
     const pick = places.length ? places : states; if (!pick.length) return [];
     const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id) }, out: In[] = [];
     for (let off = 0; off < 2000; off += 20) {
-      const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
+      await pace(ats, 1500); const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
       for (const p of d.jobPostings ?? []) {
         const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
         if (!many && !region(loc)) continue;
         if (known(id)) { out.push(brief(id, company, many ? "New York, NY" : loc)); continue; }
-        if (out.filter((j) => !j.known).length >= 300) continue; // the rest next time
-        const i = (await getJson(`${base}${p.externalPath}`).catch(() => null))?.jobPostingInfo; if (!i) continue;
+        if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
+        await pace(ats, 1500); const i = (await getJson(`${base}${p.externalPath}`).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
         out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? "", posted: Date.parse(i.startDate),
           url: i.externalUrl, employment: i.timeType ?? "", description: stripHtml(i.jobDescription ?? "") });
       }
@@ -287,7 +294,7 @@ export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "wo
         sweep(ats, seen, `${PREFIX[ats]}:${slug}:`);
         db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
       });
-    } catch (e) { bad++; db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
+    } catch (e) { bad++; if (/HTTP 429$/.test((e as Error).message)) resting.set(ats, Date.now() + 3600_000); db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
   }));
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
   return { boards: list.length, failed: bad, jobs: n };
@@ -578,7 +585,7 @@ export function prune() {
 /** Every source at least 4 times a day, each within its limits: employer boards on Greenhouse, Lever, Ashby and Workable
  *  and NYC's jobs hourly (free; liveness); Adzuna NYC every 2 hours (its monthly calls); Workday, SmartRecruiters,
  *  USAJOBS, Adzuna remote, Remotive and Himalayas every 6 hours; new employer boards daily. Then dedupe and prune. */
-let running = false;
+let running = false, slowLane = false;
 export async function jobsTick() {
   if (running) return; running = true;
   try {
@@ -587,7 +594,9 @@ export async function jobsTick() {
     const due = (what: string, h: number) => now() - lastAt(what) > h * 3600 - 300;
     if (due("adzuna-nyc", 2)) await refreshAdzuna("nyc").catch((e) => console.log("jobs adzuna:", e.message));
     // boards that cost a request per new job (SmartRecruiters, Workday), and USAJOBS: every 6 hours (two misses still close a job)
-    if (due("boards-slow", 6)) await refreshBoards(["smartrecruiters", "workday"], "boards-slow").catch((e) => console.log("jobs boards-slow:", e.message));
+    if (due("boards-slow", 6) && !slowLane) { // paced (an hour or so): its own lane, so the hourly sources never wait on it
+      slowLane = true; refreshBoards(["smartrecruiters", "workday"], "boards-slow").catch((e) => console.log("jobs boards-slow:", e.message)).finally(() => { slowLane = false; marketCache.clear(); });
+    }
     if (due("usajobs", 6)) await refreshUsajobs().catch((e) => console.log("jobs usajobs:", e.message));
     if (due("adzuna-remote", 6)) await refreshAdzuna("remote").catch((e) => console.log("jobs adzuna remote:", e.message));
     if (due("remote", 6)) await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); // Remotive asks for a few reads a day at most
