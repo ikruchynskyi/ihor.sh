@@ -23,11 +23,15 @@ db.exec(`
   create table if not exists runs (at int, what text, ok int, n int, note text);
   create table if not exists probed (ckey text primary key, at int, found text);
   create table if not exists emb (id text primary key, v blob);
+  create table if not exists adz_keys (k text primary key, n int, at int); -- Adzuna ads per company + title (30 days): reposts across runs
+  create table if not exists adz_skip (id text primary key, at int); -- Adzuna ads left out (gig, repost), so a later sweep knows them
+  create table if not exists guides (at int primary key, body text); -- the weekly hiring context (jobs-ai.ts refreshGuidance)
 `);
 const now = () => Math.floor(Date.now() / 1000);
 const UA = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json" };
 const env = (k: string) => process.env[k] ?? "";
-const getJson = async (u: string, ms = 30_000) => { const r = await fetch(u, { headers: UA, signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<any>; };
+const getJson = async (u: string, ms = 30_000, body?: object) => { const r = await fetch(u, { method: body ? "POST" : "GET", headers: body ? { ...UA, "content-type": "application/json" } : UA, body: body && JSON.stringify(body), signal: AbortSignal.timeout(ms) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<any>; };
+const lastAt = (what: string) => (db.prepare("select max(at) t from runs where what = ?").get(what) as any)?.t ?? 0;
 
 // ---------- understanding a posting ----------
 const ENT: Record<string, string> = { nbsp: " ", mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", hellip: "…", bull: "•", middot: "·", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -58,6 +62,14 @@ export function region(loc: string, remoteHint = false): string | null {
   if (remote && !NON_US.test(l) && (US_REMOTE.test(l) || rest === "")) return "remote";
   return null;
 }
+const ST: Record<string, string> = { "new york": "NY", "new jersey": "NJ", connecticut: "CT" };
+/** Places as Workday and USAJOBS write them ("New York New York United States", "Jersey City, New Jersey", "US-NY-New
+ *  York", "Newark-NJ-USA") in the shape region() reads ("New York, NY"). */
+export const usPlace = (s: string) => {
+  const t = String(s ?? "").replace(/[-_]+/g, " ").replace(/[,\s]+(united states( of america)?|usa|us)\s*$/i, "").trim(), us = t.match(/^us\s+(ny|nj|ct)\s+(.+)$/i);
+  if (us) return `${us[2]}, ${us[1].toUpperCase()}`;
+  const m = t.match(/^(.+?),?\s+(new york|new jersey|connecticut)$/i); return m ? `${m[1]}, ${ST[m[2].toLowerCase()]}` : t;
+};
 export const remoteType = (loc: string, text: string, hint?: string) => {
   const h = (hint ?? "").toLowerCase();
   if (/remote/.test(h)) return "remote"; if (/hybrid/.test(h)) return "hybrid"; if (/on-?site|in-?office|onsite/.test(h)) return "onsite";
@@ -120,10 +132,16 @@ export function simhash(text: string) {
 }
 export const hamming = (a: string, b: string) => { let x = BigInt(`0x${a}`) ^ BigInt(`0x${b}`), n = 0; while (x) { x &= x - 1n; n++; } return n; };
 export const ckey = (company: string) => company.toLowerCase().replace(/&/g, "and").replace(/\b(inc|llc|ltd|corp|corporation|co|company|the|group|holdings|technologies|technology|labs)\b\.?/g, "").replace(/[^a-z0-9]/g, "");
-const tkey = (title: string) => title.toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+// a title's key: "Sr. Data Engineer (Remote)" and "Senior Data Engineer" are one
+const ABBR: Record<string, string> = { sr: "senior", jr: "junior", mgr: "manager", eng: "engineer", engr: "engineer", dev: "developer", assoc: "associate", asst: "assistant", admin: "administrator", rep: "representative", vp: "vice president" };
+const tkey = (title: string) => title.toLowerCase().replace(/&/g, " and ").replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/\b[a-z]+\b/g, (w) => ABBR[w] ?? w);
+/** One company under two names: the same key, or one key that is the other plus corporate words ("citi" / "citibank",
+ *  "anthropic" / "anthropiclimited"; never "meta" / "metabolix"). Only used with the same title in the same area. */
+const TAIL = /^(bank|na|limited|ltd|inc|llc|plc|llp|financial|group|corporation|corp|company|co|holdings?|global|international|usa?|america|services|solutions|systems|travel|division|health|healthcare|technolog(y|ies)|labs?|partners|ag|sa|nv|gmbh)+$/;
+export const sameCompany = (a: string, b: string) => { const [s, l] = a.length <= b.length ? [a, b] : [b, a]; return a === b || (s.length >= 4 && l.startsWith(s) && TAIL.test(l.slice(s.length))); };
 
 // ---------- storing ----------
-type In = { regionHint?: string; id: string; source: string; company: string; title: string; location: string; remoteHint?: string; isRemote?: boolean; salary?: { min: number; max: number; period: string } | null; salaryEst?: boolean; posted?: number | null; url: string; department?: string; employment?: string; description: string };
+type In = { known?: boolean; regionHint?: string; id: string; source: string; company: string; title: string; location: string; remoteHint?: string; isRemote?: boolean; salary?: { min: number; max: number; period: string } | null; salaryEst?: boolean; posted?: number | null; url: string; department?: string; employment?: string; description: string };
 const upsert = db.prepare(`insert into jobs (id, source, company, ckey, title, location, region, remote, salary_min, salary_max, salary_period, salary_est, posted, url, department, employment, seniority, func, description, first_seen, last_seen, missed, closed, fp, flags)
   values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,null,?,?) on conflict(id) do update set title=excluded.title, location=excluded.location, region=excluded.region, remote=excluded.remote,
   salary_min=excluded.salary_min, salary_max=excluded.salary_max, salary_period=excluded.salary_period, salary_est=excluded.salary_est, url=excluded.url, department=excluded.department,
@@ -170,10 +188,68 @@ function sweep(source: string, seenIds: Set<string>, prefix: string) {
 // ---------- sources ----------
 const SEED: [string, string][] = JSON.parse(`[["greenhouse","stripe"],["greenhouse","oscar"],["greenhouse","datadog"],["greenhouse","brex"],["greenhouse","coinbase"],["greenhouse","affirm"],["ashby","ramp"],["greenhouse","twilio"],["greenhouse","pinterest"],["greenhouse","hellofresh"],["greenhouse","instacart"],["ashby","plaid"],["greenhouse","elastic"],["greenhouse","point72"],["greenhouse","janestreet"],["greenhouse","figma"],["greenhouse","airbnb"],["ashby","notion"],["ashby","headway"],["greenhouse","ripple"],["greenhouse","justworks"],["greenhouse","robinhood"],["greenhouse","mercury"],["greenhouse","braze"],["greenhouse","chime"],["greenhouse","mongodb"],["greenhouse","via"],["greenhouse","fanduel"],["greenhouse","zocdoc"],["greenhouse","clear"],["greenhouse","vercel"],["greenhouse","hearst"],["lever","spotify"],["ashby","hex"],["greenhouse","duolingo"],["greenhouse","schonfeld"],["greenhouse","seatgeek"],["lever","ro"],["greenhouse","dropbox"],["greenhouse","gemini"],["greenhouse","okta"],["ashby","kayak"],["greenhouse","axios"],["greenhouse","betterment"],["greenhouse","talkspace"],["greenhouse","squarespace"],["ashby","amplitude"],["greenhouse","newrelic"],["greenhouse","lyft"],["greenhouse","peloton"],["lever","anchorage"],["greenhouse","taboola"],["greenhouse","attentive"],["ashby","hopper"],["ashby","lemonade"],["ashby","paxos"],["ashby","substack"],["greenhouse","ziprecruiter"],["greenhouse","voxmedia"],["greenhouse","virtu"],["greenhouse","convene"],["greenhouse","cockroachlabs"],["ashby","industrious"],["greenhouse","harrys"],["greenhouse","mejuri"],["lever","wealthfront"],["greenhouse","asana"],["lever","theathletic"],["ashby","titan"],["greenhouse","pagerduty"],["ashby","patreon"],["ashby","acorns"],["greenhouse","consensys"],["greenhouse","sweetgreen"],["ashby","capsule"],["greenhouse","discord"],["greenhouse","glossier"],["greenhouse","modernhealth"],["ashby","ledger"],["ashby","away"],["greenhouse","insider"],["ashby","brooklinen"],["greenhouse","yext"],["greenhouse","greenhouse"],["ashby","column"],["lever","nomihealth"],["greenhouse","tripadvisor"],["ashby","sonder"],["greenhouse","thirdlove"],["greenhouse","everlane"],["greenhouse","flatironhealth"],["greenhouse","airtable"],["greenhouse","a24"],["greenhouse","misfitsmarket"],["greenhouse","kickstarter"]]`);
 for (const [ats, slug] of SEED) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
-const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab" }; // job ids are <prefix>:<slug>:<id>
+const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab", smartrecruiters: "sr", workable: "wk", workday: "wd" }; // job ids are <prefix>:<slug>:<id>
+// Workday boards can't be found from a company's name (the host, number and site differ), so these are listed by hand:
+// big NYC-area employers whose boards answered on 2026-11-16. slug = tenant|wdN|site.
+const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Morgan Stanley"], ["pfizer|1|PfizerCareers", "Pfizer"], ["mastercard|1|CorporateCareers", "Mastercard"], ["nasdaq|1|Global_External_Site", "Nasdaq"],
+  ["spgi|5|SPGI_Careers", "S&P Global"], ["jj|5|JJ", "Johnson & Johnson"], ["msd|5|SearchJobs", "Merck"], ["bristolmyerssquibb|5|BMS", "Bristol Myers Squibb"], ["pru|5|Careers", "Prudential"], ["blackstone|1|Blackstone_Careers", "Blackstone"],
+  ["att|1|ATTGeneral", "AT&T"], ["salesforce|12|External_Career_Site", "Salesforce"], ["verizon|12|verizon-careers", "Verizon"], ["nvidia|5|NVIDIAExternalCareerSite", "NVIDIA"], ["target|5|targetcareers", "Target"]];
+for (const [slug, name] of WORKDAY) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('workday', ?, ?, ?)").run(slug, name, now());
+for (const [ats, slug] of [["smartrecruiters", "Equinox"], ["workable", "huggingface"]]) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
+const BOARD_NAME = new Map(WORKDAY);
+/** Every facet value on a Workday board, nested ones too: { p: its parameter, d: what it says, id }. */
+const wdFacets = (fs: any[], p = ""): { p: string; d: string; id: string }[] => (fs ?? []).flatMap((f) => (f.values ?? []).flatMap((v: any) => (v.values ? wdFacets([v], v.facetParameter ?? f.facetParameter) : [{ p: f.facetParameter ?? p, d: String(v.descriptor ?? ""), id: v.id }])));
 const titleCase = (s: string) => s.replace(/(^|[-_ ])(\w)/g, (_, a, b) => `${a ? " " : ""}${b.toUpperCase()}`);
 
-async function readBoard(ats: string, slug: string): Promise<In[]> {
+/** One employer board's jobs. known(id): a job stored and open already, so a board that needs a request per job for its
+ *  description (SmartRecruiters, Workday) only lists it; discover() passes () => true to read the lists alone. */
+async function readBoard(ats: string, slug: string, known: (id: string) => boolean = (id) => !!openIds.get(id)): Promise<In[]> {
+  const brief = (id: string, company: string, location: string, isRemote = false): In => ({ known: true, id, source: ats, company, title: "", location, isRemote, url: "", description: "" });
+  if (ats === "workable") {
+    const d = await getJson(`https://apply.workable.com/api/v1/widget/accounts/${slug}?details=true`);
+    return (d.jobs ?? []).map((j: any) => ({ id: `wk:${slug}:${j.shortcode}`, source: "workable", company: d.name ?? titleCase(slug), title: j.title,
+      location: (j.locations?.length ? j.locations : [j]).map((l: any) => [l.city, ST[String(l.region ?? l.state ?? "").toLowerCase()] ?? l.region ?? l.state, l.country === "United States" || l.country_code === "US" ? "" : l.country].filter(Boolean).join(", ")).join("; "),
+      isRemote: !!j.telecommuting && /united states|^us$/i.test(j.country ?? j.locations?.[0]?.country ?? ""), posted: Date.parse(j.published_on ?? j.created_at), url: j.url ?? j.application_url,
+      department: j.department ?? "", employment: j.employment_type ?? "", description: stripHtml(j.description ?? "") }));
+  }
+  if (ats === "smartrecruiters") { // the list is filtered to NY, NJ and CT by SmartRecruiters; a description costs one request
+    const out: In[] = [];
+    for (const st of ["NY", "NJ", "CT"]) for (let off = 0; off < 1000; off += 100) {
+      const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us&region=${st}`);
+      for (const p of d.content ?? []) {
+        const id = `sr:${slug}:${p.id}`, loc = `${p.location?.city ?? ""}, ${p.location?.region ?? st}`;
+        if (!region(loc)) continue;
+        if (known(id)) { out.push(brief(id, p.company?.name ?? slug, loc)); continue; }
+        if (out.filter((j) => !j.known).length >= 300) continue; // the rest next time
+        const j = await getJson(p.ref).catch(() => null); if (!j) continue;
+        out.push({ id, source: "smartrecruiters", company: j.company?.name ?? slug, title: j.name, location: loc, remoteHint: p.location?.remote ? "remote" : p.location?.hybrid ? "hybrid" : "", posted: Date.parse(j.releasedDate), url: j.postingUrl ?? j.applyUrl,
+          department: j.department?.label ?? j.function?.label ?? "", employment: j.typeOfEmployment?.label ?? "", description: stripHtml(Object.values(j.jobAd?.sections ?? {}).map((x: any) => `${x.title ?? ""}\n${x.text ?? ""}`).join("\n\n")) });
+      }
+      if ((d.content ?? []).length < 100) break;
+    }
+    return out;
+  }
+  if (ats === "workday") { // asked only for the board's places in our area (its own location facets); a description costs one request
+    const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant);
+    const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
+    const places = vals.filter((v) => v.p === "locations" && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
+    const pick = places.length ? places : states; if (!pick.length) return [];
+    const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id) }, out: In[] = [];
+    for (let off = 0; off < 2000; off += 20) {
+      const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
+      for (const p of d.jobPostings ?? []) {
+        const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
+        if (!many && !region(loc)) continue;
+        if (known(id)) { out.push(brief(id, company, many ? "New York, NY" : loc)); continue; }
+        if (out.filter((j) => !j.known).length >= 300) continue; // the rest next time
+        const i = (await getJson(`${base}${p.externalPath}`).catch(() => null))?.jobPostingInfo; if (!i) continue;
+        out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? "", posted: Date.parse(i.startDate),
+          url: i.externalUrl, employment: i.timeType ?? "", description: stripHtml(i.jobDescription ?? "") });
+      }
+      if ((d.jobPostings ?? []).length < 20) break;
+    }
+    return out;
+  }
   if (ats === "greenhouse") {
     const d = await getJson(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`);
     return d.jobs.map((j: any) => { const desc = stripHtml(j.content ?? "");
@@ -198,21 +274,22 @@ async function readBoard(ats: string, slug: string): Promise<In[]> {
   return [];
 }
 
-/** Re-read every company's board: new and changed jobs saved, missing ones a step closer to closed. */
-export async function refreshBoards() {
-  const list = db.prepare("select ats, slug from companies").all() as { ats: string; slug: string }[];
+const openIds = db.prepare("select 1 from jobs where id = ? and closed is null");
+/** Re-read companies' boards (these ATSes): new and changed jobs saved, missing ones a step closer to closed. */
+export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "workable"], what = "boards") {
+  const list = db.prepare(`select ats, slug from companies where ats in (${atses.map(() => "?").join(",")})`).all(...atses) as { ats: string; slug: string }[];
   let n = 0, bad = 0;
   for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(async ({ ats, slug }) => {
     try {
       const jobs = await readBoard(ats, slug), seen = new Set<string>();
       batch(() => {
-        for (const j of jobs) if (save(j)) { seen.add(j.id); n++; }
+        for (const j of jobs) if (j.known ? (touch.run(now(), j.id), true) : save(j)) { seen.add(j.id); n++; }
         sweep(ats, seen, `${PREFIX[ats]}:${slug}:`);
-        db.prepare("update companies set name = ?, last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
+        db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = null, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), seen.size, ats, slug);
       });
     } catch (e) { bad++; db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
   }));
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "boards", bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
   return { boards: list.length, failed: bad, jobs: n };
 }
 
@@ -231,41 +308,80 @@ export async function refreshNycJobs() {
   return { jobs: seen.size };
 }
 
-/** Adzuna, daily: broad sweeps around NYC (40 km, so Jersey City to White Plains) and remote US. Gig ads and reposts never get in. */
-export async function refreshAdzuna(pages = 20) {
+// Adzuna's trial plan is 2,500 calls a month (user, 2026-11-16). ADZUNA_MONTHLY_CALLS (default 2,300, a margin) is spent
+// evenly: NYC newest first every 2 hours, stopping at a page we already have; remote US every 6 hours. Before, one daily
+// burst read the 1,000 newest (about 4 hours of the ~6,600 NYC postings a day) and dropped each a week later.
+// NYC 12 sweeps a day of ADZ_NYC pages, remote 4 of ADZ_REMOTE: 12 × 5 + 4 × 3 = 72 calls a day, 2,232 in a 31-day month.
+const ADZ_MONTH = Number(env("ADZUNA_MONTHLY_CALLS")) || 2300, ADZ_REMOTE = 3, ADZ_NYC = Math.max(1, Math.floor((ADZ_MONTH / 31 - 4 * ADZ_REMOTE) / 12));
+const adzCalls = () => { const d = new Date(); return (db.prepare("select coalesce(sum(n), 0) n from runs where what = 'adzuna-calls' and at >= ?").get(Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000)) as any).n as number; };
+const adzKey = db.prepare("select n from adz_keys where k = ?"), adzCount = db.prepare("insert into adz_keys values (?, 1, ?) on conflict(k) do update set n = n + 1");
+const adzSkipped = db.prepare("select 1 from adz_skip where id = ?"), adzSkip = db.prepare("insert or ignore into adz_skip values (?, ?)");
+/** One Adzuna sweep (nyc: within 40 km of NYC; remote: US), newest first. Gig ads never get in; neither do reposts: the
+ *  same company and title already open from any source, or one ad copied to more than 5 towns (then all copies go). */
+export async function refreshAdzuna(which: "nyc" | "remote", pages = which === "nyc" ? ADZ_NYC : ADZ_REMOTE) {
   const id = env("ADZUNA_APP_ID"), key = env("ADZUNA_APP_KEY");
   if (!id || !key) return { error: "no Adzuna key" };
-  let n = 0, gig = 0, repost = 0; const perCo = new Map<string, number>();
-  const sweeps = [["", "New York, NY", 40], ["remote", "United States", 0]] as const;
-  for (const [what, where, km] of sweeps) for (let p = 1; p <= pages; p++) {
-    const u = `https://api.adzuna.com/v1/api/jobs/us/search/${p}?app_id=${id}&app_key=${key}&results_per_page=50&max_days_old=30&sort_by=date&where=${encodeURIComponent(where)}${km ? `&distance=${km}` : ""}${what ? `&what=${what}` : ""}&content-type=application/json`;
-    let d: any; try { d = await getJson(u); } catch { break; }
+  const left = ADZ_MONTH - adzCalls(); if (left <= 0) return { error: "Adzuna's monthly calls are used up" };
+  let n = 0, gig = 0, repost = 0, calls = 0; const mass = new Set<string>();
+  for (let p = 1; p <= Math.min(pages, left); p++) {
+    const u = `https://api.adzuna.com/v1/api/jobs/us/search/${p}?app_id=${id}&app_key=${key}&results_per_page=50&max_days_old=30&sort_by=date${which === "nyc" ? `&where=${encodeURIComponent("New York, NY")}&distance=40` : "&what=remote&where=United%20States"}&content-type=application/json`;
+    let d: any; calls++; try { d = await getJson(u); } catch { break; }
     if (!d.results?.length) break;
-    for (const r of d.results) {
-      const company = r.company?.display_name ?? "", title = r.title ?? "", text = r.description ?? "";
-      if (isGig(company, title, text)) { gig++; continue; }
-      // a repost: the same company and title already open (from any source), or one ad copied to many towns
-      const k = `${ckey(company)}|${tkey(title)}`, c = (perCo.get(k) ?? 0) + 1; perCo.set(k, c);
-      if (c > 1) { repost++; continue; }
-      const exists = db.prepare("select 1 from jobs where ckey = ? and lower(title) = lower(?) and closed is null and source != 'adzuna'").get(ckey(company), title);
-      if (exists) { repost++; continue; }
+    let fresh = 0;
+    batch(() => { for (const r of d.results) {
+      const jid = `az:${r.id}`, company = r.company?.display_name ?? "", title = r.title ?? "", text = r.description ?? "", k = `${ckey(company)}|${tkey(title)}`;
+      const prev = known.get(jid) as any, isNew = !prev && !adzSkipped.get(jid);
+      if (prev?.closed || (!prev && !isNew)) continue; // one we closed (expired, or a copy we hid) or left out before
+      if (isNew) {
+        fresh++;
+        if (isGig(company, title, text)) { gig++; adzSkip.run(jid, now()); continue; }
+        const copies = (adzKey.get(k) as any)?.n ?? 0; adzCount.run(k, now());
+        if (copies >= 5) { mass.add(k); repost++; adzSkip.run(jid, now()); continue; }
+        if (db.prepare("select 1 from jobs where ckey = ? and lower(title) = lower(?) and closed is null and id != ?").get(ckey(company), title, jid)) { repost++; adzSkip.run(jid, now()); continue; }
+      }
       const area: string[] = r.location?.area ?? [], nycCounty = /^(new york|kings|queens|bronx|richmond) county$/i.test(area[2] ?? "");
-      const regionHint = what === "remote" ? undefined : area[1] === "New Jersey" ? "nj" : nycCounty || /^new york( city)?$/i.test(area[2] ?? "") ? "nyc" : "metro"; // the search was within 40 km of NYC
-      const ok = save({ regionHint, id: `az:${r.id}`, source: "adzuna", company, title, location: what === "remote" ? `Remote, ${r.location?.display_name ?? "United States"}` : r.location?.display_name ?? where,
-        isRemote: what === "remote", salary: r.salary_min ? { min: r.salary_min, max: r.salary_max ?? r.salary_min, period: r.salary_max < 500 ? "hour" : "year" } : null, salaryEst: r.salary_is_predicted === "1" || r.salary_is_predicted === 1,
-        posted: Date.parse(r.created), url: r.redirect_url, department: r.category?.label ?? "", employment: [r.contract_time, r.contract_type].filter(Boolean).join(", ").replace(/_/g, " "), description: text });
-      if (ok) n++;
-    }
+      const regionHint = which === "remote" ? undefined : area[1] === "New Jersey" ? "nj" : nycCounty || /^new york( city)?$/i.test(area[2] ?? "") ? "nyc" : "metro"; // the search was within 40 km of NYC
+      if (save({ regionHint, id: jid, source: "adzuna", company, title, location: which === "remote" ? `Remote, ${r.location?.display_name ?? "United States"}` : r.location?.display_name ?? "New York, NY",
+        isRemote: which === "remote", salary: r.salary_min ? { min: r.salary_min, max: r.salary_max ?? r.salary_min, period: r.salary_max < 500 ? "hour" : "year" } : null, salaryEst: r.salary_is_predicted === "1" || r.salary_is_predicted === 1,
+        posted: Date.parse(r.created), url: r.redirect_url, department: r.category?.label ?? "", employment: [r.contract_time, r.contract_type].filter(Boolean).join(", ").replace(/_/g, " "), description: text }) && isNew) n++;
+    } });
+    if (!fresh) break; // a whole page we already had: everything older is in too
   }
-  // one ad posted to many towns: hide them all
-  for (const [k, c] of perCo) if (c > 5) {
-    const [ck, tk] = k.split("|");
-    for (const r of db.prepare("select id, title from jobs where source = 'adzuna' and ckey = ? and closed is null").all(ck) as any[]) if (tkey(r.title) === tk) db.prepare("update jobs set closed = ? where id = ?").run(now(), r.id);
+  // one ad posted to many towns: hide every copy
+  for (const k of mass) { const [ck, tk] = k.split("|"); for (const r of db.prepare("select id, title from jobs where source = 'adzuna' and ckey = ? and closed is null").all(ck) as any[]) if (tkey(r.title) === tk) db.prepare("update jobs set closed = ? where id = ?").run(now(), r.id); }
+  // we can't open Adzuna's pages to check a job, so a listing stays 30 days from posting (Adzuna's own window), then goes
+  db.prepare("update jobs set closed = ? where source = 'adzuna' and closed is null and coalesce(posted, first_seen) < ?").run(now(), now() - 30 * 86400);
+  db.prepare("delete from adz_keys where at < ?").run(now() - 30 * 86400); db.prepare("delete from adz_skip where at < ?").run(now() - 30 * 86400);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), `adzuna-${which}`, 1, n, `${calls} calls; ${gig} gig ads and ${repost} reposts skipped`);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "adzuna-calls", 1, calls, which);
+  return { jobs: n, gig, repost, calls };
+}
+
+/** Federal jobs from USAJOBS (USAJOBS_KEY and USAJOBS_EMAIL in .env): within 40 miles of NYC and 25 of Newark, and remote.
+ *  Every 6 hours; a job gone from the results twice, or past its application deadline, is closed. */
+export async function refreshUsajobs() {
+  const key = env("USAJOBS_KEY"), email = env("USAJOBS_EMAIL");
+  if (!key || !email) return { error: "no USAJOBS key" };
+  const H = { Host: "data.usajobs.gov", "User-Agent": email, "Authorization-Key": key, accept: "application/json" }, items = new Map<string, any>();
+  for (const q of ["LocationName=New%20York%2C%20New%20York&Radius=40", "LocationName=Newark%2C%20New%20Jersey&Radius=25", "RemoteIndicator=True"]) for (let page = 1; page <= 10; page++) {
+    const r = await fetch(`https://data.usajobs.gov/api/search?${q}&ResultsPerPage=500&Page=${page}`, { headers: H, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw new Error(`USAJOBS HTTP ${r.status}`);
+    const got = (await r.json() as any).SearchResult?.SearchResultItems ?? [];
+    for (const it of got) items.set(String(it.MatchedObjectId), it.MatchedObjectDescriptor);
+    if (got.length < 500) break;
   }
-  // listings Adzuna stopped showing a week ago are gone (we can't open their pages to check)
-  db.prepare("update jobs set closed = ? where source = 'adzuna' and closed is null and last_seen < ?").run(now(), now() - 7 * 86400);
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "adzuna", 1, n, `${gig} gig ads and ${repost} reposts skipped`);
-  return { jobs: n, gig, repost };
+  const seen = new Set<string>();
+  batch(() => { for (const [mid, j] of items) {
+    if (Date.parse(j.ApplicationCloseDate) < Date.now()) continue;
+    const pay = (j.PositionRemuneration ?? [])[0], per = pay?.RateIntervalCode === "PH" ? "hour" : pay?.RateIntervalCode === "PA" ? "year" : null, u = j.UserArea?.Details ?? {}, id = `usa:${mid}`;
+    if (save({ id, source: "usajobs", company: j.OrganizationName || j.DepartmentName, title: j.PositionTitle, location: (j.PositionLocation ?? []).map((l: any) => usPlace(l.LocationName)).join("; ") || j.PositionLocationDisplay,
+      isRemote: u.RemoteIndicator === true || /remote/i.test(j.PositionLocationDisplay ?? ""), salary: per && +pay.MinimumRange ? { min: +pay.MinimumRange, max: +pay.MaximumRange || +pay.MinimumRange, period: per } : null,
+      posted: Date.parse(j.PublicationStartDate), url: j.PositionURI, department: j.JobCategory?.[0]?.Name ?? "", employment: j.PositionSchedule?.[0]?.Name ?? "",
+      description: [u.JobSummary, j.QualificationSummary && `Qualifications:\n${j.QualificationSummary}`, [].concat(u.MajorDuties ?? []).length && `Duties:\n${[].concat(u.MajorDuties).join("\n")}`,
+        u.WhoMayApply?.Name && `Who may apply: ${u.WhoMayApply.Name}`, j.ApplicationCloseDate && `Applications close ${String(j.ApplicationCloseDate).slice(0, 10)}`].filter(Boolean).join("\n\n") })) seen.add(id);
+  } sweep("usajobs", seen, "usa:"); });
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "usajobs", 1, seen.size, `${items.size} found`);
+  return { jobs: seen.size };
 }
 
 /** Remote boards: Remotive and Himalayas, US-eligible only. */
@@ -293,15 +409,15 @@ export async function refreshRemote() {
 
 /** The employer list grows by itself: companies seen in Adzuna are tried on Greenhouse, Lever and Ashby (once each, up
  *  to `max` a day); any board that answers with NYC-area or US-remote jobs is added and read hourly from then on. */
-export async function discover(max = 40) {
+export async function discover(max = 100) {
   const cands = db.prepare("select company, ckey, count(*) n from jobs where source = 'adzuna' and closed is null and ckey not in (select ckey from probed) group by ckey order by n desc limit ?").all(max) as any[];
   let added = 0;
   for (const c of cands) {
     const slugs = [...new Set([c.ckey, c.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), c.company.toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, "")])].filter((x) => x.length > 2);
     let found = "";
-    for (const slug of slugs) for (const ats of ["greenhouse", "lever", "ashby"]) {
+    for (const slug of slugs) for (const ats of ["greenhouse", "lever", "ashby", "workable", "smartrecruiters"]) {
       if (found || STAFFING.test(c.company)) continue;
-      try { const jobs = await readBoard(ats, slug); if (jobs.some((j) => region(j.location, j.isRemote)) && jobs.some((j) => ckey(j.company) === c.ckey || ats !== "greenhouse")) found = `${ats}:${slug}`; } catch {}
+      try { const jobs = await readBoard(ats, slug, () => true); if (jobs.some((j) => region(j.location, j.isRemote)) && jobs.some((j) => ckey(j.company) === c.ckey || ats !== "greenhouse")) found = `${ats}:${slug}`; } catch {}
     }
     db.prepare("insert or replace into probed values (?, ?, ?)").run(c.ckey, now(), found);
     if (found) { const [ats, slug] = found.split(":"); db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now()); added++; }
@@ -310,30 +426,32 @@ export async function discover(max = 40) {
   return { tried: cands.length, added };
 }
 
-/** Duplicates across sources: the same company + title + area, or the same company with a near-identical description.
- *  The employer's own record wins (ATS > city > remote boards > Adzuna); the others point to it and show as "also on". */
+/** Duplicates across sources: the same title in the same area at the same company (under either of its names, so "Citi"
+ *  on Workday and "Citibank" on Adzuna meet), or the same company with a near-identical description. Each cluster keeps
+ *  one: the employer's own record (its board > government > remote boards > Adzuna); the others point to it and show
+ *  as "also on". One transaction for the lot (it was a commit per duplicate). */
 export function dedupe() {
-  const rank: Record<string, number> = { greenhouse: 0, lever: 0, ashby: 0, nycjobs: 1, remotive: 2, himalayas: 2, adzuna: 3 };
+  const rank: Record<string, number> = { greenhouse: 0, lever: 0, ashby: 0, workday: 0, smartrecruiters: 0, workable: 0, nycjobs: 1, usajobs: 1, remotive: 2, himalayas: 2, adzuna: 3 };
   const open = db.prepare("select id, source, ckey, title, region, fp from jobs where closed is null").all() as any[];
-  db.exec("update jobs set dup_of = null, also = null where closed is null"); // closed ones keep theirs: the market's history counts each job once
-  const by = new Map<string, any[]>();
-  for (const j of open) (by.get(j.ckey) ?? by.set(j.ckey, []).get(j.ckey)!).push(j);
-  let dups = 0;
-  for (const list of by.values()) {
-    if (list.length < 2) continue;
-    list.sort((a, b) => rank[a.source] - rank[b.source]);
-    for (let i = 0; i < list.length; i++) {
-      if (list[i].dup) continue;
-      const also: string[] = [];
-      for (let k = i + 1; k < list.length; k++) {
-        const a = list[i], b = list[k];
-        if (b.dup) continue;
-        const same = (tkey(a.title) === tkey(b.title) && a.region === b.region) || (a.fp && b.fp && hamming(a.fp, b.fp) <= 6 && tkey(a.title).split(" ")[0] === tkey(b.title).split(" ")[0]);
-        if (same) { b.dup = true; dups++; if (b.source !== a.source) also.push(b.source); db.prepare("update jobs set dup_of = ? where id = ?").run(a.id, b.id); }
-      }
-      if (also.length) db.prepare("update jobs set also = ? where id = ?").run([...new Set(also)].join(","), list[i].id);
-    }
+  const up = open.map((_, i) => i), find = (i: number): number => (up[i] === i ? i : (up[i] = find(up[i]))), join = (a: number, b: number) => { up[find(a)] = find(b); };
+  const groups = (key: (j: any) => string) => { const m = new Map<string, number[]>(); open.forEach((j, i) => { const k = key(j); (m.get(k) ?? m.set(k, []).get(k)!).push(i); }); return m.values(); };
+  for (const l of groups((j) => `${tkey(j.title)}|${j.region}`)) for (let x = 0; x < l.length; x++) for (let y = x + 1; y < l.length; y++) if (sameCompany(open[l[x]].ckey, open[l[y]].ckey)) join(l[x], l[y]);
+  for (const l of groups((j) => j.ckey)) for (let x = 0; x < l.length; x++) for (let y = x + 1; y < l.length; y++) {
+    const a = open[l[x]], b = open[l[y]];
+    if (a.fp && b.fp && tkey(a.title).split(" ")[0] === tkey(b.title).split(" ")[0] && hamming(a.fp, b.fp) <= 6) join(l[x], l[y]);
   }
+  const clusters = new Map<number, any[]>(); open.forEach((j, i) => { const r = find(i); (clusters.get(r) ?? clusters.set(r, []).get(r)!).push(j); });
+  let dups = 0; const setDup = db.prepare("update jobs set dup_of = ? where id = ?"), setAlso = db.prepare("update jobs set also = ? where id = ?");
+  batch(() => {
+    db.exec("update jobs set dup_of = null, also = null where closed is null"); // closed ones keep theirs: the market's history counts each job once
+    for (const c of clusters.values()) {
+      if (c.length < 2) continue;
+      c.sort((a, b) => (rank[a.source] ?? 3) - (rank[b.source] ?? 3) || a.id.localeCompare(b.id));
+      for (const d of c.slice(1)) { setDup.run(c[0].id, d.id); dups++; }
+      const also = [...new Set(c.slice(1).map((d) => d.source).filter((s) => s !== c[0].source))];
+      if (also.length) setAlso.run(also.join(","), c[0].id);
+    }
+  });
   return { dups };
 }
 
@@ -457,15 +575,23 @@ export function prune() {
   });
 }
 
-/** Hourly: employer boards and city jobs (liveness), dedupe. Daily (at the first run after 6 am): Adzuna and remote boards. */
+/** Every source at least 4 times a day, each within its limits: employer boards on Greenhouse, Lever, Ashby and Workable
+ *  and NYC's jobs hourly (free; liveness); Adzuna NYC every 2 hours (its monthly calls); Workday, SmartRecruiters,
+ *  USAJOBS, Adzuna remote, Remotive and Himalayas every 6 hours; new employer boards daily. Then dedupe and prune. */
 let running = false;
 export async function jobsTick() {
   if (running) return; running = true;
   try {
     await refreshBoards().catch((e) => console.log("jobs boards:", e.message));
     await refreshNycJobs().catch((e) => console.log("jobs nyc:", e.message));
-    const last = (db.prepare("select max(at) t from runs where what = 'adzuna'").get() as any)?.t ?? 0;
-    if (now() - last > 20 * 3600) { await refreshAdzuna().catch((e) => console.log("jobs adzuna:", e.message)); await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); await discover().catch((e) => console.log("jobs discover:", e.message)); }
+    const due = (what: string, h: number) => now() - lastAt(what) > h * 3600 - 300;
+    if (due("adzuna-nyc", 2)) await refreshAdzuna("nyc").catch((e) => console.log("jobs adzuna:", e.message));
+    // boards that cost a request per new job (SmartRecruiters, Workday), and USAJOBS: every 6 hours (two misses still close a job)
+    if (due("boards-slow", 6)) await refreshBoards(["smartrecruiters", "workday"], "boards-slow").catch((e) => console.log("jobs boards-slow:", e.message));
+    if (due("usajobs", 6)) await refreshUsajobs().catch((e) => console.log("jobs usajobs:", e.message));
+    if (due("adzuna-remote", 6)) await refreshAdzuna("remote").catch((e) => console.log("jobs adzuna remote:", e.message));
+    if (due("remote", 6)) await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); // Remotive asks for a few reads a day at most
+    if (due("discover", 20)) await discover().catch((e) => console.log("jobs discover:", e.message)); // new employer boards, once a day
     dedupe(); prune();
   } finally { running = false; marketCache.clear(); }
 }
@@ -490,4 +616,6 @@ export function candidates(qy: Query) {
   return (db.prepare(`select j.id, j.title, j.company, j.region, j.remote, j.url, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.flags, j.source, j.posted, j.first_seen, e.v from jobs j join emb e on e.id = j.id where ${w}`).all(...args) as any[])
     .map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), v: new Float32Array(new Uint8Array(r.v).buffer) }));
 }
+export const saveGuide = (body: object) => db.prepare("insert or replace into guides values (?, ?)").run(now(), JSON.stringify(body));
+export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; return r ? { at: r.at as number, ...JSON.parse(r.body) } : null; };
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;

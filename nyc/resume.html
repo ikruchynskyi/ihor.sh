@@ -32,6 +32,8 @@
   <p class="eyebrow"><a href="/nyc/jobs.html">Jobs</a> · Résumé check</p>
   <h1>How a hiring system reads your résumé</h1>
   <p class="lede">Most applications are read by software (an applicant tracking system) before a person sees them. It pulls out plain text, guesses your name, contact details, jobs and skills, and often filters on the exact words a posting uses. This page shows you that plain text, finds the layout choices that break it, checks the basics, and, given a job, lists the terms you're missing. It never invents anything for you to claim.</p>
+  <details class="card" id="guideBox" style="padding:8px 14px;margin:8px 0" hidden><summary><b>What recruiters look for now</b> <span class="hint" id="guideWhen"></span></summary><ul id="guide"></ul>
+    <p class="hint">Found in published research by a weekly web search and checked against its sources (each finding's numbers must be in the source it cites). The AI that scores and rewrites résumés here reads these too, as background.</p></details>
   <p class="hint">🔒 Your file is read here in your browser. Nothing is uploaded; nothing is kept unless you tick "keep it in this browser".</p>
 
   <div class="drop card" id="drop">
@@ -271,6 +273,11 @@ if (jid) fetch(`/api/jobs/job?id=${encodeURIComponent(jid)}`).then((r) => r.json
   if (cv && current) { setDraft(cv.text); $("tailorStatus").textContent = `You built a version for this job on ${new Date(cv.at).toLocaleDateString()}: it's in the editor below. Build again to start over.`; }
 }).catch(() => {});
 try { const kept = localStorage.getItem("resume-text"); if (kept) { $("keep").checked = true; current = { text: kept, layout: { kind: "txt" } }; $("status").textContent = "Using the résumé you kept in this browser (open the file again for the layout checks)."; show(); } } catch {}
+fetch("/api/jobs/guidance").then((r) => r.json()).then((g) => {
+  if (!g?.findings?.length) return;
+  $("guideWhen").textContent = `(updated ${new Date(g.at * 1000).toLocaleDateString()})`; $("guideBox").hidden = false;
+  $("guide").innerHTML = g.findings.map((f) => `<li>${esc(f.text)} ${f.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.title)}">[source]</a>`).join(" ")}</li>`).join("");
+}).catch(() => {});
 window.blipContext = () => ({ page: "Résumé check (how an ATS reads a résumé; runs in the browser)", score: current ? evaluate(current.text, current.layout).score : null, topFixes: current ? evaluate(current.text, current.layout).fixes.slice(0, 5).map((f) => f.problem) : [] });
 </script>
 </body>

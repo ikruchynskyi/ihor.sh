@@ -20,8 +20,8 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, type Query as JobQuery } from "./server/jobs.ts";
-import { startEmbedding, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief } from "./server/jobs-ai.ts";
+import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
+import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
@@ -1072,6 +1072,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
     }
     if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
     if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
@@ -1146,7 +1147,7 @@ if (IN_HOST_SUPERVISOR) {
   startMeteorRecorder();
   startEvents();
   startJobs();
-  startEmbedding();
+  startEmbedding(); startGuidance();
   startEvening();
   startMesh();
   // HOST=0.0.0.0 (in .env) also serves the local network directly, e.g. /mcp at http://<this Mac's address>:8080/mcp;
