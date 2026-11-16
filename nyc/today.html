@@ -6,6 +6,7 @@
   <title>New York today</title>
   <meta name="description" content="Today in New York on one screen: what's on, the weather, alerts, the subway, top news and critical incidents, rewritten every hour. Made to hang on a wall or sit in a Home Assistant dashboard." />
   <meta name="ihor-bare" content="a wall display (Home Assistant and the like): no site bar or Blip" />
+  <meta name="ihor-listed" content="in search and the sitemap all the same" />
   <style>
     :root { --bg: #f6f4ef; --fg: #1d1d1b; --muted: #6b6a66; --line: #dcd8cf; --card: #fff; --accent: #c2410c; --warn: #b4232c; --ok: #1e6b35; --hi: #fff3e8; }
     :root[data-theme="dark"] { --bg: #0e0f11; --fg: #ecebe6; --muted: #9a978f; --line: #26272b; --card: #17181b; --accent: #ff8a3d; --warn: #ff6b6b; --ok: #69db7c; --hi: #2a1d13; }
@@ -46,10 +47,11 @@
     .qr { flex: none; background: #fff; padding: 6px; border-radius: 6px; line-height: 0; } .qr img, .qr canvas { width: 120px; height: 120px; }
     .dlg .close { all: unset; float: right; cursor: pointer; font-size: 1.4em; line-height: 1; padding: .1em .3em; color: var(--muted); }
     .hint { color: var(--muted); font-size: .8em; }
+    .page-updated { display: none; } /* the site's "Last updated" line: the footer says when the data was */
   </style>
 </head>
 <body>
-<div class="page">
+<main class="page">
   <header>
     <div class="title"><a class="back" href="/nyc/">← NYC live map</a><h1>New York · today</h1><div class="date" id="date"></div></div>
     <div class="clock" id="clock" aria-label="Time in New York"></div>
@@ -58,7 +60,7 @@
   <p class="headline" id="headline" hidden></p>
   <div class="grid"><div class="col" id="left"></div><div class="col" id="right"></div></div>
   <footer><span id="updated">Loading…</span><span>From NYC's alerts and open data, the National Weather Service, the MTA, local newsrooms and event listings · worded by AI, every line checked against them · tap a line for its sources</span></footer>
-</div>
+</main>
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 <script>
 // ?kiosk=1 for a wall (no cursor, no links away, dark unless ?theme=light); ?theme=light|dark

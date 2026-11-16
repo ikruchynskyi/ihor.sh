@@ -98,13 +98,15 @@ var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
 <style>${readFileSync(path.join(PUBLIC, "fonts/fonts.css"), "utf8")}</style>
 <link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#07090f">`;
 
+/** A page left out of search, the sitemap and the site map: a bare page (no site bar or Blip) unless it says ihor-listed (nyc/today.html, a wall display people should find). */
+const unlisted = (html: string) => html.includes('name="ihor-bare"') && !html.includes('name="ihor-listed"');
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
   const lines = ["/ — home: the project select screen", "/terms — terms of use and disclaimer: as is, not advice, live data and AI answers can be wrong, what the site stores"];
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of await publicPages(dir, name)) {
       const page = await readFile(path.join(dir, f), "utf8"), title = page.match(/<title>([^<]*)/)?.[1]?.trim();
-      if (page.includes('name="ihor-bare"')) continue;
+      if (unlisted(page)) continue;
       lines.push(`/${name}/${f.replace(/index\.html$/, "")} — ${title ?? f}`);
     }
   return lines.join("\n");
@@ -317,7 +319,7 @@ function llmsTxt() {
       out.push(`## ${label}`, ``);
       for (const f of await publicPages(dir, name)) {
         const page = await readFile(path.join(dir, f), "utf8");
-        if (page.includes('name="ihor-bare"')) continue;
+        if (unlisted(page)) continue;
         const title = page.match(/<title>([^<]*)/)?.[1]?.trim() ?? f, desc = page.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "";
         out.push(`- [${title}](${SITE}/${name}/${f.replace(/index\.html$/, "")})${desc ? `: ${desc}` : ""}`);
       }
@@ -375,7 +377,7 @@ async function sitemap() {
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of await publicPages(dir, name))
       // story/deck/grammar.html without a query are canonically their first story or level, listed above
-      if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, lastChanged(path.relative(ROOT, path.join(dir, f)))]);
+      if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !unlisted(await readFile(path.join(dir, f), "utf8"))) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, lastChanged(path.relative(ROOT, path.join(dir, f)))]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc>${d ? `<lastmod>${d}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
 }
@@ -386,7 +388,7 @@ const HUD_BUTTONS = `<button type="button" class="ihor-read ihor-find" aria-labe
 
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
 function dress(html: string, world: string, urlPath = "", extra: Meta | null = null) {
-  if (html.includes('name="ihor-bare"')) return html; // helper pages shown inside another page (nyc/windy.html)
+  if (html.includes('name="ihor-bare"')) return urlPath && !unlisted(html) ? seo(html, world, urlPath, extra) : html; // helper pages shown inside another page (nyc/windy.html); a listed one gets its search head, still no bar
   const title = extra?.title ?? html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const [num, name] = world.split(" · "); // "World 2 · NYC": phones show just the name
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${name ? `<em>${num} ·</em> ${name}` : world}</span>${HUD_BUTTONS}<b>${title}</b></nav>`;
@@ -404,7 +406,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   // Mochi's Live2D model (~10 MB) and rooms change almost never: a month in the browser, not refetched on every page.
   // ponytail: no version in the URL, so a changed model file needs a new name to reach returning visitors
   const longLived = /[\\/]yomu[\\/]mochi[\\/](model|bg)[\\/]/.test(file);
-  if (ext === ".html" && !data.includes('name="ihor-bare"')) {
+  if (ext === ".html" && !unlisted(data.toString())) {
     res.setHeader("vary", "accept");
     if (world === "home") res.setHeader("link", HOME_LINKS);
     if (wantsMarkdown(res.req)) {
@@ -542,6 +544,8 @@ const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => St
 // site key and a way to check its tokens: reCAPTCHA Enterprise (RECAPTCHA_PROJECT, the Google Cloud project, and
 // RECAPTCHA_API_KEY, an API key allowed to call the reCAPTCHA Enterprise API) or a classic v3 key's RECAPTCHA_SECRET.
 const CAPTCHA_PATHS = new Set(["/api/jobs/search", "/api/jobs/market", "/api/jobs/brief"]), humanUntil = new Map<string, number>();
+/** Not through Cloudflare, from this Mac or the home network (the site's own checks, a Home Assistant on the LAN): no reCAPTCHA. */
+const local = (req: http.IncomingMessage) => !req.headers["cf-connecting-ip"] && /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd])/.test(clientIp(req));
 const captchaOn = () => !!process.env.RECAPTCHA_SITE_KEY && !!((process.env.RECAPTCHA_PROJECT && process.env.RECAPTCHA_API_KEY) || process.env.RECAPTCHA_SECRET);
 const enterprise = () => !!process.env.RECAPTCHA_PROJECT;
 /** The token's score (0 a bot, 1 a person), from the Enterprise assessment API or the classic siteverify. */
@@ -679,7 +683,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const ip = clientIp(req);
     if (METERED.some((p) => url.pathname.startsWith(p)) && !canCloud(req) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
-    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY, enterprise: enterprise() }));
+    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !local(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY, enterprise: enterprise() }));
   }
   try {
     if (url.pathname.startsWith("/api/radio/monitor")) { // listen on the server SDR with captions (monitor.ts)

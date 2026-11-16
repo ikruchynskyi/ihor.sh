@@ -31,7 +31,7 @@ export function buildIndex(root: string, worlds: Record<string, { dir: string; l
     for (const [name, { dir, label }] of Object.entries(worlds)) {
       for (const f of await publicPages(dir, name)) {
         const html = await readFile(path.join(dir, f), "utf8");
-        if (html.includes('name="ihor-bare"')) continue;
+        if (html.includes('name="ihor-bare"') && !html.includes('name="ihor-listed"')) continue; // bare pages, unless listed (server.ts unlisted)
         const body = html.match(/<body[\s\S]*$/i)?.[0] ?? html;
         add(`/${name}/${f.replace(/index\.html$/, "")}`, label, text(html.match(/<title>([^<]*)/)?.[1] ?? f), text(html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ""), grab(body, /<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi).join(" · "), text(body));
       }
