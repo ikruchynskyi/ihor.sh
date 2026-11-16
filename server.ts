@@ -46,7 +46,7 @@ import { upscale } from "./server/upscale.ts";
 import { photoPlaces } from "./server/ocr.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, publicSpaces, buildingReport, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, DAY_SECTIONS, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, DAY_SECTIONS, makeDayBrief, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -1316,6 +1316,7 @@ if (IN_HOST_SUPERVISOR) {
   schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", () => refreshGuidance());
   schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", () => precomputeChecks());
   schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", () => refreshCards());
+  schedule("nyc-today", "2 * * * *", "the city brief: today in New York (big events, weather, alerts, subway, top news, critical incidents), for the map and /nyc/today.html", () => makeDayBrief());
   schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts());
   startCron();
   startEvening();

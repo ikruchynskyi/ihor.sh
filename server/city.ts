@@ -16,7 +16,7 @@ import { OLLAMA, LOCAL_MODEL, whenIdle, inLine, llmJson, faithful } from "./llm.
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
-const db = new DatabaseSync(process.env.CITY_DB ?? path.join(dir, "city.db"));
+const db = new DatabaseSync(process.env.CITY_DB ?? path.join(dir, "city.db"), { timeout: 5000 }); // another writer (a script in the container): wait up to 5 s instead of failing
 // Not WAL: in WAL mode even a reader writes the shared index (-shm), and Docker Desktop's file sharing doesn't carry
 // SQLite's locks between the Mac and the container, so a sqlite3 read from the Mac corrupted the file on 2026-10-23.
 // The rollback journal survives an outside reader. Still: read data/*.db through `docker exec`, not from the Mac.
@@ -1051,7 +1051,7 @@ function every(source: string, minutes: number, f: () => Promise<unknown>) {
   const run = async () => {
     const at = now();
     try { const n = await f(); logPoll.run(source, at, 1, typeof n === "number" ? n : 0, null); }
-    catch (e) { logPoll.run(source, at, 0, 0, String((e as Error).message).slice(0, 200)); console.warn(`city ${source}:`, (e as Error).message); }
+    catch (e) { try { logPoll.run(source, at, 0, 0, String((e as Error).message).slice(0, 200)); } catch {} console.warn(`city ${source}:`, (e as Error).message); } // the log itself failing (database locked) mustn't take the server down
   };
   setTimeout(run, Math.random() * 30_000); // staggered, so a restart doesn't hit every feed at once
   setInterval(run, minutes * 60_000);
@@ -1067,7 +1067,6 @@ export async function startCity() {
     refreshIncidents();
     for (const b of BOROUGHS) if (incidents().some((c) => borough(c.lat, c.lon) === b)) await makeBrief(b);
   });
-  every("daybrief", 60, makeDayBrief); // the city brief: today in New York, mostly what's on (user, 2026-11-16)
   every("prune", 24 * 60, async () => {
     const at = now();
     db.prepare("delete from events where source = '311' and starts < ?").run(at - 90 * 86400);
