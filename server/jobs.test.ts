@@ -18,6 +18,7 @@ assert.equal(parseSalary("earn up to $55 an hour"), null); // a maximum isn't a 
 assert.deepEqual(parseSalary("$172,000/yr to $215,000/yr in Denver"), { min: 172000, max: 215000, period: "year" });
 assert.deepEqual(parseSalary("$140,000\u2011$220,000 per year"), { min: 140000, max: 220000, period: "year" }); // a non-breaking hyphen
 assert.equal(parseSalary("a $500 sign-on bonus"), null);
+assert.deepEqual(parseSalary("The base pay for this position ranges from $139,100/year in our lowest geographic market up to $240,500/year in our highest geographic market."), { min: 139100, max: 240500, period: "year" }); // Amazon
 assert.equal(role("Senior Data Engineer, Payments"), "data engineer");
 assert.equal(role("Manager, Finance"), "manager finance");
 assert.equal(region("Brooklyn, NY"), "nyc"); assert.equal(region("Remote, Manila"), null);

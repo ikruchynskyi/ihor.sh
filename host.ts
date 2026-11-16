@@ -100,6 +100,7 @@ async function ensureDockerAndContainers() {
 }
 
 // ---------- 1. HTTP bridge on 127.0.0.1:8075 (Whisper captions + SeedVR2 camera upscaler) ----------
+const RELAY_HOSTS = /^([a-z0-9-]+\.wd\d+\.myworkdayjobs\.com|wd\d+\.myworkdaysite\.com|[a-z0-9-]+\.fa(\.[a-z0-9-]+)?\.oraclecloud\.com)$/; // the /fetch relay's only hosts
 const httpBridge = http.createServer(async (req, res) => {
   if (!LOOPBACK.has(req.socket.remoteAddress ?? "")) return res.writeHead(403).end();
   const send = (code: number, body: unknown) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
@@ -134,6 +135,16 @@ const httpBridge = http.createServer(async (req, res) => {
       let len = 0;
       for await (const c of req) { const b = Buffer.from(c); len += b.length; if (len > 15_000_000) return res.writeHead(413).end(); chunks.push(b); }
       return send(200, await readLocal(Buffer.concat(chunks)));
+    }
+    if (req.url === "/fetch" && req.method === "POST") { // job boards whose Cloudflare turns the container away but answers this Mac (Workday, 2026-11-16; server/jobs.ts): only those hosts, https, no redirects
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 20_000) return res.writeHead(413).end(); }
+      const { url, body } = JSON.parse(raw || "{}");
+      let u: URL; try { u = new URL(String(url)); } catch { return send(400, { error: "bad url" }); }
+      if (u.protocol !== "https:" || !RELAY_HOSTS.test(u.hostname)) return send(403, { error: "not a job board this relay serves" });
+      const r = await fetch(u, { method: body ? "POST" : "GET", redirect: "error", signal: AbortSignal.timeout(30_000), body: body ? JSON.stringify(body) : undefined,
+        headers: { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json", ...(body ? { "content-type": "application/json" } : {}) } });
+      return send(200, { status: r.status, body: (await r.text()).slice(0, 8_000_000) });
     }
     if (req.url === "/voice" && req.method === "POST") { // Mochi's line as MP3 (server/voice.ts), never saved
       let raw = "";

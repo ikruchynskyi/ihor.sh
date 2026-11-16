@@ -140,7 +140,7 @@
       <div class="pager"><button id="prev" type="button">← Previous</button><span class="hint" id="pageInfo"></span><button id="next" type="button">Next →</button></div>
       <details class="card" style="padding:10px 14px;margin-top:20px"><summary><b>How this works, and what the flags mean</b></summary>
         <ul>
-          <li><b>✓ at the employer</b>: read from the company's own job board (Greenhouse, Lever, Ashby, Workable every hour; Workday and SmartRecruiters every 6 hours) or the government's own listings (NYC's open data, USAJOBS). A job missing twice in a row is removed.</li>
+          <li><b>✓ at the employer</b>: read from the company's own job board (Greenhouse, Lever, Ashby and Workable every hour; the big employers' own systems, Workday, Oracle, Eightfold, SmartRecruiters and Amazon's, once a day) or the government's own listings (NYC's open data, USAJOBS). A job missing twice in a row is removed.</li>
           <li><b>via Adzuna</b>: a job board aggregator, read every 4 hours. We can't open their pages to check, so a listing stays 30 days from its posting date, then goes. Gig ads (delivery apps, "be your own boss") and reposts (the same company and title again, or one ad copied to more than 5 towns) never get in.</li>
           <li><b>Flags</b> never hide a job unless you ask: <i>open N days</i> (possibly a ghost job), <i>evergreen / talent-pool</i> (collecting résumés, not hiring for a seat), <i>no salary range</i> (NYC's pay-transparency law requires one for jobs here), <i>staffing agency</i>, <i>commission-only or agent-recruiting</i>, <i>very wide pay range</i>, <i>scam signs</i>. Also: <i>posted again N times in 6 months</i> (taken down and put up again: a ghost job, or a role nobody stays in), <i>entry-level title asking for N+ years</i>, <i>wording that screens people out</i> (age-coded, native-speaker, "rockstar"), <i>always-on culture wording</i>. In a job's details, <b>🔍 Check this job</b> has AI read the posting against this site's record of the employer: every flag cites that record or quotes the posting, with a question to ask the recruiter.</li>
           <li>Salaries are what the employer posted; Adzuna's estimates are marked "est." and don't count as stated pay.</li>
@@ -160,7 +160,7 @@ const LABEL = {
   remote: { onsite: "On site", hybrid: "Hybrid", remote: "Remote" },
   seniority: { intern: "Intern", junior: "Entry / junior", mid: "Mid", senior: "Senior", staff: "Staff / principal", manager: "Manager / lead", director: "Director", executive: "VP / executive" },
   func: { engineering: "Engineering", data: "Data & analytics", design: "Design", product: "Product", sales: "Sales", marketing: "Marketing", finance: "Finance", legal: "Legal", people: "People / HR", support: "Customer support", operations: "Operations", health: "Health care", education: "Education", other: "Other" },
-  source: { greenhouse: "Employer (Greenhouse)", lever: "Employer (Lever)", ashby: "Employer (Ashby)", workday: "Employer (Workday)", smartrecruiters: "Employer (SmartRecruiters)", workable: "Employer (Workable)", nycjobs: "NYC government", usajobs: "US government (USAJOBS)", remotive: "Remotive", himalayas: "Himalayas", adzuna: "Adzuna" },
+  source: { greenhouse: "Employer (Greenhouse)", lever: "Employer (Lever)", ashby: "Employer (Ashby)", workday: "Employer (Workday)", smartrecruiters: "Employer (SmartRecruiters)", workable: "Employer (Workable)", oracle: "Employer (Oracle)", eightfold: "Employer (Eightfold)", amazon: "Employer (Amazon)", nycjobs: "NYC government", usajobs: "US government (USAJOBS)", remotive: "Remotive", himalayas: "Himalayas", adzuna: "Adzuna" },
 };
 const MULTI = ["region", "remote", "seniority", "func", "source"];
 let last = null, page = 0;
@@ -199,7 +199,7 @@ function facets(f) {
 // ---------- search ----------
 const money = (v, per) => (per === "hour" ? `$${Math.round(v)}/h` : v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`);
 const age = (t) => { const d = (Date.now() / 1000 - t) / 86400; return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${Math.floor(d)} days ago` : `${Math.floor(d / 30)} months ago`; };
-const verified = (s) => ["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "nycjobs", "usajobs"].includes(s);
+const verified = (s) => ["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "nycjobs", "usajobs"].includes(s);
 async function run(keepPage = false) {
   filterSummary();
   if (!keepPage) page = 0;

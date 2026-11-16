@@ -242,7 +242,7 @@ const RED_FLAGS = `Red flags to look for:
 - Process: unpaid trial work or long take-home assignments, many interview rounds, money, bank details or an SSN asked before an offer, chat apps or a personal email to apply.
 - A vague role: no clear purpose, outcomes or reporting line; mostly company superlatives.
 Good signs count too: pay stated and in line with similar jobs, clear must-haves vs nice-to-haves, an employer that is hiring (new postings and jobs filled), a recent posting.`;
-const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "nycjobs", "usajobs"]);
+const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "nycjobs", "usajobs"]);
 const checks = new Map<string, { at: number; p: Promise<any> }>();
 export function checkJob(id: string) {
   const hit = checks.get(id); if (hit && Date.now() - hit.at < 86400_000) return hit.p;
