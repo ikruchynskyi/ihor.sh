@@ -14,7 +14,7 @@ const norm = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0
 /** The name as news and markets know it: "DoorDash USA" → "DoorDash", "Acme, Inc." → "Acme". */
 /** "Coherent Corp." is not Cohere, "Sierra Leone Company" not Sierra: a listing or page is the employer's only when its
  *  name is the employer's plus at most corporate words. */
-const SUFFIX = /^(inc|corp|corporation|co|company|holdings?|group|ltd|lp|llc|plc|nv|sa|ag|global|platforms|technolog(y|ies)|markets|com|financial|healthcare|health|international|capital|assetmanagement|communications|transportation|services|solutions|systems|ai|the)*$/;
+const SUFFIX = /^(inc|corp|corporation|co|company|holdings?|group|ltd|lp|llc|plc|nv|sa|ag|global|platforms|technolog(y|ies)|markets|com|financial|healthcare|health|international|capital|assetmanagement|communications|transportation|services|ai|the)*$/;
 const named = (full: string, want: string) => full.startsWith(want) && SUFFIX.test(full.slice(want.length));
 const plain = (name: string) => name.replace(/[,.]?\s+\b(USA|US|Inc|LLC|L\.P|LP|Corp|Corporation|Co|Ltd|PLC|Holdings|Group)\b\.?/gi, "").trim() || name;
 
@@ -42,12 +42,16 @@ async function stock(sym: string) {
 
 // ---------- news (Google News, two weeks) and what the business is (Wikipedia) ----------
 const unxml = (s: string) => s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-async function news(name: string) {
-  const x = await get(`https://news.google.com/rss/search?q=${encodeURIComponent(`"${name}"`)}%20when%3A14d&hl=en-US&gl=US&ceid=US%3Aen`);
-  return [...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 6).map(([, it]) => {
+export async function news(name: string) {
+  // a one-word name is also a word ("Ramp", "Block", "Mercury"): business news only, and the name capitalized in the headline
+  const q = `"${name}" (company OR startup OR CEO OR funding OR raises OR valuation OR earnings OR layoffs OR hiring OR acquires OR launches OR AI) when:14d`;
+  const bare = name.replace(/^The\s+/, ""), first = bare.split(/\s+/)[0], esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const word = new RegExp(`\\b${esc(first.length >= 6 ? first : bare)}\\b`); // "JPMorgan" will do for JPMorgan Chase; "S&P" alone won't for S&P Global
+  const x = await get(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US%3Aen`);
+  return [...x.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 30).map(([, it]) => {
     const tag = (t: string) => unxml(it.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`))?.[1] ?? "");
     const source = tag("source"); return { title: tag("title").replace(new RegExp(`\\s+-\\s+${source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), ""), source, url: tag("link"), at: Math.floor(Date.parse(tag("pubDate")) / 1000) };
-  }).filter((n) => n.title && n.url.startsWith("https://")).sort((a, b) => b.at - a.at);
+  }).filter((n) => word.test(n.title) && n.url.startsWith("https://")).slice(0, 6); // in Google's order: by date, "Ramp Up" headlines rose above Ramp's own news
 }
 export async function wiki(name: string) {
   const h = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)" };
