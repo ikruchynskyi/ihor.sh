@@ -11,10 +11,15 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 const get = async (u: string, headers: Record<string, string> = {}) => { const r = await fetch(u, { headers: { "user-agent": UA, ...headers }, signal: AbortSignal.timeout(20_000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); };
 const NASDAQ = { accept: "application/json", origin: "https://www.nasdaq.com", referer: "https://www.nasdaq.com/" };
 const norm = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+/** The name as news and markets know it: "DoorDash USA" → "DoorDash", "Acme, Inc." → "Acme". */
+const plain = (name: string) => name.replace(/[,.]?\s+\b(USA|US|Inc|LLC|L\.P|LP|Corp|Corporation|Co|Ltd|PLC|Holdings|Group)\b\.?/gi, "").trim() || name;
 
 // ---------- the stock: a ticker from Nasdaq's symbol search (plain US stocks whose name starts with the company's) ----------
-const LISTED_AS: Record<string, string> = { google: "Alphabet", youtube: "Alphabet", instagram: "Meta Platforms", whatsapp: "Meta Platforms", chase: "JPMorgan Chase", jpmorganchasebankna: "JPMorgan Chase" };
+const LISTED_AS: Record<string, string> = { google: "Alphabet", youtube: "Alphabet", instagram: "Meta Platforms", whatsapp: "Meta Platforms" };
+// the big banks' names find only their notes and CDs in Nasdaq's search
+const TICKER: Record<string, string> = { jpmorganchase: "JPM", chase: "JPM", goldmansachs: "GS", morganstanley: "MS", citi: "C", citigroup: "C", bankofamerica: "BAC", wellsfargo: "WFC", blackrock: "BLK", bny: "BK", capitalone: "COF", americanexpress: "AXP" };
 async function ticker(name: string) {
+  if (TICKER[norm(name)]) return TICKER[norm(name)];
   const as = LISTED_AS[norm(name)] ?? name, want = norm(as);
   const d = JSON.parse(await get(`https://api.nasdaq.com/api/autocomplete/slookup/10?search=${encodeURIComponent(as)}`, NASDAQ));
   return (d.data ?? []).find((x: any) => x.asset === "STOCKS" && /^[A-Z]{1,5}$/.test(x.symbol) && norm(x.name).startsWith(want))?.symbol ?? null;
@@ -45,12 +50,16 @@ async function wiki(name: string) {
   const s = JSON.parse(await get(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`${name} company`)}&srlimit=1&format=json`, h)), title = s.query?.search?.[0]?.title;
   if (!title) return null;
   const d = JSON.parse(await get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, h));
+  const t = norm(String(d.title ?? "").replace(/\(.*\)/, "")), n = norm(name); // the search's best page may be about something else ("NYC Dept of Health" → a soda rule)
+  if (!(t.startsWith(n.slice(0, 5)) || n.startsWith(t.slice(0, 5)))) return null;
   return d.type === "standard" && d.extract ? { title: d.title, extract: String(d.extract), url: d.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}` } : null;
 }
 
 // ---------- pay: Levels.fyi (its MCP server's free tools, and the LLM-readable pages its robots.txt offers agents) ----------
+let lvNext = 0; // Levels.fyi throttles a burst: a call every 2 s at most
+const lvPace = async () => { const wait = lvNext - Date.now(); lvNext = Math.max(Date.now(), lvNext) + 2000; if (wait > 0) await new Promise((r) => setTimeout(r, wait)); };
 async function levelsTool(tool: string, args: object) {
-  const call = async (method: string, params: object, id: number) => { const t = await (await fetch("https://mcp.levels.fyi/", { method: "POST", signal: AbortSignal.timeout(20_000),
+  const call = async (method: string, params: object, id: number) => { await lvPace(); const t = await (await fetch("https://mcp.levels.fyi/", { method: "POST", signal: AbortSignal.timeout(20_000),
     headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)" }, body: JSON.stringify({ jsonrpc: "2.0", id, method, params }) })).text();
     const line = t.split("\n").find((l) => l.startsWith("data: ")); return JSON.parse(line ? line.slice(6) : t); };
   await call("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "ihor.sh", version: "1" } }, 1);
@@ -64,7 +73,7 @@ export async function levels(name: string, fields: [string, number][]) {
   const slug = (await levelsTool("search-companies", { searchText: name, limit: 1 }))?.[0]?.slug; if (!slug) return null;
   const families = fields.flatMap(([f]) => FAMILY[f] ?? []).slice(0, 3), out: any[] = [];
   for (const f of families) {
-    const md = await get(`https://www.levels.fyi/companies/${slug}/salaries/${f}.md`, { "user-agent": "Claude-User" }).catch(() => "");
+    await lvPace(); const md = await get(`https://www.levels.fyi/companies/${slug}/salaries/${f}.md`, { "user-agent": "Claude-User" }).catch(() => "");
     const median = Number(md.match(/Median Total Compensation:\s*\$([\d,]+)/)?.[1]?.replace(/,/g, "") ?? 0);
     if (!median) continue;
     const lv = [...md.matchAll(/^\|\s*([^|\n]+?)\s*\|\s*\$([\d,]+)\s*\|\s*$/gm)].map(([, l, v]) => ({ level: l, pay: Number(v.replace(/,/g, "")) })).filter((x) => !/^level$/i.test(x.level)).slice(0, 10);
@@ -95,8 +104,8 @@ const FAMILY_NAME: Record<string, string> = { "software-engineer": "software eng
 /** Gathers the facts, has the model word an overview from them (each line checked), and stores the card (the page shows its date). */
 export async function companyCard(name: string) {
   const e = employer(name); if (!e) throw new Error("No open jobs from that employer here.");
-  const [w, n, sym] = await Promise.all([wiki(e.name).catch(() => null), news(e.name).catch(() => []), ticker(e.name).catch(() => null)]);
-  const [st, lv] = await Promise.all([sym ? stock(sym).catch(() => null) : null, levels(e.name, e.fields as [string, number][]).catch(() => null)]);
+  const nm = plain(e.name), [w, n, sym] = await Promise.all([wiki(nm).catch(() => null), news(nm).catch(() => []), ticker(nm).catch(() => null)]);
+  const [st, lv] = await Promise.all([sym ? stock(sym).catch(() => null) : null, levels(nm, e.fields as [string, number][]).catch(() => null)]);
   const F: { id: string; text: string }[] = [], add = (text: string) => { F.push({ id: `F${F.length + 1}`, text }); };
   if (w) add(`About ${e.name} (Wikipedia): ${w.extract.split(/(?<=\.)\s+/).slice(0, 3).join(" ")}`);
   add(`On this site ${e.name} has ${e.open} open jobs in the NYC area and remote US; ${e.new30} were posted and ${e.gone30} taken down in the last 30 days; ${e.stale}% of its open jobs have been up over 60 days.`);
@@ -111,7 +120,7 @@ export async function companyCard(name: string) {
     F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["business", "hiring", "market", "tips"], properties: { business: item, hiring: item, market: item, tips: { type: "array", items: item } } }, 1200).catch(() => null);
   const ok = (x: any) => { const c = cited(x); return c.text && faithful(c, byId) ? c : null; };
   const card = { name: e.name, at: Math.floor(Date.now() / 1000), wiki: w, ticker: sym, stock: st, news: n, levels: lv, weeks: wk,
-    overview: out ? { business: ok(out.business), hiring: ok(out.hiring), market: ok(out.market), tips: (Array.isArray(out.tips) ? out.tips : []).map(ok).filter(Boolean).slice(0, 3) } : null, facts: F };
+    overview: out ? { business: w ? ok(out.business) : null /* no source, no "what it does" (the number check can't catch a made-up one) */, hiring: ok(out.hiring), market: ok(out.market), tips: (Array.isArray(out.tips) ? out.tips : []).map(ok).filter(Boolean).slice(0, 3) } : null, facts: F };
   saveCompanyInfo(e.name, card);
   return card;
 }
@@ -130,6 +139,11 @@ export async function refreshCards(n = 80) {
   return made;
 }
 
+if (import.meta.url === `file://${process.argv[1]}` && process.argv[2] === "test") { // node server/company.ts test: the name and relevance rules
+  const assert = (await import("node:assert/strict")).default;
+  assert.equal(plain("DoorDash USA"), "DoorDash"); assert.equal(plain("Acme, Inc."), "Acme"); assert.equal(plain("Goldman Sachs"), "Goldman Sachs"); assert.equal(plain("US Bank"), "US Bank");
+  console.log("company ok"); process.exit(0);
+}
 if (import.meta.url === `file://${process.argv[1]}`) { // node server/company.ts <company> (JOBS_DB pointing at a copy)
   const c = await companyCard(process.argv[2] ?? "Datadog");
   console.log(JSON.stringify({ ...c, stock: c.stock && { ...c.stock, weekly: `${c.stock.weekly.length} points` }, facts: c.facts.length }, null, 1).slice(0, 3000));
