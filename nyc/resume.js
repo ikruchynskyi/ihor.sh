@@ -170,3 +170,23 @@ export function annotate(text) {
     return { kind, section, issues, filler };
   });
 }
+
+// ---------- a PDF's printed lines back into bullets and sentences ----------
+const BULLET_START = /^[•\-–▪◦●*·]\s*|^\d+\.\s/, A_DATE_RANGE = new RegExp(DATE_RANGE.source, "i");
+/** A PDF's text comes out one printed line at a time, so a bullet that wraps on the page becomes two lines. A line is
+ *  joined to the one before when it starts in lowercase, or when the one before ran to the margin without ending a
+ *  sentence and this one doesn't look like a new entry (a bullet, a heading, a date range, a title-cased name). */
+export function unwrap(text) {
+  const lines = text.split(/\r?\n/), lens = lines.map((l) => l.trim().length).filter(Boolean).sort((a, b) => a - b), full = lens.length ? lens[Math.floor(lens.length * 0.9)] : 80;
+  const isHead = (t) => { const h = t.replace(/[:|•\-–—]+$/g, "").trim(); return h.length <= 40 && h.split(/\s+/).length <= 5 && Object.values(HEADINGS).some((re) => re.test(h)); };
+  const titled = (t) => { const w = t.split(/\s+/).filter((x) => /^[a-z]/i.test(x)); return w.length > 0 && w.filter((x) => /^[A-Z]/.test(x)).length / w.length >= 0.7; };
+  const out = [];
+  for (const line of lines) {
+    const t = line.trim(), prev = out.length ? out[out.length - 1].trim() : "";
+    const join = t && prev && !BULLET_START.test(t) && !isHead(t) && !isHead(prev)
+      && (/^[a-z]/.test(t) || (prev.length >= full * 0.8 && !/[.!?:;]$/.test(prev) && !A_DATE_RANGE.test(t) && !titled(t)));
+    if (join) out[out.length - 1] = `${out[out.length - 1].replace(/\s+$/, "")}${/[a-z]-$/i.test(prev) && /^[a-z]/.test(t) ? "" : " "}${t}`; // "post-" + "sale" = "post-sale"
+    else out.push(line);
+  }
+  return out.join("\n");
+}

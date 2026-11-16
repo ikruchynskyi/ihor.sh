@@ -1,6 +1,6 @@
 // Run: node nyc/resume.test.mjs
 import assert from "node:assert/strict";
-import { extract, evaluate, compare, yearsOfExperience, mentions, addedSkills, composeTailored, annotate } from "./resume.js";
+import { extract, evaluate, compare, yearsOfExperience, mentions, addedSkills, composeTailored, annotate, unwrap } from "./resume.js";
 
 const good = `Jane Rivera
 Brooklyn, NY · jane.rivera@example.com · (917) 555-0142 · linkedin.com/in/janerivera
@@ -69,4 +69,23 @@ assert.ok(notes[5].issues.some((i) => i.startsWith("starts weak")) && notes[5].i
 assert.deepEqual(notes[6].issues, [], "a strong bullet has no notes");
 assert.ok(notes[7].filler.includes("synergy") && notes[7].filler.includes("results-driven") && notes[7].issues.some((i) => i.includes("I / my")));
 assert.equal(notes[10].section, "skills");
+// a PDF's wrapped lines joined back (the user's résumé, 2026-11-16), new entries left alone
+const printed = `WORK EXPERIENCE
+Adobe ( https://www.adobe.com/ ) - Full-time - New York, NY
+Payment Services Customer Technical Advisor 11/2023 – present
+● Guided clients through pre and post-sale processes for Adobe Payment Services, ensuring smooth
+onboarding and tailored integrations
+● Tackled critical issues and developed self-service tools to empower sales team and improve client
+satisfaction and retention across the post-
+sale lifecycle for enterprise accounts in North America
+Senior Analyst, Contoso Bank — Jun 2019 – Oct 2023
+● Built reports`;
+const joined = unwrap(printed).split("\n");
+assert.equal(joined.length, 7, joined.join(" | "));
+assert.equal(joined[3], "● Guided clients through pre and post-sale processes for Adobe Payment Services, ensuring smooth onboarding and tailored integrations");
+assert.ok(joined[4].endsWith("across the post-sale lifecycle for enterprise accounts in North America"), joined[4]);
+assert.equal(joined[2], "Payment Services Customer Technical Advisor 11/2023 – present"); // its own line, not joined to the company
+assert.equal(joined[5], "Senior Analyst, Contoso Bank — Jun 2019 – Oct 2023"); // a date range starts a new entry
+assert.equal(unwrap(unwrap(printed)), unwrap(printed));
+assert.equal(unwrap(good), good, "a résumé without wrapped lines is left as it is");
 console.log(`resume ok: good ${e.score}, bad ${b.score}, coverage ${c.coverage}% missing ${c.missing.join(",")}`);

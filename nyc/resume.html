@@ -95,7 +95,7 @@
   </section>
 </main>
 <script type="module">
-import { evaluate, compare, extract, addedSkills, composeTailored, annotate } from "/nyc/resume.js";
+import { evaluate, compare, extract, addedSkills, composeTailored, annotate, unwrap } from "/nyc/resume.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
@@ -168,6 +168,8 @@ $("usePaste").onclick = () => { const t = $("paste").value.trim(); if (t) { curr
 // ---------- showing ----------
 const NAMES = { parsing: "Will it parse?", contact: "Can they reach you?", content: "Do the bullets sell?" };
 function show() {
+  // a PDF's printed lines joined back into bullets and sentences; "What the system sees" keeps the raw lines
+  if (current.raw == null) { current.raw = current.text; current.text = unwrap(current.text); }
   const r = evaluate(current.text, current.layout), x = r.extracted;
   $("out").hidden = false;
   $("score").textContent = r.score; $("score").style.color = r.score >= 80 ? "var(--ok)" : r.score >= 55 ? "var(--accent)" : "var(--warn)";
@@ -176,7 +178,7 @@ function show() {
   const row = (k, v, ok = !!v) => `<tr><td class="hint">${k}</td><td class="${ok ? "" : "bad"}">${v ? esc(v) : "not found"}</td></tr>`;
   $("fields").innerHTML = row("Name", x.name) + row("Email", x.email) + row("Phone", x.phone) + row("Location", x.location) + row("LinkedIn", x.linkedin) + row("Links", x.urls.join(", "), true)
     + row("Sections", [...new Set(x.sections.map((s) => s.text))].join(" · ")) + row("Date ranges", x.dates.map((d) => `${d.from} – ${d.to}`).join("; ")) + row("Skills", x.skills.join(", ")) + row("Bullets", String(x.bullets.length), x.bullets.length > 0);
-  $("ats").textContent = current.text;
+  $("ats").textContent = current.raw;
   undo = []; sugs.clear(); draft = ""; setDraft(current.text, false);
   match();
   try { if ($("keep").checked) localStorage.setItem("resume-text", current.text); } catch {}
@@ -212,7 +214,11 @@ function setDraft(t, push = true) {
   if (tailored) keepCv(draft);
 }
 const marked = (l, words) => words.reduce((h, w) => h.replace(new RegExp(`(^|[^a-z0-9])(${escRe(esc(w))})(?=[^a-z0-9]|$)`, "gi"), '$1<mark title="Filler: say what you did instead">$2</mark>'), esc(l));
-function toolsFor(n) {
+function toolsFor(n, i, a) {
+  const join = i > 0 && a[i - 1].kind !== "blank" && a[i - 1].kind !== "head" && n.kind !== "head" ? `<button type="button" data-do="join" title="Join with the line above (one sentence split in two)" aria-label="Join with the line above">⤒</button>` : "";
+  return join + toolsOwn(n);
+}
+function toolsOwn(n) {
   const forJob = jobId || jdNow().length >= 80, add = `<button type="button" data-do="add" title="Add a line below" aria-label="Add a line below">＋</button>`, del = `<button type="button" data-do="del" title="Delete this line" aria-label="Delete this line">✕</button>`;
   if (n.kind === "bullet") return `<button type="button" data-do="ai" title="Suggest a better version${forJob ? " for this job" : ""}" aria-label="Suggest a better version">✨</button>${add}${del}`;
   if (n.kind === "head" && n.section === "summary") return `<button type="button" data-do="summary">✨ Write a summary${forJob ? " for this job" : ""}</button>`;
@@ -232,7 +238,7 @@ function renderEditor(a = annotate(draft)) {
   $("ed").innerHTML = draft.split("\n").map((l, i) => {
     const n = a[i], x = sugs.get(n.kind === "head" ? `§${n.section}` : l.trim());
     if (n.kind === "blank") return `<div class="ln blank" data-i="${i}"><div class="tx" tabindex="0" data-do="edit" aria-label="Empty line: click to write">&nbsp;</div></div>`;
-    return `<div class="ln ${n.kind}${n.issues.length ? " weak" : ""}" data-i="${i}"><div class="tx" tabindex="0" role="button" aria-label="Edit this line" data-do="edit">${marked(l, n.filler)}</div><div class="tools">${toolsFor(n)}</div>${n.issues.length ? `<div class="iss">⚠ ${esc(n.issues.join(" · "))}</div>` : ""}${x ? sugHTML(x) : ""}</div>`;
+    return `<div class="ln ${n.kind}${n.issues.length ? " weak" : ""}" data-i="${i}"><div class="tx" tabindex="0" role="button" aria-label="Edit this line" data-do="edit">${marked(l, n.filler)}</div><div class="tools">${toolsFor(n, i, a)}</div>${n.issues.length ? `<div class="iss">⚠ ${esc(n.issues.join(" · "))}</div>` : ""}${x ? sugHTML(x) : ""}</div>`;
   }).join("");
 }
 function startEdit(i) {
@@ -258,6 +264,7 @@ $("ed").addEventListener("click", async (e) => {
   const i = +row.dataset.i, act = btn.dataset.do, L = draft.split("\n"), a = annotate(draft), n = a[i], k = n.kind === "head" ? `§${n.section}` : L[i].trim();
   if (act === "edit") return startEdit(i);
   if (act === "del") { sugs.delete(k); L.splice(i, 1); return setDraft(L.join("\n")); }
+  if (act === "join") { L[i - 1] = `${L[i - 1].replace(/\s+$/, "")} ${L[i].trim()}`; L.splice(i, 1); return setDraft(L.join("\n")); }
   if (act === "add") { L.splice(i + 1, 0, n.kind === "bullet" || n.section === "experience" ? "• " : ""); setDraft(L.join("\n")); return startEdit(i + 1); }
   if (act === "close") { sugs.delete(k); return renderEditor(); }
   if (act === "ai" || act === "again") return suggestFor(i);
