@@ -861,7 +861,7 @@ const nyHHMM = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", m
 const PRIORITY: Record<string, number> = { ticketmaster: 0, city: 1, permits: 1, parks: 2, free: 3, eventbrite: 4 }; // the big ones first
 // Only big or hot events (user, 2026-11-16): the city's major venues, or a citywide occasion; not a park's afterschool program
 const BIG_VENUE = /madison square garden|\bmsg\b|barclays|radio city|lincoln center|metropolitan opera|david geffen|carnegie hall|yankee stadium|citi field|metlife|ubs arena|prudential center|beacon theatre|apollo theat|kings theatre|terminal 5|brooklyn paramount|hammerstein|forest hills stadium|arthur ashe|javits|brooklyn academy of music|\bbam\b|webster hall|irving plaza|the town hall|summerstage|red bull arena|belmont park|rockefeller center/i;
-const BIG_KIND = /parade|marathon|half.?marathon|festival|tree lighting|lighting ceremony|fireworks|street fair|feast of|pride march|grand opening|world cup|championship|playoff|thanksgiving|new year/i;
+const BIG_KIND = /parade|marathon|half.?marathon|festival|tree lighting|lighting ceremony|fireworks|street fair|feast of|pride march|world cup|championship|playoff|thanksgiving|new year/i;
 const SMALL = /\btours?\b|training|\bclass(es)?\b|lessons?|practice|\bcamp\b|afterschool|permit/i; // a venue tour or a field permit isn't an event to go to
 const isBig = (e: any) => (BIG_VENUE.test(`${e.venue ?? ""} ${e.address ?? ""}`) && !SMALL.test(e.title)) || (BIG_KIND.test(e.title) && e.source !== "eventbrite");
 export async function dayFacts() {
