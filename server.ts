@@ -537,16 +537,28 @@ async function sendAlerts() {
 const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => Number(p.get(k)) || undefined;
   return { q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"), salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"),
     seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" }; };
-// reCAPTCHA v3 (invisible) on job search, the Market view and the AI overview (user, 2026-11-16): a session that scores
-// as a person is trusted for 30 minutes; the admin and users with the cloud right skip it. Off until RECAPTCHA_SITE_KEY
-// and RECAPTCHA_SECRET are in .env (a v3 key for ihor.sh and localhost at google.com/recaptcha/admin).
+// reCAPTCHA (invisible, scored) on job search, the Market view and the AI overview (user, 2026-11-16): a session that
+// scores as a person is trusted for 30 minutes; the admin and users with the cloud right skip it. Off until .env has the
+// site key and a way to check its tokens: reCAPTCHA Enterprise (RECAPTCHA_PROJECT, the Google Cloud project, and
+// RECAPTCHA_API_KEY, an API key allowed to call the reCAPTCHA Enterprise API) or a classic v3 key's RECAPTCHA_SECRET.
 const CAPTCHA_PATHS = new Set(["/api/jobs/search", "/api/jobs/market", "/api/jobs/brief"]), humanUntil = new Map<string, number>();
+const captchaOn = () => !!process.env.RECAPTCHA_SITE_KEY && !!((process.env.RECAPTCHA_PROJECT && process.env.RECAPTCHA_API_KEY) || process.env.RECAPTCHA_SECRET);
+const enterprise = () => !!process.env.RECAPTCHA_PROJECT;
+/** The token's score (0 a bot, 1 a person), from the Enterprise assessment API or the classic siteverify. */
+async function captchaScore(req: http.IncomingMessage, token: string) {
+  const site = process.env.RECAPTCHA_SITE_KEY!, ip = clientIp(req);
+  if (enterprise()) {
+    const r: any = await fetch(`https://recaptchaenterprise.googleapis.com/v1/projects/${encodeURIComponent(process.env.RECAPTCHA_PROJECT!)}/assessments?key=${encodeURIComponent(process.env.RECAPTCHA_API_KEY ?? "")}`, { method: "POST", signal: AbortSignal.timeout(10_000),
+      headers: { "content-type": "application/json" }, body: JSON.stringify({ event: { token, siteKey: site, expectedAction: "jobs", userIpAddress: ip, userAgent: String(req.headers["user-agent"] ?? "") } }) }).then((x) => x.json()).catch(() => null);
+    if (r?.error) console.warn(`recaptcha: ${r.error.status ?? ""} ${r.error.message ?? ""}`);
+    return r?.tokenProperties?.valid && r.tokenProperties.action === "jobs" ? Number(r.riskAnalysis?.score ?? 0) : 0;
+  }
+  const r: any = await fetch("https://www.google.com/recaptcha/api/siteverify", { method: "POST", body: new URLSearchParams({ secret: process.env.RECAPTCHA_SECRET!, response: token, remoteip: ip }), signal: AbortSignal.timeout(10_000) }).then((x) => x.json()).catch(() => null);
+  return r?.success && r.action === "jobs" ? Number(r.score ?? 0) : 0;
+}
 async function human(req: http.IncomingMessage, sessionId: string) {
-  const secret = process.env.RECAPTCHA_SECRET; if (!secret || !process.env.RECAPTCHA_SITE_KEY) return true;
-  if ((humanUntil.get(sessionId) ?? 0) > Date.now()) return true;
-  const token = String(req.headers["x-recaptcha"] ?? ""); if (!token) return false;
-  const r: any = await fetch("https://www.google.com/recaptcha/api/siteverify", { method: "POST", body: new URLSearchParams({ secret, response: token, remoteip: clientIp(req) }), signal: AbortSignal.timeout(10_000) }).then((x) => x.json()).catch(() => null);
-  if (!r?.success || (r.score ?? 0) < 0.5) return false;
+  if (!captchaOn() || (humanUntil.get(sessionId) ?? 0) > Date.now()) return true;
+  const token = String(req.headers["x-recaptcha"] ?? ""); if (!token || (await captchaScore(req, token)) < 0.5) return false;
   if (humanUntil.size > 50_000) humanUntil.clear();
   humanUntil.set(sessionId, Date.now() + 30 * 60_000); return true;
 }
@@ -657,7 +669,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const ip = clientIp(req);
     if (METERED.some((p) => url.pathname.startsWith(p)) && !canCloud(req) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
-    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY }));
+    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY, enterprise: enterprise() }));
   }
   try {
     if (url.pathname.startsWith("/api/radio/monitor")) { // listen on the server SDR with captions (monitor.ts)

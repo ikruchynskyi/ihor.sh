@@ -5,10 +5,11 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&am
 // reCAPTCHA v3 (server.ts): a call the server wants checked answers 403 { captcha: <site key> }; Google's script loads
 // then (not before), scores the visit, and the call goes once more with the token.
 let rc;
-const captcha = (key) => (rc ??= new Promise((ok, no) => { const s = document.createElement("script"); s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(key)}`; s.onload = () => grecaptcha.ready(ok); s.onerror = no; document.head.append(s); }))
-  .then(() => grecaptcha.execute(key, { action: "jobs" }));
+const captcha = (key, ent) => { const g = () => (ent ? grecaptcha.enterprise : grecaptcha); // reCAPTCHA Enterprise or a classic v3 key
+  return (rc ??= new Promise((ok, no) => { const s = document.createElement("script"); s.src = `https://www.google.com/recaptcha/${ent ? "enterprise" : "api"}.js?render=${encodeURIComponent(key)}`; s.onload = () => g().ready(ok); s.onerror = no; document.head.append(s); }))
+    .then(() => g().execute(key, { action: "jobs" })); };
 const fetchHuman = async (u, init = {}) => { const r = await fetch(u, init), d = r.status === 403 ? await r.clone().json().catch(() => ({})) : {};
-  return d.captcha ? fetch(u, { ...init, headers: { ...init.headers, "x-recaptcha": await captcha(d.captcha) } }) : r; };
+  return d.captcha ? fetch(u, { ...init, headers: { ...init.headers, "x-recaptcha": await captcha(d.captcha, d.enterprise) } }) : r; };
 export const getJSON = (u) => fetchHuman(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
 export const post = (u, body) => fetchHuman(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
 /** A slow AI answer started as a job (server.ts startJob): poll until it's done. */
