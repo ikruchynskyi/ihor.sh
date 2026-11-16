@@ -1,7 +1,8 @@
 // The big employers whose career sites have no public ATS API: one reader each, a minute at most per employer per run
 // (user, 2026-11-16), returning what it read in that time. Plain HTTP here: Google (its results page embeds the jobs),
 // Goldman Sachs (its own GraphQL), and Radancy career sites (BlackRock, Moody's: search pages, then each job's
-// schema.org JobPosting). The ones that need a real browser (Meta, Apple, Bloomberg) run on the Mac: crawl.ts.
+// schema.org JobPosting), Intuit and UnitedHealth (Radancy's results endpoint), Deloitte (Avature) and EY (SuccessFactors).
+// The ones that need a real browser (Meta, Apple, Bloomberg) run on the Mac: crawl.ts.
 
 export type Posting = { id: string; company: string; title: string; location: string; url: string; posted?: number; department?: string; description: string; salary?: { min: number; max: number; period: "year" | "hour" } };
 const UA = { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" };
@@ -14,6 +15,15 @@ export function jobPostingLd(html: string): any {
     try { const all = [JSON.parse(m[1].trim())].flat().flatMap((x: any) => x?.["@graph"] ?? [x]); const jp = all.find((x: any) => x?.["@type"] === "JobPosting"); if (jp) return jp; } catch {}
   }
   return null;
+}
+/** The same from schema.org microdata (itemprop attributes: EY's SuccessFactors pages), shaped like the JSON-LD. */
+function microJob(html: string): any {
+  const at = html.search(/itemprop="description"/); if (at < 0) return null;
+  const open = html.slice(0, at).lastIndexOf("<"), tag = html.slice(open + 1).match(/^\w+/)![0], start = html.indexOf(">", at) + 1, re = new RegExp(`<(/?)${tag}\\b`, "g");
+  let depth = 1, end = html.length; re.lastIndex = start; // the element's own content: its nested tags of the same name counted
+  for (let m = re.exec(html); m; m = re.exec(html)) { depth += m[1] ? -1 : 1; if (!depth) { end = m.index; break; } }
+  const prop = (k: string) => { const m = html.match(new RegExp(`itemprop="${k}"([^>]*)>([^<]*)`)); return (m?.[1].match(/content="([^"]*)"/)?.[1] ?? m?.[2] ?? "").trim(); };
+  return { title: prop("title"), description: html.slice(start, end), datePosted: prop("datePosted"), jobLocation: [{ address: { addressLocality: prop("addressLocality"), addressRegion: prop("addressRegion") } }] };
 }
 const ldPlace = (jp: any) => [jp?.jobLocation].flat().filter(Boolean).map((l: any) => [l.address?.addressLocality, l.address?.addressRegion].filter(Boolean).join(", ")).filter(Boolean).join("; ");
 const ldPay = (jp: any): Posting["salary"] => { const v = jp?.baseSalary?.value, min = Number(v?.minValue ?? v?.value), max = Number(v?.maxValue ?? v?.value), unit = String(v?.unitText ?? jp?.baseSalary?.unitText ?? "").toUpperCase();
@@ -82,12 +92,75 @@ async function radancy(origin: string, company: string, until: number, known: Se
   return { jobs, partial };
 }
 
+type Keep = (location: string, title: string) => boolean; // jobs.ts's test: our area or remote US, tech, data or finance
+/** List pages 0, 1, 2… read `conc` at a time until one comes back empty, `max` pages, or `until`. rows() parses a page and
+ *  says how many jobs it had. */
+async function pages(url: (i: number) => string, rows: (html: string) => number, until: number, conc = 4, max = 150, init: RequestInit = {}) {
+  let next = 0, done = false;
+  await Promise.all(Array.from({ length: conc }, async () => { while (!done && Date.now() < until) { const i = next++; if (i >= max) return; if (!rows(await get(url(i), init).catch(() => ""))) done = true; } }));
+  return !done; // true: stopped by time or max, so there may be more
+}
+/** Each job page's schema.org JobPosting, `conc` at a time until `until`; known ones are passed through untouched. */
+const notOurs = new Set<string>(); // job pages read that turned out elsewhere ("Multiple Locations"), not read again while this runs
+async function pagesLd(company: string, list: { id: string; url: string; title: string; location: string }[], until: number, known: Set<string>, keep?: Keep, conc = 3) {
+  const jobs: Posting[] = [], queue = list.filter((j) => !known.has(j.id) && !notOurs.has(`${company}:${j.id}`)); let partial = false;
+  for (const j of list) if (known.has(j.id)) jobs.push({ id: j.id, company, title: j.title, location: j.location, url: j.url, description: "" });
+  await Promise.all(Array.from({ length: conc }, async () => {
+    for (let j = queue.shift(); j; j = queue.shift()) {
+      if (Date.now() > until) { partial = true; return; }
+      const html = await get(j.url).catch(() => ""), jp = jobPostingLd(html) ?? microJob(html); if (!jp) continue;
+      // the list's place too (EY's page names one city); "Multiple Locations" isn't one
+      const cities = ldPlace(jp) ? ldPlace(jp).split("; ") : [...html.replace(/<[^>]+>/g, " ").matchAll(/([A-Z][A-Za-z.' -]{1,30}, [A-Z][A-Za-z ]{1,25}), United States/g)].map((m) => m[1].trim()).slice(0, 60); // Deloitte's many-city jobs: the cities in its text
+      const location = [...new Set([j.location, ...cities, /\bremote\b/i.test(`${j.location} ${j.title}`) ? "Remote" : ""].filter((x) => x && !/multiple locations/i.test(x)))].join("; ");
+      if (keep && !keep(location, j.title)) { notOurs.add(`${company}:${j.id}`); continue; }
+      jobs.push({ id: j.id, company, title: String(jp.title ?? j.title).trim(), location, url: j.url,
+        posted: Date.parse(jp.datePosted ?? "") || undefined, department: String(jp.occupationalCategory ?? ""), description: String(jp.description ?? ""), salary: ldPay(jp) });
+    }
+  }));
+  return { jobs, partial: partial || queue.length > 0 };
+}
+/** Radancy sites that list everything at once (Intuit, UnitedHealth): 100 jobs a page from its results endpoint, each
+ *  row's title and place deciding which job pages to open. */
+async function radancyAll(origin: string, company: string, until: number, known: Set<string>, keep: Keep) {
+  const rows = new Map<string, { id: string; url: string; title: string; location: string }>();
+  const more = await pages((i) => `${origin}/search-jobs/results?ActiveFacetID=0&CurrentPage=${i + 1}&RecordsPerPage=100&Distance=50&RadiusUnitType=0&Keywords=&Location=&ShowRadius=False&IsPagination=False&FacetType=0&SearchResultsModuleName=Search+Results&SearchFiltersModuleName=Search+Filters&SortCriteria=0&SortDirection=0&SearchType=5&ResultsType=0`,
+    (h) => { let n = 0; try { for (const m of String(JSON.parse(h).results ?? "").matchAll(/<a[^>]+href="([^"]*\/job\/[^"]+?\/(\d{6,}))"[^>]*>([\s\S]*?)<\/a>/g)) {
+      n++; const parts = m[3].replace(/<[^>]+>/g, "\n").split("\n").map((x) => x.trim()).filter((x) => x && !/^\d+$/.test(x)), title = parts[0] ?? "", location = parts.length > 1 ? parts.at(-1)! : "";
+      if (keep(location, title)) rows.set(m[2], { id: m[2], url: new URL(m[1], origin).href, title, location }); } } catch {} return n; },
+    until - 25_000, 4, 80, { headers: { "x-requested-with": "XMLHttpRequest" } });
+  const r = await pagesLd(company, [...rows.values()], until, known); return { jobs: r.jobs, partial: r.partial || more };
+}
+/** Deloitte (Avature): its US list, 10 a page with each job's first city, then the job pages of ours (every city). */
+async function avature(origin: string, company: string, until: number, known: Set<string>, keep: Keep) {
+  const rows = new Map<string, { id: string; url: string; title: string; location: string }>();
+  const more = await pages((i) => `${origin}/SearchJobs?listFilterMode=1&jobRecordsPerPage=10&jobOffset=${i * 10}`, (h) => { let n = 0;
+    for (const art of h.split(/<article\b/).slice(1)) { // a result: its link, then "Deloitte US | <entity> | <first city>"
+      const a = art.match(/<a\s[^>]*href="([^"]+\/JobDetail\/[^"]+?\/(\d+))"[^>]*>\s*([^<]+?)\s*<\/a>/), spans = [...art.matchAll(/<span>\s*([^<]*?)\s*<\/span>/g)].map((x) => x[1]);
+      if (!a) continue; n++; const location = spans.at(-1) ?? "";
+      if (keep(location, a[3]) || (/multiple locations/i.test(location) && keep("New York, NY", a[3]))) rows.set(a[2], { id: a[2], url: a[1], title: a[3], location }); } // its page lists them all
+    return n; }, until - 30_000, 4, 300);
+  const r = await pagesLd(company, [...rows.values()], until, known, keep, 4); return { jobs: r.jobs, partial: r.partial || more };
+}
+/** EY (SAP SuccessFactors career site): its search for each place, 25 a page, then the job pages of ours. */
+async function sapsf(origin: string, company: string, places: string[], until: number, known: Set<string>, keep: Keep) {
+  const rows = new Map<string, { id: string; url: string; title: string; location: string }>(); let more = false;
+  for (const place of places) more = (await pages((i) => `${origin}/search/?createNewAlert=false&q=&locationsearch=${encodeURIComponent(place)}&startrow=${i * 25}`, (h) => { let n = 0;
+    for (const [, tr] of h.matchAll(/<tr class="data-row">([\s\S]*?)<\/tr>/g)) { const a = tr.match(/href="([^"]+\/(\d{6,})\/)"[^>]*class="jobTitle-link"[^>]*>([^<]+)/), loc = tr.match(/class="jobLocation"[^>]*>\s*([^<]+)/)?.[1]?.trim() ?? "";
+      if (!a) continue; n++; const location = loc.replace(/,\s*US,?\s*[\d-]*$/, ""); if (keep(location, a[3])) rows.set(a[2], { id: a[2], url: new URL(a[1], origin).href, title: a[3].trim(), location }); }
+    return n; }, until - 25_000, 3, 60)) || more;
+  const r = await pagesLd(company, [...rows.values()], until, known); return { jobs: r.jobs, partial: r.partial || more };
+}
+
 /** The employers read here, by key; each gets until `until` (ms since epoch). known: ids already stored (no detail request). */
-export const PLAIN: Record<string, { name: string; read: (until: number, known: Set<string>) => Promise<{ jobs: Posting[]; partial: boolean }> }> = {
+export const PLAIN: Record<string, { name: string; read: (until: number, known: Set<string>, keep: Keep) => Promise<{ jobs: Posting[]; partial: boolean }> }> = {
   google: { name: "Google", read: (until) => google(until) },
   goldman: { name: "Goldman Sachs", read: goldman },
   blackrock: { name: "BlackRock", read: (until, known) => radancy("https://careers.blackrock.com", "BlackRock", until, known) },
   moodys: { name: "Moody's", read: (until, known) => radancy("https://careers.moodys.com", "Moody's", until, known) },
+  intuit: { name: "Intuit", read: (until, known, keep) => radancyAll("https://jobs.intuit.com", "Intuit", until, known, keep) },
+  unitedhealth: { name: "UnitedHealth Group", read: (until, known, keep) => radancyAll("https://careers.unitedhealthgroup.com", "UnitedHealth Group", until, known, keep) },
+  deloitte: { name: "Deloitte", read: (until, known, keep) => avature("https://apply.deloitte.com/en_US/careers", "Deloitte", until, known, keep) },
+  ey: { name: "EY", read: (until, known, keep) => sapsf("https://careers.ey.com/ey", "EY", ["New York, NY", "Hoboken, NJ"], until, known, keep) },
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) { // node server/bigtech.ts [key…]: read them live, a minute each

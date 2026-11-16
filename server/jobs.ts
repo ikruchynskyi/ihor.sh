@@ -128,7 +128,7 @@ export const seniority = (t: string) => /\bintern(ship)?\b|co-?op\b/i.test(t) ? 
 const FUNCS: [string, RegExp][] = [["engineering", /engineer|developer|devops|sre\b|software|platform|infrastructure|security|qa\b|test automation|firmware|mobile|ios|android/i],
   ["data", /data|analytics|analyst|machine learning|\bml\b|\bai\b|scientist|quant/i], ["design", /design|ux|ui\b|creative|art director/i], ["product", /product manager|product owner|\bpm\b|program manager/i],
   ["sales", /sales|account executive|business development|\bbdr\b|\bsdr\b|account manager/i], ["marketing", /marketing|growth|brand|content|seo|communications|\bpr\b|social media/i],
-  ["finance", /financ|accountant|accounting|controller|tax|audit|treasury|fp&a|investment|trader|trading|portfolio/i], ["legal", /legal|counsel|attorney|paralegal|compliance/i],
+  ["finance", /financ|accountant|accounting|controller|tax|audit|assurance|treasury|fp&a|investment|trader|trading|portfolio|risk advisory|transaction services|valuation|\bdeals\b/i], ["legal", /legal|counsel|attorney|paralegal|compliance/i],
   ["people", /recruit|talent|people|human resources|\bhr\b/i], ["support", /support|customer success|customer service|client service|help desk/i],
   ["operations", /operations|ops\b|logistics|supply chain|procurement|facilities|office manager/i], ["health", /nurse|physician|clinical|medical|therap|pharmac|health|counselor|social worker/i],
   ["education", /teacher|instructor|tutor|education|professor/i]];
@@ -249,21 +249,25 @@ const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "
 const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Morgan Stanley"], ["pfizer|1|PfizerCareers", "Pfizer"], ["mastercard|1|CorporateCareers", "Mastercard"], ["nasdaq|1|Global_External_Site", "Nasdaq"],
   ["spgi|5|SPGI_Careers", "S&P Global"], ["jj|5|JJ", "Johnson & Johnson"], ["msd|5|SearchJobs", "Merck"], ["bristolmyerssquibb|5|BMS", "Bristol Myers Squibb"], ["pru|5|Careers", "Prudential"], ["blackstone|1|Blackstone_Careers", "Blackstone"],
   ["att|1|ATTGeneral", "AT&T"], ["salesforce|12|External_Career_Site", "Salesforce"], ["verizon|12|verizon-careers", "Verizon"], ["nvidia|5|NVIDIAExternalCareerSite", "NVIDIA"], ["target|5|targetcareers", "Target"],
-  ["adobe|5|external_experienced", "Adobe"], ["capitalone|12|Capital_One", "Capital One"], ["visa|5|Visa", "Visa"]]; // the last three found from their careers pages
+  ["adobe|5|external_experienced", "Adobe"], ["capitalone|12|Capital_One", "Capital One"], ["visa|5|Visa", "Visa"], // the last three found from their careers pages
+  // big employers with many remote US jobs, the Big 4's PwC and audit firms among them (user, 2026-11-16)
+  ["pwc|3|Global_Experienced_Careers", "PwC"], ["rsm|1|RSMCareers", "RSM"], ["accenture|103|AccentureCareers", "Accenture"], ["bah|1|BAH_Jobs", "Booz Allen Hamilton"], ["fmr|1|FidelityCareers", "Fidelity Investments"],
+  ["ghr|1|Lateral-US", "Bank of America"], ["wf|1|WellsFargoJobs", "Wells Fargo"], ["vanguard|5|vanguard_external", "Vanguard"], ["tiaa|1|Search", "TIAA"], ["cigna|5|cignacareers", "Cigna"],
+  ["travelers|5|External", "Travelers"], ["fis|5|SearchJobs", "FIS"]];
 // Big NYC employers on their own systems, verified 2026-11-16: Oracle Recruiting Cloud (host|site) and amazon.jobs
-const ORACLE: [string, string][] = [["jpmc.fa.oraclecloud.com|CX_1001", "JPMorgan Chase"], ["eofe.fa.us2.oraclecloud.com|BNY-Careers", "BNY"]];
+const ORACLE: [string, string][] = [["jpmc.fa.oraclecloud.com|CX_1001", "JPMorgan Chase"], ["eofe.fa.us2.oraclecloud.com|BNY-Careers", "BNY"], ["eeho.fa.us2.oraclecloud.com|CX_45001", "Oracle"], ["ehzq.fa.us2.oraclecloud.com|CX_1", "Grant Thornton"]];
 for (const [slug, name] of ORACLE) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('oracle', ?, ?, ?)").run(slug, name, now());
 db.prepare("insert or ignore into companies (ats, slug, name, added) values ('amazon', 'amazon', 'Amazon', ?)").run(now());
-const EIGHTFOLD: [string, string][] = [["explore.jobs.netflix.net|netflix.com|v2", "Netflix"], ["apply.careers.microsoft.com|microsoft.com|pcsx", "Microsoft"]]; // host|domain|API flavor
+const EIGHTFOLD: [string, string][] = [["explore.jobs.netflix.net|netflix.com|v2", "Netflix"], ["apply.careers.microsoft.com|microsoft.com|pcsx", "Microsoft"], ["paypal.eightfold.ai|paypal.com|pcsx", "PayPal"]]; // host|domain|API flavor
 // Big employers with no public ATS API, read from their own career sites (bigtech.ts in here; crawl.ts on the Mac)
-const CUSTOM: [string, string][] = [["google", "Google"], ["goldman", "Goldman Sachs"], ["blackrock", "BlackRock"], ["moodys", "Moody's"], ["meta", "Meta"], ["apple", "Apple"], ["bloomberg", "Bloomberg"]];
+const CUSTOM: [string, string][] = [["google", "Google"], ["goldman", "Goldman Sachs"], ["blackrock", "BlackRock"], ["moodys", "Moody's"], ["meta", "Meta"], ["apple", "Apple"], ["bloomberg", "Bloomberg"], ["deloitte", "Deloitte"], ["ey", "EY"], ["intuit", "Intuit"], ["unitedhealth", "UnitedHealth Group"]];
 for (const [slug, name] of CUSTOM) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('custom', ?, ?, ?)").run(slug, name, now());
 for (const [slug, name] of EIGHTFOLD) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('eightfold', ?, ?, ?)").run(slug, name, now());
 // Well-rated tech and trading firms whose boards answered with NYC or remote jobs (2026-11-16; Adzuna rarely lists them)
 const MORE: [string, string][] = [["greenhouse", "anthropic"], ["greenhouse", "gitlab"], ["greenhouse", "doordashusa"], ["ashby", "openai"], ["greenhouse", "thenewyorktimes"], ["greenhouse", "zscaler"], ["greenhouse", "reddit"], ["greenhouse", "databricks"], ["ashby", "harvey"], ["lever", "palantir"], ["ashby", "perplexity"], ["ashby", "supabase"], ["greenhouse", "fivetran"], ["ashby", "snowflake"], ["greenhouse", "scaleai"], ["greenhouse", "toast"], ["ashby", "temporal"], ["ashby", "vanta"], ["ashby", "cohere"], ["ashby", "elevenlabs"], ["ashby", "voleon"], ["greenhouse", "gusto"], ["greenhouse", "monzo"], ["greenhouse", "sigmacomputing"], ["greenhouse", "towerresearchcapital"], ["ashby", "modal"], ["greenhouse", "adyen"], ["ashby", "writer"], ["ashby", "clickhouse"], ["ashby", "snyk"], ["greenhouse", "jumptrading"], ["greenhouse", "smartsheet"], ["greenhouse", "block"], ["greenhouse", "imc"], ["greenhouse", "flowtraders"], ["greenhouse", "collibra"], ["ashby", "iterable"], ["greenhouse", "mixpanel"], ["greenhouse", "sofi"], ["greenhouse", "salesloft"], ["greenhouse", "planetscale"], ["greenhouse", "fireblocks"], ["greenhouse", "intercom"], ["greenhouse", "netlify"], ["ashby", "clickup"], ["greenhouse", "yugabyte"], ["ashby", "character"], ["greenhouse", "klaviyo"], ["greenhouse", "akunacapital"], ["greenhouse", "starburst"], ["greenhouse", "calm"], ["smartrecruiters", "ServiceNow"]];
 for (const [ats, slug] of MORE) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
 for (const [slug, name] of WORKDAY) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('workday', ?, ?, ?)").run(slug, name, now());
-for (const [ats, slug] of [["smartrecruiters", "Equinox"], ["workable", "huggingface"]]) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
+for (const [ats, slug] of [["smartrecruiters", "Equinox"], ["smartrecruiters", "ServiceNow"], ["workable", "huggingface"], ["greenhouse", "cloudflare"], ["greenhouse", "toast"], ["greenhouse", "samsara"], ["ashby", "zapier"]]) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
 const BOARD_NAME = new Map([...WORKDAY, ...ORACLE, ...EIGHTFOLD, ...CUSTOM]);
 // the families or categories big boards are asked for (user, 2026-11-16: tech, engineering, data / analysts, finance)
 const WD_FAMILIES = /technolog|engineer|software|information|\bit\b|data|analy|scien|machine learning|decision|financ|accounting|treasury|risk|quant|actuar|invest|trading|cyber/i;
@@ -308,18 +312,23 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     try {
     await pace(ats, WD_PACE); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
     const places = vals.filter((v) => /location/i.test(v.p) && !/country/i.test(v.p) && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")).sort((a, b) => Number(b.p === "locations") - Number(a.p === "locations")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
-    const pick = places.length ? places : states; if (!pick.length) return [];
-    const fams = vals.filter((v) => /family/i.test(v.p) && WD_FAMILIES.test(v.d)), famP = fams[0]?.p;
-    const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id), ...(famP ? { [famP]: fams.filter((v) => v.p === famP).map((v) => v.id) } : {}) };
-    for (let off = 0; off < 2000; off += 20) { // 20 a page is Workday's most (50 and 100 answer 400)
+    const pick = places.length ? places : states;
+    const fams = vals.filter((v) => /family/i.test(v.p) && WD_FAMILIES.test(v.d)), famP = fams[0]?.p, famF = famP ? { [famP]: fams.filter((v) => v.p === famP).map((v) => v.id) } : {};
+    // and its remote jobs in the US (user, 2026-11-16): a remote-type facet with the US, else locations that are remote US
+    const rType = vals.filter((v) => /remote|workplace/i.test(v.p) && /remote|virtual/i.test(v.d) && !/hybrid|flex/i.test(v.d)), us = vals.filter((v) => /country/i.test(v.p) && /^(united states( of america)?|usa?)$/i.test(v.d.trim()));
+    const rLoc = vals.filter((v) => /location/i.test(v.p) && !/country/i.test(v.p) && /remote|virtual/i.test(v.d) && region(usPlace(v.d), true) === "remote");
+    const remoteF = rType.length ? { [rType[0].p]: rType.filter((v) => v.p === rType[0].p).map((v) => v.id), ...(us.length ? { [us[0].p]: [us[0].id] } : {}) } : rLoc.length ? { [rLoc[0].p]: rLoc.filter((v) => v.p === rLoc[0].p).map((v) => v.id) } : null;
+    const passes: [Record<string, string[]>, boolean][] = [...(pick.length ? [[{ [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id), ...famF }, false] as [any, boolean]] : []), ...(remoteF ? [[{ ...remoteF, ...famF }, true] as [any, boolean]] : [])];
+    for (const [facets, remote] of passes) for (let off = 0; off < 2000; off += 20) { // 20 a page is Workday's most (50 and 100 answer 400)
       await pace(ats, WD_PACE); const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
       for (const p of d.jobPostings ?? []) {
         const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
-        if ((!many && !region(loc)) || (!famP && !["engineering", "data", "finance"].includes(func(p.title ?? "")))) continue; // no family facet: by title
-        if (known(id)) { out.push(brief(id, company, many ? "New York, NY" : loc)); continue; }
+        if ((!many && !region(loc, remote)) || (!famP && !["engineering", "data", "finance"].includes(func(p.title ?? "")))) continue; // no family facet: by title
+        if (out.some((j) => j.id === id)) continue; // in both passes
+        if (known(id)) { out.push(brief(id, company, many ? (remote ? "Remote, US" : "New York, NY") : loc)); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
         await pace(ats, WD_PACE); const i = (await getJson(`${base}${p.externalPath}`).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
-        out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? "", posted: Date.parse(i.startDate),
+        out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? (remote ? "Remote" : ""), posted: Date.parse(i.startDate),
           url: i.externalUrl, employment: i.timeType ?? "", description: stripHtml(i.jobDescription ?? "") });
       }
       if ((d.jobPostings ?? []).length < 20) break;
@@ -352,7 +361,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     // "known": stored with its text already (a job stored from a list alone gets its page read when there's time)
     const stored = (db.prepare("select id from jobs where id like ? and closed is null and length(description) >= 300").all(`cu:${slug}:%`) as any[]).map((r) => r.id.slice(`cu:${slug}:`.length));
     let r: { jobs: any[]; partial: boolean };
-    if (PLAIN[slug]) r = await PLAIN[slug].read(Date.now() + 60_000, new Set(stored));
+    if (PLAIN[slug]) r = await PLAIN[slug].read(Date.now() + 60_000, new Set(stored), (loc, title) => FOCUS(title) && !!region(usPlace(loc), /\bremote\b/i.test(`${loc} ${title}`)));
     else {
       if (!process.env.HOST_BRIDGE) throw new Error("the browser crawler runs on the Mac (HOST_BRIDGE)");
       const res = await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ site: slug, known: stored }), signal: AbortSignal.timeout(90_000) });
@@ -360,7 +369,8 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     }
     const company = BOARD_NAME.get(slug) ?? slug, out: In[] = [];
     for (const p of r.jobs) {
-      const id = `cu:${slug}:${p.id}`, location = usPlace(String(p.location ?? "")).split(/\s*;\s*/).map(usPlace).join("; ");
+      const parts = usPlace(String(p.location ?? "")).split(/\s*;\s*/).map(usPlace), ours = parts.filter((x) => region(x)); // Deloitte lists 40 cities: ours, then how many more
+      const id = `cu:${slug}:${p.id}`, location = parts.length > 6 && ours.length ? `${ours.join("; ")}; +${parts.length - ours.length} more` : parts.join("; ");
       if (stored.includes(String(p.id)) && !p.description) { out.push(brief(id, company, location)); continue; }
       if (!region(location) || !FOCUS(p.title ?? "")) continue;
       out.push({ id, source: "custom", company, title: String(p.title), location, url: String(p.url), posted: p.posted, department: p.department ?? "", salary: p.salary ?? null, description: stripHtml(String(p.description ?? "")) || `${p.title}. ${p.department ?? ""}` });
