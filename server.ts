@@ -549,9 +549,10 @@ async function captchaScore(req: http.IncomingMessage, token: string) {
   const site = process.env.RECAPTCHA_SITE_KEY!, ip = clientIp(req);
   if (enterprise()) {
     const r: any = await fetch(`https://recaptchaenterprise.googleapis.com/v1/projects/${encodeURIComponent(process.env.RECAPTCHA_PROJECT!)}/assessments?key=${encodeURIComponent(process.env.RECAPTCHA_API_KEY ?? "")}`, { method: "POST", signal: AbortSignal.timeout(10_000),
-      headers: { "content-type": "application/json" }, body: JSON.stringify({ event: { token, siteKey: site, expectedAction: "jobs", userIpAddress: ip, userAgent: String(req.headers["user-agent"] ?? "") } }) }).then((x) => x.json()).catch(() => null);
-    if (r?.error) console.warn(`recaptcha: ${r.error.status ?? ""} ${r.error.message ?? ""}`);
-    return r?.tokenProperties?.valid && r.tokenProperties.action === "jobs" ? Number(r.riskAnalysis?.score ?? 0) : 0;
+      headers: { "content-type": "application/json", referer: SITE + "/" }, // the API key allows calls from ihor.sh only
+      body: JSON.stringify({ event: { token, siteKey: site, expectedAction: "jobs", userIpAddress: ip, userAgent: String(req.headers["user-agent"] ?? "") } }) }).then((x) => x.json()).catch(() => null);
+    if (!r || r.error) { console.warn(`recaptcha: ${r?.error?.status ?? "no answer"} ${r?.error?.message ?? ""}`); return 1; } // Google's trouble isn't the visitor's: let them through
+    return r.tokenProperties?.valid && r.tokenProperties.action === "jobs" ? Number(r.riskAnalysis?.score ?? 0) : 0;
   }
   const r: any = await fetch("https://www.google.com/recaptcha/api/siteverify", { method: "POST", body: new URLSearchParams({ secret: process.env.RECAPTCHA_SECRET!, response: token, remoteip: ip }), signal: AbortSignal.timeout(10_000) }).then((x) => x.json()).catch(() => null);
   return r?.success && r.action === "jobs" ? Number(r.score ?? 0) : 0;
