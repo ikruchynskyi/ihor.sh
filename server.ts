@@ -1122,7 +1122,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     }
     if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
     if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name) } : { error: "No open jobs from that employer here." })); }
-    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock and pay, then writing the overview (up to two minutes)…"), makeCard(c)), "Waiting for the AI…"); }
+    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); const cloud = !!currentUser(req); // signed in: the cloud model; a visitor: the local one (user, 2026-11-16)
+      return startJob(res, (step) => (step("Reading its news, stock, pay and reviews, searching the web, then writing the overview (up to three minutes)…"), asker.run({ cloud }, () => makeCard(c))), "Waiting for the AI…"); }
     if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
       const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
       if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(getData(u.id)));

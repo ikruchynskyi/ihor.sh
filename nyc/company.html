@@ -33,6 +33,9 @@
     .mk, .mkey { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--fg); } .mkey { position: static; display: inline-block; height: 11px; margin: 0 4px -1px 2px; }
     .ladder { margin-bottom: 12px; } .ladder h4 { margin: 0 0 4px; font-size: 13.5px; }
     .news { list-style: none; padding: 0; margin: 0; } .news li { margin: 6px 0; font-size: 14px; } .news .hint { display: block; }
+    .scs { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 8px; margin: 6px 0 14px; } .scs > * { min-width: 0; }
+    .sc { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; } .sc b { display: block; font-size: 20px; line-height: 1.2; } .sc .hint { margin: 2px 0 0; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .sc-h { display: flex; justify-content: space-between; gap: 6px; font-size: 12.5px; color: var(--muted); } .mk-good { color: var(--ok); } .mk-watch { color: var(--warn); } .mk-fair { color: var(--muted); }
     .ai p { margin: 0 0 8px; } .ai ul { margin: 0; padding-left: 18px; } .ai li { margin: 4px 0; } .badge { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
   </style>
 </head>
@@ -90,6 +93,14 @@ function ladder(f) {
     ${rows.map((r) => `<div class="lrow"><span class="lv" title="${esc(r.level)}">${esc(r.level)}</span><span class="track"><span class="fill" style="width:${(r.pay / max) * 100}%"></span>${f.nycMarket ? `<span class="mk" style="left:${(f.nycMarket / max) * 100}%"></span>` : ""}</span><b>${k$(r.pay)}</b></div>`).join("")}
     ${f.nycMarket ? `<p class="hint" style="margin:2px 0 0"><span class="mkey"></span>NYC median for the job, all companies: ${k$(f.nycMarket)}</p>` : ""}</div>`;
 }
+const MARK = { good: "▲ good", fair: "● fair", watch: "▼ watch", info: "" };
+const scoreHTML = (c) => c.scorecard?.length ? `<h3>Scorecard</h3><div class="scs">${c.scorecard.map((m) => `<div class="sc"><div class="sc-h"><span>${esc(m.label)}</span><span class="mk-${m.mark}">${MARK[m.mark]}</span></div><b>${esc(m.value)}</b><p class="hint">${esc(m.basis)}${m.url ? ` <a href="${esc(m.url)}" target="_blank" rel="noopener">↗</a>` : ""}</p></div>`).join("")}</div>` : "";
+/** Blind's five categories as bars on its 1–5 scale. */
+const blindHTML = (b) => `<div class="ladder"><h4>Employees on Blind <span class="hint">· ${b.overall}/5 from ${b.reviews.toLocaleString()} reviews</span></h4>
+  ${b.categories.map((k) => `<div class="lrow"><span class="lv">${esc(k.name)}</span><span class="track"><span class="fill" style="width:${((k.score - 1) / 4) * 100}%"></span></span><b>${k.score.toFixed(1)}</b></div>`).join("")}</div>`;
+const SIG = [["officeDays", "Office days"], ["onCall", "On-call"], ["travel", "Travel"], ["unlimitedPto", "Flexible time off"]];
+const sigHTML = (g) => { const rows = [...SIG.filter(([k]) => g[k]).map(([k, l]) => `<li><b>${l}</b> <span class="hint">${g[k].pct}% of postings</span><br><span class="hint">“${esc(g[k].quote)}”</span></li>`), g.leave ? `<li><b>Parental leave</b> <span class="hint">up to ${g.leave.weeks} weeks</span><br><span class="hint">“${esc(g.leave.quote)}”</span></li>` : ""].filter(Boolean);
+  return rows.length ? `<h3 style="margin-top:12px">From its ${g.n} postings here</h3><ul class="news">${rows.join("")}</ul>` : ""; };
 function introHTML(c) {
   const s = c.stock, o = c.overview, w = c.weeks ?? e.weeks ?? [], last4 = w.slice(-4).reduce((a, b) => a + b, 0), prev4 = w.slice(-8, -4).reduce((a, b) => a + b, 0);
   const lede = o?.business?.text ?? (c.wiki ? c.wiki.extract.split(/(?<=\.)\s+/).slice(0, 2).join(" ") : "");
@@ -99,14 +110,18 @@ function introHTML(c) {
       ${s ? `<figure><h3>Stock, two years</h3>${stockChart(s)}<figcaption>${move(s.change2y, "in two years")} · 52-week range $${s.low52.toFixed(2)}–$${s.high52.toFixed(2)} · close ${day(s.asOf)}, Nasdaq</figcaption></figure>` : ""}
       ${w.length ? `<figure><h3>New jobs posted here, a week</h3>${weeksChart(w)}<figcaption>${last4} in the last 4 weeks, ${prev4} in the 4 before${prev4 ? ` (${move(Math.round(((last4 - prev4) / prev4) * 100), "")})` : ""} · this site's record</figcaption></figure>` : ""}
     </div>
+    ${scoreHTML(c)}
     <div class="igrid">
-      ${o && (o.hiring || o.market || o.tips?.length) ? `<div class="ai"><h3>Overview <span class="badge">AI</span></h3>${o.hiring ? `<p>${esc(o.hiring.text)}</p>` : ""}${o.market ? `<p>${esc(o.market.text)}</p>` : ""}
+      ${o && (o.hiring || o.market || o.tips?.length) ? `<div class="ai"><h3>Overview <span class="badge">AI</span></h3>${o.hiring ? `<p>${esc(o.hiring.text)}</p>` : ""}${o.market ? `<p>${esc(o.market.text)}</p>` : ""}${o.people ? `<p>${esc(o.people.text)}</p>` : ""}
         ${o.tips?.length ? `<h3 style="margin-top:10px">If you apply</h3><ul>${o.tips.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul>` : ""}
         <details class="hint" style="margin-top:8px"><summary>The facts it was written from</summary><ol>${c.facts.map((f) => `<li>${esc(f.text)}</li>`).join("")}</ol></details></div>` : ""}
       ${c.levels ? `<div><h3>What it pays, by level</h3>${c.levels.families.map(ladder).join("")}<p class="hint">Self-reported total pay (salary, stock, bonus) from <a href="https://www.levels.fyi/companies/${esc(c.levels.slug)}" target="_blank" rel="noopener">Levels.fyi</a>.</p></div>` : ""}
     </div>
+    ${c.research?.findings?.length || c.blind || c.signals ? `<div class="igrid"><div>${c.research?.findings?.length ? `<h3>Working there now <span class="badge">AI, from the web</span></h3><ul class="news">${c.research.findings.map((f) => `<li>${esc(f.text)}<span class="hint">${f.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(new URL(x.url).hostname.replace(/^www\./, ""))}</a>`).join(" · ")}</span></li>`).join("")}</ul>` : ""}${c.signals ? sigHTML(c.signals) : ""}</div>
+      <div>${c.blind ? blindHTML(c.blind) : ""}<p class="hint">Reviews: ${c.blind ? `<a href="${esc(c.blind.url)}" target="_blank" rel="noopener">Blind ↗</a> · ` : ""}<a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p></div></div>`
+      : `<p class="hint">Reviews: <a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p>`}
     ${c.news?.length ? `<h3>In the news, last two weeks</h3><ul class="news">${c.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="hint">${esc(n.source)} · ${age(n.at)}</span></li>`).join("")}</ul>` : ""}
-    <p class="hint" style="margin:12px 0 0">Made ${age(c.at)} from Wikipedia, Nasdaq, Google News, Levels.fyi and this site's jobs; remade each morning. The overview is AI-written and keeps only lines whose facts and numbers check out.</p>`;
+    <p class="hint" style="margin:12px 0 0">Made ${age(c.at)} from Wikipedia, Nasdaq, Google News, Levels.fyi, Blind, a web search and this site's jobs; remade each morning. The overview is AI-written and keeps only lines whose facts and numbers check out.</p>`;
 }
 async function intro() {
   const box = $("intro");
@@ -131,7 +146,7 @@ try {
   intro();
 } catch (err) { $("cname").textContent = name || "Employer"; $("intro").innerHTML = `<p>${esc(err.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
 window.blipContext = () => ({ page: "One employer on the NYC jobs finder", employer: e && { name: e.name, open: e.open, posted30: e.new30, takenDown30: e.gone30, openOver60DaysPct: e.stale, medianPay: e.pay?.median,
-  business: e.card?.overview?.business?.text, stock: e.card?.stock && { ticker: e.card.stock.ticker, last: e.card.stock.last, change1yPct: e.card.stock.change1y }, news: e.card?.news?.slice(0, 3).map((n) => n.title) } });
+  business: e.card?.overview?.business?.text, blind: e.card?.blind && { overall: e.card.blind.overall, reviews: e.card.blind.reviews, categories: e.card.blind.categories }, scorecard: e.card?.scorecard?.map((m) => `${m.label}: ${m.value} (${m.basis})`), stock: e.card?.stock && { ticker: e.card.stock.ticker, last: e.card.stock.last, change1yPct: e.card.stock.change1y }, news: e.card?.news?.slice(0, 3).map((n) => n.title) } });
 </script>
 </body>
 </html>

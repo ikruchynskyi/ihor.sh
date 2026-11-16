@@ -794,9 +794,9 @@ export function jobHistory(id: string) {
     pay: j.salary_min != null && !j.salary_est ? ((j.salary_min + (j.salary_max ?? j.salary_min)) / 2) * (j.salary_period === "hour" ? 2080 : 1) : null, market: { p25: m.p25, median: m.pay, p75: m.p75, n: m.withPay } };
 }
 /** A company page (nyc/company.html): the employer under any of its names, its open jobs here, how it hires, what it pays. */
+const employerKeys = (name: string) => { const ck = ckey(name); return ck ? (db.prepare("select distinct ckey from jobs where ckey like ? and closed is null").all(`${ck.slice(0, 4)}%`) as any[]).map((r) => r.ckey as string).filter((k) => sameCompany(k, ck)) : []; };
 export function employer(name: string) {
-  const ck = ckey(name); if (!ck) return null;
-  const keys = (db.prepare("select distinct ckey from jobs where ckey like ? and closed is null").all(`${ck.slice(0, 4)}%`) as any[]).map((r) => r.ckey).filter((k: string) => sameCompany(k, ck));
+  const keys = employerKeys(name);
   if (!keys.length) return null;
   const inK = `j.ckey in (${keys.map(() => "?").join(",")})`, t = now(), D = 86400;
   const rows = db.prepare(`select j.id, j.source, j.company, j.title, j.location, j.region, j.remote, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.posted, j.first_seen, j.url, j.seniority, j.func, j.flags
@@ -808,11 +808,29 @@ export function employer(name: string) {
   return { name: rows[0]?.company ?? name, open: rows.length, jobs: rows.slice(0, 200).map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]") })),
     new30: one(`select count(*) n from jobs j where ${inK} and coalesce(j.posted, j.first_seen) >= ? and j.dup_of is null`, t - 30 * D).n,
     gone30: one(`select count(*) n from jobs j where ${inK} and j.closed >= ? and j.closed - j.first_seen >= ${D} and j.source != 'adzuna' and j.dup_of is null`, t - 30 * D).n,
+    stated: rows.length ? Math.round((pays.length / rows.length) * 100) : 0, // % of open jobs whose posting gives pay
     stale: rows.length ? Math.round((rows.filter((r) => (r.posted ?? r.first_seen) < t - 60 * D).length / rows.length) * 100) : 0,
     medianDaysUp: up.length >= 5 ? Math.round(pct(up, 0.5)!) : null, pay: pays.length >= 5 ? { p25: pct(pays, 0.25), median: pct(pays, 0.5), p75: pct(pays, 0.75), n: pays.length } : null,
     fields: Object.entries(rows.reduce((m: any, r) => ((m[r.func] = (m[r.func] ?? 0) + 1), m), {})).sort((a: any, b: any) => b[1] - a[1]),
     boards: boards.map((b) => ({ ats: b.ats, open: b.open, checked: b.last_ok })), verified: rows.filter((r) => r.source !== "adzuna").length,
     weeks: Array.from({ length: 26 }, (_, i) => one(`select count(*) n from jobs j where ${inK} and coalesce(j.posted, j.first_seen) >= ? and coalesce(j.posted, j.first_seen) < ? and j.dup_of is null`, t - (26 - i) * 7 * D, t - (25 - i) * 7 * D).n as number) }; // new postings a week, oldest first
+}
+/** What an employer's own open postings here say about the work (the company card's scorecard): where it's done, office
+ *  days, on-call, travel, leave and time off; each with the share of postings that say it and a quote. */
+export function postingSignals(name: string) {
+  const keys = employerKeys(name), rows = keys.length ? db.prepare(`select remote, description d from jobs where ckey in (${keys.map(() => "?").join(",")}) and closed is null and dup_of is null and length(description) >= 300`).all(...keys) as any[] : [];
+  if (rows.length < 3) return null;
+  const pct = (n: number) => Math.round((n / rows.length) * 100), share = (re: RegExp) => pct(rows.filter((r) => re.test(r.d)).length);
+  const quote = (re: RegExp) => { for (const r of rows) { const m = re.exec(r.d); if (m) { // the clause around it: "participate in an on-call rotation"
+    const a = Math.max(0, r.d.lastIndexOf("\n", m.index) + 1, ...[". ", "; ", "• "].map((p) => r.d.lastIndexOf(p, m.index) + p.length).filter((i) => i > 0 && i <= m.index)), b = r.d.slice(m.index).search(/[.;\n•]/);
+    const from = a >= m.index - 90 ? a : r.d.indexOf(" ", m.index - 90) + 1, q = (from > a ? "…" : "") + r.d.slice(from, b < 0 ? m.index + 120 : m.index + Math.min(b, 120)).replace(/\s+/g, " ").trim(); return q.length > m[0].length + 4 ? q : m[0]; } } return null; };
+  const said = (re: RegExp) => { const n = share(re); return n ? { pct: n, quote: quote(re) } : null; };
+  const where = { hybrid: pct(rows.filter((r) => r.remote === "hybrid").length), remote: pct(rows.filter((r) => r.remote === "remote").length) }; // "onsite" is also "didn't say"
+  const leave = rows.flatMap((r) => [...r.d.matchAll(/(\d{1,2})\s*(?:\+\s*)?weeks?\s+(?:of\s+)?(?:fully\s+)?(?:paid\s+)?(?:parental|maternity|paternity|family|caregiver|baby bonding)\s+leave/gi)].map((m) => ({ w: Number(m[1]), q: m[0] })));
+  const most = leave.sort((a, b) => b.w - a.w)[0];
+  return { n: rows.length, where, officeDays: said(/\b(?:[1-5]|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|from)\s+(?:the\s+|our\s+)?(?:office|on[- ]?site)/i),
+    onCall: said(/\bon[- ]call\b/i), travel: said(/\btravel\b[^.\n]{0,40}?\d{1,2}\s*%|\d{1,2}\s*%[^.\n]{0,25}?\btravel/i),
+    leave: most ? { weeks: most.w, quote: most.q.replace(/\s+/g, " ") } : null, unlimitedPto: said(/\b(?:unlimited|flexible|open)\s+(?:pto|paid time off|vacation|time off)\b/i) };
 }
 export const getCompanyInfo = (name: string) => { const r = db.prepare("select at, body from company_info where ck = ?").get(ckey(name)) as any; return r ? JSON.parse(r.body) : null; };
 export const saveCompanyInfo = (name: string, body: object) => db.prepare("insert or replace into company_info values (?, ?, ?)").run(ckey(name), now(), JSON.stringify(body));
