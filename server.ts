@@ -736,23 +736,24 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
-      const ip = clientIp(req);
-      if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
-      const wait = askWait(session!.id);
+      // visitors: the per-IP cap, one question per 30 s, and the line (one answer at a time); the admin: none of them (user, 2026-11-16)
+      const ip = clientIp(req), admin = isAdmin(req), turn = <T,>(fn: () => Promise<T>, ahead?: (n: number) => void) => (admin ? fn() : inLine(fn, ahead));
+      if (!admin && !allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
+      const wait = admin ? 0 : askWait(session!.id);
       if (wait) return res.writeHead(429, { "content-type": "application/json", "retry-after": String(wait) }).end(JSON.stringify({ error: `Blip takes one question every 30 seconds. Ask again in ${wait} s.`, retryAfter: wait }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
       const body = JSON.parse(raw), system = body?.persona === "mochi" ? MOCHI_SYSTEM : SYSTEM;
       let gone = false; res.on("close", () => { gone = true; }); // left while in line: their turn is skipped
       if (!body?.stream) {
-        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, system)))); }
+        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await turn(() => gone ? Promise.reject(new Error("left")) : ask(body, system)))); }
         catch (e) { if (e instanceof LineFull) return busyReply(res, e); throw e; }
       }
       // Streamed: its place in line while it waits, then one JSON line per step as Blip thinks and calls tools (the chat
       // shows them while it waits), then the answer.
       res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
       try {
-        const answer = await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, system, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
+        const answer = await turn(() => gone ? Promise.reject(new Error("left")) : ask(body, system, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
         res.end(JSON.stringify(answer) + "\n");
       } catch (e) { if (!gone) res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
       return;

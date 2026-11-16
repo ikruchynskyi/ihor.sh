@@ -20,8 +20,8 @@ import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 import { generateMeme, searchTemplates } from "./memes.ts";
 
-import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
-const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
+import { OLLAMA, LOCAL_MODEL as MODEL, OWNER_MODEL, localThink } from "./llm.ts";
+const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? OWNER_MODEL; // DeepSeek on Ollama Cloud for everyone (user, 2026-11-16: no gemma)
 const MAX_STEPS = 6, DEEP_STEPS = 16, DEADLINE_MS = 50_000; // past the deadline (not "think hard") Blip answers with what it has
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
