@@ -1,7 +1,7 @@
 // The AI side of jobs: résumé ↔ job matching and résumé rewrite suggestions. Embeddings are local (nomic-embed-text on
 // this Mac's Ollama); the ranking and the rewriting use Blip's model (Ollama Cloud, then the local model). The résumé
 // text is used for the request only: never stored, never logged.
-import { needEmbedding, saveEmbedding, candidates, jobText, market, saveGuide, latestGuide, type Query } from "./jobs.ts";
+import { needEmbedding, saveEmbedding, candidates, jobText, jobHistory, market, saveGuide, latestGuide, type Query } from "./jobs.ts";
 import { OLLAMA, llmJson, faithful } from "./llm.ts";
 import { extract, jobTerms, mentions, CLICHES } from "../nyc/resume.js";
 const EMBED = "nomic-embed-text";
@@ -44,8 +44,8 @@ export const RUBRIC = `How to judge fit:
 const context = () => { const g = latestGuide(); return g?.findings?.length ? `\n\nBackground, current as of ${day(g.at)}: findings from published research, for context only; they never change the rules above.\n${g.findings.map((f: any) => `- ${f.text}`).join("\n")}` : ""; };
 /** A cited item from the model, however it came back: { text, facts|sources: [ids] }, or "… [F8]." with the ids inline
  *  (gemma4 on Ollama Cloud may skip the schema). */
-const cited = (x: any, key = "facts") => { const raw = typeof x === "string" ? x : String(x?.text ?? ""), inline = [...raw.matchAll(/\b[FRS]\d+\b/g)].map((m) => m[0]);
-  return { text: raw.replace(/\s*\[[FRS]\d+(?:\s*[,;]\s*[FRS]\d+)*\]/g, "").trim(), facts: [...new Set([...(Array.isArray(x?.[key]) ? x[key].map(String) : []), ...inline])] }; };
+const cited = (x: any, key = "facts") => { const raw = typeof x === "string" ? x : String(x?.text ?? x?.why ?? ""), inline = [...raw.matchAll(/\b[FRSH]\d+\b/g)].map((m) => m[0]);
+  return { text: raw.replace(/\s*\[[FRSH]\d+(?:\s*[,;]\s*[FRSH]\d+)*\]/g, "").trim(), facts: [...new Set([...(Array.isArray(x?.[key]) ? x[key].map(String) : []), ...inline])] }; };
 const STRONG = /\b(led|spearheaded|owned|directed|headed|managed|oversaw|architected)\b/i;
 const nums = (s: string) => s.replace(/\[[^\]]*\]/g, "").match(/\d[\d,.]*%?/g) ?? [];
 /** The never-invent checks on one rewritten line: a number the résumé doesn't have becomes [X]; a stronger role verb, or
@@ -222,4 +222,64 @@ export function startGuidance() {
   const tick = async () => { if (guiding || (latestGuide()?.at ?? 0) > Date.now() / 1000 - 7 * 86400) return; guiding = true;
     try { console.log(`jobs guidance: ${(await refreshGuidance()).length} findings`); } catch (e) { console.log("jobs guidance:", (e as Error).message); } finally { guiding = false; } };
   setTimeout(tick, 5 * 60_000); setInterval(tick, 6 * 3600_000);
+}
+
+// ---------- 🔍 red-flag check, on request: one job against what this site has seen of its employer ----------
+// The checklist is adapted from the HR Skills library's job-description, culture and AI-ethics guides (requirement
+// inflation, coded wording, performative culture), plus ghost-job and scam signs. Facts come from code (jobHistory);
+// each flag must cite them or quote the posting word for word, and its numbers must be in what it cites. One check
+// per job a day, shared by everyone who asks, so the cost follows clicks, not crawling.
+const RED_FLAGS = `Red flags to look for:
+- A ghost or evergreen posting: up a long time, the same title posted again and again, an employer that posts a lot but takes little down, "talent pool" wording.
+- Requirement inflation: years of experience out of line with the level (an entry-level title asking for 5+ years), a degree required where the work doesn't need one, a wish list of tools no one person has, two or three jobs' duties in one.
+- Pay: no range where one is required, a range far wider than the work explains, pay under similar jobs' 25th percentile, commission or "uncapped earnings" as the main pay.
+- Wording that screens people out: age-coded ("digital native", "young and energetic"), native-speaker requirements, "rockstar" or "ninja" jargon, physical requirements a desk job doesn't need.
+- Culture: "we're a family", "work hard, play hard", "thick skin", always-on availability, "other duties as assigned" carrying the role.
+- Process: unpaid trial work or long take-home assignments, many interview rounds, money, bank details or an SSN asked before an offer, chat apps or a personal email to apply.
+- A vague role: no clear purpose, outcomes or reporting line; mostly company superlatives.
+Good signs count too: pay stated and in line with similar jobs, clear must-haves vs nice-to-haves, an employer that is hiring (new postings and jobs filled), a recent posting.`;
+const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "nycjobs", "usajobs"]);
+const checks = new Map<string, { at: number; p: Promise<any> }>();
+export function checkJob(id: string) {
+  const hit = checks.get(id); if (hit && Date.now() - hit.at < 86400_000) return hit.p;
+  for (const [k, c] of checks) if (Date.now() - c.at > 86400_000) checks.delete(k);
+  const p = (async () => {
+    const h = jobHistory(id); if (!h) throw new Error("That job isn't in the index (it may have closed).");
+    const j = h.job, e = h.employer, F: { id: string; text: string }[] = [], add = (text: string) => F.push({ id: `H${F.length + 1}`, text });
+    add(`This posting has been up ${h.daysUp} days, since ${day(j.posted ?? j.first_seen)}.`);
+    add(`${j.company} has ${e.open} open jobs on this site; ${e.openOver60} of them were posted over 60 days ago.`);
+    add(`${j.company} posted ${e.new30} different job titles in the last 30 days and ${e.prev30} in the 30 days before; ${e.gone30} of its jobs were taken down in the last 30 days.`);
+    if (e.medianDaysUp != null) add(`Its jobs taken down in the last 6 months had stayed up a median of ${Math.round(e.medianDaysUp)} days (${e.upSample} jobs).`);
+    if (h.sameTitle.days) add(`It posted this same title in this area on ${h.sameTitle.days} other days in the last 6 months; ${h.sameTitle.open} of those are still open.`);
+    if (h.copies) add(`${h.copies} of its other open jobs have the same description.`);
+    if (h.pay != null && h.market.median != null) add(`Its pay midpoint, about ${k$(h.pay)} a year, compares with ${h.market.n} stated salaries for the same field, level and area: 25th percentile ${k$(h.market.p25)}, median ${k$(h.market.median)}, 75th percentile ${k$(h.market.p75)}.`);
+    else if (j.salary_min == null) add(`It states no pay range${j.region === "remote" ? "" : ", which NYC's pay transparency law requires for jobs here"}.`);
+    if (j.salary_min != null && j.salary_max != null && j.salary_max > 2 * j.salary_min) add(`Its pay range runs from ${k$(j.salary_min * (j.salary_period === "hour" ? 2080 : 1))} to ${k$(j.salary_max * (j.salary_period === "hour" ? 2080 : 1))} a year.`);
+    if (j.also.length) add(`The same job is also listed on ${j.also.join(", ")}.`);
+    if (j.flags.length) add(`This site's automatic flags: ${j.flags.join("; ")}.`);
+    add(VERIFIED.has(j.source) ? "It was read from the employer's (or the government's) own job board, which this site re-checks." : "It comes from an aggregator; this site can't check the employer's own page.");
+    const posting = String(j.description ?? ""), byId = new Map(F.map((f) => [f.id, f.text]));
+    const flagItem = { type: "object", required: ["flag", "severity", "why", "facts", "quote", "ask"], properties: { flag: { type: "string" }, severity: { type: "string", enum: ["low", "medium", "high"] }, why: { type: "string" }, facts: { type: "array", items: { type: "string" } }, quote: { type: "string" }, ask: { type: "string" } } };
+    const goodItem = { type: "object", required: ["text", "facts", "quote"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } }, quote: { type: "string" } } };
+    const out = await llmJson(`You check one job posting for red flags, for a job seeker deciding whether to apply. Use only the posting and the numbered facts (this site's record of the employer).
+${RED_FLAGS}
+'flags': up to 6, most serious first. Each: 'flag' (a few words), 'severity' (low, medium or high), 'why' (one sentence), 'facts' (the ids it uses), 'quote' (the posting's exact words that show it, copied character for character, or ""), 'ask' (one question to ask the recruiter about it). Every flag needs facts or a quote. 'good': up to 3 good signs, the same way. 'verdict': one plain sentence on whether and how to apply.
+Copy every number exactly as its fact writes it. Don't flag what the facts and posting don't show; a short or quiet posting is not by itself a red flag.${context()} Reply as JSON.`,
+      `JOB: ${j.title} at ${j.company} (${j.location})\n\nFACTS:\n${F.map((f) => `[${f.id}] ${f.text}`).join("\n")}\n\nPOSTING:\n${clip(posting, 6000)}`,
+      { type: "object", required: ["verdict", "flags", "good"], properties: { verdict: { type: "string" }, flags: { type: "array", items: flagItem }, good: { type: "array", items: goodItem } } }, 2500);
+    // checked here: a quote must be in the posting, and every number must be in the facts it cites or in its quote
+    const norm = (x: string) => x.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\s+/g, " ").trim(), P = norm(posting), nums = (x: string) => x.match(/\d+(?:\.\d+)?/g) ?? [];
+    const grounded = (text: string, facts: string[], quote: string) => { const q = norm(quote), known = new Set([...facts.flatMap((id) => nums(byId.get(id) ?? "")), ...nums(quote)]);
+      return (!q || P.includes(q)) && (facts.some((id) => byId.has(id)) || !!q) && nums(text).every((n) => known.has(n)); };
+    const list = (k: string) => { const v = out[k]; return Array.isArray(v) ? v : []; };
+    const flags = list("flags").map((x: any) => { const c = cited(x); return { flag: String(x?.flag ?? "").trim() || c.text.split(/[:.]/)[0].slice(0, 60), severity: ["low", "medium", "high"].includes(x?.severity) ? x.severity : "medium",
+      why: c.text, facts: c.facts.filter((id) => byId.has(id)), quote: String(x?.quote ?? "").trim(), ask: String(x?.ask ?? "").trim() }; })
+      .filter((f: any) => f.why && grounded(`${f.flag} ${f.why}`, f.facts, f.quote)).slice(0, 6);
+    const good = list("good").map((x: any) => { const c = cited(x); return { text: c.text, facts: c.facts.filter((id) => byId.has(id)), quote: String(x?.quote ?? "").trim() }; })
+      .filter((g: any) => g.text && grounded(g.text, g.facts, g.quote)).slice(0, 3);
+    const verdict = cited(out.verdict).text;
+    return { id, title: j.title, company: j.company, verdict: nums(verdict).length && !grounded(verdict, F.map((f) => f.id), "") ? "" : verdict, flags, good, facts: F, by: out._model, at: Math.floor(Date.now() / 1000) };
+  })();
+  checks.set(id, { at: Date.now(), p }); p.catch(() => checks.delete(id));
+  return p;
 }

@@ -7,6 +7,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { yearsAsked } from "../nyc/resume.js";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
@@ -17,6 +18,7 @@ db.exec(`
     salary_min real, salary_max real, salary_period text, salary_est int, posted int, url text, department text, employment text, seniority text,
     func text, description text, first_seen int, last_seen int, missed int default 0, closed int, fp text, dup_of text, flags text, also text);
   create index if not exists jobs_open on jobs (closed, dup_of);
+  create index if not exists jobs_ck on jobs (ckey, closed); -- an employer's jobs: reposts, report cards, the red-flag check
   -- the market's scans read these without walking each description's overflow pages (372 → 294 ms on 50k jobs)
   create index if not exists jobs_mk on jobs (dup_of, closed, posted, first_seen, ckey, title, func, seniority, region, remote, source, salary_min, salary_max, salary_period, salary_est, flags, company, id);
   create virtual table if not exists jobs_fts2 using fts5(id unindexed, title, company, body, tokenize = 'porter unicode61'); -- porter: engineers = engineer
@@ -83,23 +85,25 @@ export const remoteType = (loc: string, text: string, hint?: string) => {
   if (/\bremote\b/i.test(loc)) return "remote"; if (/\bhybrid\b/i.test(loc) || /\bhybrid\b/i.test(text.slice(0, 3000))) return "hybrid";
   return "onsite";
 };
-/** A pay range in text: "$120,000 – $150,000", "$150K-$200K", "$45/hr – $60/hr", "$85,000.00 - $95,000.00", "between
- *  $90,000 and $110,000". Annual or hourly, sanity-checked. */
+/** Pay in text: a range ("$120,000 – $150,000", "$150K-$200K", "$45/hr – $60/hr", "$85,000.00 - $95,000.00", "$172,000/yr
+ *  to $215,000/yr", "between $90,000 and $110,000"), or one figure with its period ("$20.00 per hour", "$85,000 a year":
+ *  NYC's law allows a single rate; "up to $55 an hour" is only a maximum, so it isn't read). Annual or hourly, sanity-checked. */
 export function parseSalary(text: string): { min: number; max: number; period: "year" | "hour" } | null {
-  const N = "(\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)", HOUR = "(?:\\/\\s?(?:hr|hour)|per hour|an hour)";
-  const m = text.replace(/–|—/g, "-").replace(/between\s+(\$\s?[\d,.]+\s?[kK]?)\s+and\s+/gi, "$1 - ")
-    .match(new RegExp(`\\$\\s?${N}\\s?([kK])?\\s*${HOUR}?\\s*(?:-|to)\\s*\\$?\\s?${N}\\s?([kK])?(\\s*(?:${HOUR}|hourly))?`));
-  if (!m) return null;
+  const N = "(\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)", HOUR = "(?:\\/\\s?(?:hr|hour)|per hour|an hour)", YEAR = "(?:\\/\\s?(?:yr|year)|per year|a year|annually|per annum)";
+  const t = text.replace(/[\u2010-\u2015\u2212]/g, "-").replace(/between\s+(\$\s?[\d,.]+\s?[kK]?)\s+and\s+/gi, "$1 - ");
   const n = (s: string, k?: string) => parseFloat(s.replace(/,/g, "")) * (k ? 1000 : 1);
-  const a = n(m[1], m[2]), b = n(m[3], m[4] ?? m[2]), hourly = !!m[5] || (b < 500 && !m[4]);
-  const [lo, hi] = a <= b ? [a, b] : [b, a];
-  if (hourly ? lo < 7 || hi > 600 : lo < 15000 || hi > 2_000_000) return null;
-  return { min: lo, max: hi, period: hourly ? "hour" : "year" };
+  const sane = (lo: number, hi: number, hourly: boolean) => (hourly ? lo < 7 || hi > 600 : lo < 15000 || hi > 2_000_000) ? null : { min: lo, max: hi, period: (hourly ? "hour" : "year") as "hour" | "year" };
+  const m = t.match(new RegExp(`\\$\\s?${N}\\s?([kK])?\\s*(?:${HOUR}|${YEAR})?\\s*(?:-|to)\\s*\\$?\\s?${N}\\s?([kK])?(\\s*(?:${HOUR}|hourly))?`));
+  if (m) { const a = n(m[1], m[2]), b = n(m[3], m[4] ?? m[2]); return sane(Math.min(a, b), Math.max(a, b), !!m[5] || (b < 500 && !m[4])); }
+  const one = t.match(new RegExp(`(up to\\s*)?\\$\\s?${N}\\s?([kK])?\\s*(${HOUR}|hourly|${YEAR})`, "i"));
+  if (!one || one[1]) return null;
+  const v = n(one[2], one[3]); return sane(v, v, !new RegExp(YEAR, "i").test(one[4]));
 }
-export const seniority = (t: string) => /\bintern(ship)?\b|co-?op\b/i.test(t) ? "intern" : /\b(junior|jr\.?|entry|associate|graduate|new grad|apprentice)\b/i.test(t) ? "junior"
+// "associate" alone is junior, but not in "Associate Director" or "Senior Associate" (it was, before 2026-11-16)
+export const seniority = (t: string) => /\bintern(ship)?\b|co-?op\b/i.test(t) ? "intern" : /\b(junior|jr\.?|entry[- ]level|graduate|new grad|apprentice|associate (product|project|program) manager)\b/i.test(t) ? "junior"
   : /\b(vp|vice president|chief|head of|cto|cfo|ceo|coo|svp|evp)\b/i.test(t) ? "executive" : /\bdirector\b/i.test(t) ? "director"
   : /\b(manager|lead|supervisor)\b/i.test(t) ? "manager" : /\b(staff|principal|distinguished|architect)\b/i.test(t) ? "staff"
-  : /\b(senior|sr\.?|iii|iv)\b/i.test(t) ? "senior" : "mid";
+  : /\b(senior|sr\.?|iii|iv)\b/i.test(t) ? "senior" : /\b(associate|entry)\b/i.test(t) ? "junior" : "mid";
 const FUNCS: [string, RegExp][] = [["engineering", /engineer|developer|devops|sre\b|software|platform|infrastructure|security|qa\b|test automation|firmware|mobile|ios|android/i],
   ["data", /data|analytics|analyst|machine learning|\bml\b|\bai\b|scientist|quant/i], ["design", /design|ux|ui\b|creative|art director/i], ["product", /product manager|product owner|\bpm\b|program manager/i],
   ["sales", /sales|account executive|business development|\bbdr\b|\bsdr\b|account manager/i], ["marketing", /marketing|growth|brand|content|seo|communications|\bpr\b|social media/i],
@@ -116,7 +120,11 @@ export const isGig = (company: string, title: string, text: string) => GIG_CO.te
 const STAFFING = /\b(robert half|insight global|teksystems|kforce|randstad|adecco|aerotek|cybercoders|hunter bond|harnham|motion recruitment|apex systems|beacon hill|jobot|collabera|hays|michael page|aston carter|actalent|vaco|creative circle|the judge group|addison group|staffing|recruitment|recruiting|talent partners)\b/i;
 
 /** Reasons a listing deserves a second look. Each flag is shown with its reason; none of them hides a job by itself. */
-export function flagsFor(j: { company: string; title: string; description: string; region: string | null; salary_min: number | null; posted: number | null; url: string; source: string; first_seen?: number }) {
+// wording that screens people out (age, national origin, insider jargon) and always-on culture: phrases measured on
+// 13,476 open jobs (2026-11-16) to fire rarely and mean it ("guru", "recent graduates" and "unpaid" were too common to)
+const CODED = /\b(digital natives?|young (and|&) (energetic|dynamic)|young(er)? team|youthful|native (english|spanish) speakers?|rock ?stars?|ninjas?|crush(ing)? it)\b/i;
+const ALWAYS_ON = /\b(we('| a)re (like )?a family|work hard,? play hard|thick skin|available 24\/7|available (at all times|around the clock))\b/i;
+export function flagsFor(j: { company: string; title: string; description: string; region: string | null; salary_min: number | null; posted: number | null; url: string; source: string; first_seen?: number; reposts?: number }) {
   const f: string[] = [], text = `${j.title}\n${j.description}`, age = (now() - (j.posted ?? j.first_seen ?? now())) / 86400;
   if (age > 60) f.push(`open ${Math.round(age)} days`);
   if (/evergreen|talent (pool|community|network)|general (application|interest)|future (opportunities|openings)|always (hiring|looking)/i.test(text)) f.push("evergreen / talent-pool posting");
@@ -126,6 +134,11 @@ export function flagsFor(j: { company: string; title: string; description: strin
   if (STAFFING.test(j.company)) f.push("staffing agency, not the employer");
   if (/commission[- ]only|100% commission|uncapped commission|unlimited (earning|income) potential|free (licensing|training).*(insurance|life)|life insurance agent|financial (freedom|independence)|be your own boss|(mlm|network marketing)/i.test(text)) f.push("commission-only or agent-recruiting ad");
   if (j.salary_min != null && (j as any).salary_max != null && (j as any).salary_max > 4 * j.salary_min) f.push("very wide pay range");
+  const years = yearsAsked(j.description);
+  if (years != null && years >= 3 && ["intern", "junior"].includes(seniority(j.title))) f.push(`entry-level title asking for ${years}+ years`);
+  const coded = j.description.match(CODED)?.[0]; if (coded) f.push(`wording that screens people out ("${coded.toLowerCase()}")`);
+  const always = j.description.match(ALWAYS_ON)?.[0]; if (always) f.push(`always-on culture wording ("${always.toLowerCase()}")`);
+  if ((j.reposts ?? 0) >= 2) f.push(`posted again ${j.reposts} times in 6 months`);
   return f;
 }
 
@@ -166,13 +179,24 @@ function batch<T>(fn: () => T): T {
   db.exec("begin");
   try { const out = fn(); db.exec("commit"); return out; } catch (e) { db.exec("rollback"); throw e; }
 }
+/** How many other days this employer posted this title in this area in the last 6 months and took it down again (from
+ *  its own boards and the government's: Adzuna listings expire on our clock, not the employer's). */
+const repostQ = db.prepare("select count(distinct date(coalesce(posted, first_seen), 'unixepoch')) n from jobs where ckey = ? and lower(title) = lower(?) and region = ? and closed is not null and closed > ? and source != 'adzuna' and id != ?");
+const reposts = (ck: string, title: string, reg: string, id: string) => (repostQ.get(ck, title.trim(), reg, now() - 180 * 86400, id) as any).n as number;
 // 2026-11-16: "$200,000&mdash;$265,000" (see stripHtml) and two more pay formats went unread, so ~1,700 open jobs showed no pay
 // and a "no salary" flag. Unchanged jobs are never read again, so stored ones are repaired here (a few ms per start).
 const repaired = db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = ?, flags = ? where id = ?");
 batch(() => { for (const r of db.prepare("select * from jobs where closed is null and salary_min is null and description like '%$%'").all() as any[]) {
   const d = entities(r.description), sal = parseSalary(d);
-  if (sal || d !== r.description) repaired.run(d, sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, JSON.stringify(flagsFor({ ...r, description: d, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null })), r.id);
+  if (sal || d !== r.description) repaired.run(d, sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, JSON.stringify(flagsFor({ ...r, description: d, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null, reposts: reposts(r.ckey, r.title, r.region, r.id) })), r.id);
 } });
+// 2026-11-16, once: every job's level again (the "associate" fix) and open jobs' flags with the new checks
+if (!db.prepare("select 1 from runs where what = 'migrate-flags-2'").get()) batch(() => {
+  const lv = db.prepare("update jobs set seniority = ? where id = ?"), fl = db.prepare("update jobs set flags = ? where id = ?");
+  for (const r of db.prepare("select id, title, seniority from jobs").all() as any[]) { const s = seniority(r.title); if (s !== r.seniority) lv.run(s, r.id); }
+  for (const r of db.prepare("select * from jobs where closed is null").all() as any[]) fl.run(JSON.stringify(flagsFor({ ...r, reposts: reposts(r.ckey, r.title, r.region, r.id) })), r.id);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-flags-2", 1, 0, "");
+});
 function save(j: In) {
   const reg = j.regionHint ?? region(j.location, j.isRemote);
   if (!reg) return false;
@@ -180,7 +204,7 @@ function save(j: In) {
   if (prev && prev.closed == null && prev.fp === fp && prev.title === j.title.trim() && prev.location === j.location.slice(0, 200) && prev.url === j.url) { touch.run(t, j.id); return true; }
   const given = j.salary && j.salary.min > 0 ? j.salary : null, sal = given ?? parseSalary(desc);
   const posted = j.posted ? Math.floor(j.posted / 1000) : null;
-  const row = { company: j.company, title: j.title, description: desc, region: reg, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null, posted, url: j.url, source: j.source, first_seen: t };
+  const row = { company: j.company, title: j.title, description: desc, region: reg, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null, posted, url: j.url, source: j.source, first_seen: t, reposts: reposts(ckey(j.company), j.title, reg, j.id) };
   upsert.run(j.id, j.source, j.company, ckey(j.company), j.title.trim(), j.location.slice(0, 200), reg, remoteType(j.location, desc, j.remoteHint ?? (j.isRemote ? "remote" : "")),
     sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, j.salaryEst ? 1 : 0, posted, j.url, j.department ?? "", j.employment ?? "", seniority(j.title), func(j.title, j.department), desc, t, t, fp, JSON.stringify(flagsFor(row)));
   ftsDel.run(j.id); ftsAdd.run(j.id, j.title, j.company, desc.slice(0, 8000));
@@ -625,6 +649,22 @@ export function candidates(qy: Query) {
   const { w, args } = filters({ ...qy, q: undefined });
   return (db.prepare(`select j.id, j.title, j.company, j.region, j.remote, j.url, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.flags, j.source, j.posted, j.first_seen, e.v from jobs j join emb e on e.id = j.id where ${w}`).all(...args) as any[])
     .map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), v: new Float32Array(new Uint8Array(r.v).buffer) }));
+}
+/** What this site has seen of a job and its employer, for the red-flag check (jobs-ai.ts checkJob). */
+export function jobHistory(id: string) {
+  const j: any = db.prepare("select * from jobs where id = ?").get(id); if (!j) return null;
+  const t = now(), D = 86400, T0 = "coalesce(posted, first_seen)", one = (sql: string, ...a: any[]) => db.prepare(sql).get(...a) as any;
+  const co = one(`select count(*) open, coalesce(sum(${T0} < ?), 0) old from jobs where ckey = ? and closed is null and dup_of is null`, t - 60 * D, j.ckey);
+  const flow = one(`select count(distinct case when ${T0} >= ? then lower(title) end) new30, count(distinct case when ${T0} >= ? and ${T0} < ? then lower(title) end) prev30,
+    coalesce(sum(closed >= ? and closed - first_seen >= ${D} and source != 'adzuna'), 0) gone30 from jobs where ckey = ? and dup_of is null`, t - 30 * D, t - 60 * D, t - 30 * D, t - 30 * D, j.ckey);
+  const up = (db.prepare(`select (closed - ${T0}) / ${D}.0 d from jobs where ckey = ? and closed > ? and closed - first_seen >= ${D} and source != 'adzuna' and dup_of is null`).all(j.ckey, t - 180 * D) as any[]).map((r) => r.d).sort((a, b) => a - b);
+  const same = db.prepare(`select ${T0} t0, closed from jobs where ckey = ? and lower(title) = lower(?) and region = ? and id != ? and source != 'adzuna' and (closed is null or closed > ?)`).all(j.ckey, j.title, j.region, id, t - 180 * D) as any[];
+  const m = market({ func: j.func, seniority: j.seniority, region: j.region });
+  return { job: { ...j, flags: JSON.parse(j.flags ?? "[]"), also: j.also ? j.also.split(",") : [] }, daysUp: Math.round((t - (j.posted ?? j.first_seen)) / D),
+    employer: { open: co.open, openOver60: co.old, new30: flow.new30, prev30: flow.prev30, gone30: flow.gone30, medianDaysUp: up.length >= 5 ? pct(up, 0.5) : null, upSample: up.length },
+    sameTitle: { days: new Set(same.map((r) => new Date(r.t0 * 1000).toDateString())).size, open: same.filter((r) => r.closed == null).length },
+    copies: (one("select count(*) n from jobs where ckey = ? and fp = ? and closed is null and id != ?", j.ckey, j.fp, id)).n as number,
+    pay: j.salary_min != null && !j.salary_est ? ((j.salary_min + (j.salary_max ?? j.salary_min)) / 2) * (j.salary_period === "hour" ? 2080 : 1) : null, market: { p25: m.p25, median: m.pay, p75: m.p75, n: m.withPay } };
 }
 export const saveGuide = (body: object) => db.prepare("insert or replace into guides values (?, ?)").run(now(), JSON.stringify(body));
 export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; return r ? { at: r.at as number, ...JSON.parse(r.body) } : null; };

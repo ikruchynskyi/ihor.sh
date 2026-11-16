@@ -142,7 +142,7 @@
         <ul>
           <li><b>✓ at the employer</b>: read from the company's own job board (Greenhouse, Lever, Ashby, Workable every hour; Workday and SmartRecruiters every 6 hours) or the government's own listings (NYC's open data, USAJOBS). A job missing twice in a row is removed.</li>
           <li><b>via Adzuna</b>: a job board aggregator, read every 4 hours. We can't open their pages to check, so a listing stays 30 days from its posting date, then goes. Gig ads (delivery apps, "be your own boss") and reposts (the same company and title again, or one ad copied to more than 5 towns) never get in.</li>
-          <li><b>Flags</b> never hide a job unless you ask: <i>open N days</i> (possibly a ghost job), <i>evergreen / talent-pool</i> (collecting résumés, not hiring for a seat), <i>no salary range</i> (NYC's pay-transparency law requires one for jobs here), <i>staffing agency</i>, <i>commission-only or agent-recruiting</i>, <i>very wide pay range</i>, <i>scam signs</i>.</li>
+          <li><b>Flags</b> never hide a job unless you ask: <i>open N days</i> (possibly a ghost job), <i>evergreen / talent-pool</i> (collecting résumés, not hiring for a seat), <i>no salary range</i> (NYC's pay-transparency law requires one for jobs here), <i>staffing agency</i>, <i>commission-only or agent-recruiting</i>, <i>very wide pay range</i>, <i>scam signs</i>. Also: <i>posted again N times in 6 months</i> (taken down and put up again: a ghost job, or a role nobody stays in), <i>entry-level title asking for N+ years</i>, <i>wording that screens people out</i> (age-coded, native-speaker, "rockstar"), <i>always-on culture wording</i>. In a job's details, <b>🔍 Check this job</b> has AI read the posting against this site's record of the employer: every flag cites that record or quotes the posting, with a question to ask the recruiter.</li>
           <li>Salaries are what the employer posted; Adzuna's estimates are marked "est." and don't count as stated pay.</li>
         </ul>
       </details>
@@ -228,6 +228,7 @@ async function run(keepPage = false) {
   renderSaved();
 }
 $("list").addEventListener("click", async (e) => {
+  const cb = e.target.closest("[data-check]"); if (cb) return redFlags(cb);
   const tb = e.target.closest("[data-track]");
   if (tb) { const r = last.rows[+tb.dataset.track], t = tracked(); if (!t[r.id]) { t[r.id] = { title: r.title, company: r.company, url: r.url, status: "saved", saved: Date.now(), notes: "", follow: "" }; putTracked(t); } tb.textContent = `📋 ${t[r.id].status}`; renderTrack(); return; }
   const card = e.target.closest(".job"); if (!card || e.target.closest("a, button")) return;
@@ -238,7 +239,7 @@ $("list").addEventListener("click", async (e) => {
     const j = await getJSON(`/api/jobs/job?id=${encodeURIComponent(r.id)}`), e2 = j.employer;
     box.innerHTML = `<p><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source])} ↗</a>
       <span class="hint">${esc(j.location)}${j.employment ? ` · ${esc(j.employment)}` : ""}${j.department ? ` · ${esc(j.department)}` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</span></p>
-      <p class="hint"><a href="/nyc/resume.html?job=${encodeURIComponent(j.id)}">📄 Check my résumé against this job</a></p>
+      <p class="hint"><a href="/nyc/resume.html?job=${encodeURIComponent(j.id)}">📄 Check my résumé against this job</a> · <button type="button" data-check="${esc(j.id)}">🔍 Check this job for red flags</button> <span data-check-step aria-live="polite"></span></p><div data-check-out></div>
       <p class="report">${esc(j.company)} here: ${e2.open} open job${e2.open === 1 ? "" : "s"}${e2.openOver60Days ? `, ${e2.openOver60Days} open over 60 days` : ""}${e2.withoutSalary ? `, ${e2.withoutSalary} without a salary` : ""}${e2.closedLast30Days ? `, ${e2.closedLast30Days} closed in the last 30 days` : ""}.</p>
       <div class="desc">${esc(j.description)}</div>`;
   } catch (err) { box.textContent = err.message; }
@@ -403,6 +404,22 @@ async function writeBrief() {
       <p class="hint">Written by ${esc(r.by)} from ${r.facts.length} numbered facts (hover a [F…] to see them; R facts are published research). A line whose numbers don't match the facts it cites is dropped before you see it.</p>`;
     $("briefStep").textContent = "";
   } catch (e) { $("briefStep").textContent = e.message; } finally { $("briefBtn") && ($("briefBtn").disabled = false); }
+}
+
+// ---------- 🔍 red flags for one job: AI over the posting and this site's record of its employer (a polled job) ----------
+async function redFlags(btn) {
+  const box = btn.closest(".detail"), step = box.querySelector("[data-check-step]"), out = box.querySelector("[data-check-out]");
+  btn.disabled = true; step.className = "hint"; step.textContent = "Reading the posting and this employer's record (up to a minute)…";
+  try {
+    const { id } = await post(`/api/jobs/check?id=${encodeURIComponent(btn.dataset.check)}`, {}), r = await poll(id, (x) => (step.textContent = x)), F = new Map(r.facts.map((f) => [f.id, f.text]));
+    const cite = (x) => (x.facts.length ? ` <sup title="${esc(x.facts.map((i) => `${i}: ${F.get(i)}`).join("\n"))}">[${x.facts.map(esc).join(", ")}]</sup>` : "");
+    const quote = (x) => (x.quote ? `<br><span class="hint">“${esc(x.quote)}”</span>` : "");
+    out.innerHTML = `<div class="card brief" style="padding:8px 12px;margin:6px 0">${r.verdict ? `<p><b>${esc(r.verdict)}</b></p>` : ""}
+      ${r.flags.length ? `<ul>${r.flags.map((f) => `<li><span class="chip${f.severity === "low" ? "" : " flag"}">${f.severity === "high" ? "⚑⚑ " : "⚑ "}${esc(f.flag)}</span> ${esc(f.why)}${cite(f)}${quote(f)}${f.ask ? `<br><span class="hint">Ask them: ${esc(f.ask)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="hint">No red flags that hold up against the facts.</p>`}
+      ${r.good.length ? `<b>Good signs</b><ul>${r.good.map((g) => `<li>✓ ${esc(g.text)}${cite(g)}${quote(g)}</li>`).join("")}</ul>` : ""}
+      <p class="hint">Checked by ${esc(r.by)} on ${new Date(r.at * 1000).toLocaleDateString()} from the posting and ${r.facts.length} facts from this site's record of ${esc(r.company)} (hover a [H…]). A flag that cites nothing or misquotes the posting is dropped. Kept for a day: anyone else who asks about this job gets the same check.</p></div>`;
+    step.textContent = "";
+  } catch (err) { step.textContent = err.message; } finally { btn.disabled = false; }
 }
 
 // ---------- tabs: search, market, my applications (#market, #mine in the address) ----------

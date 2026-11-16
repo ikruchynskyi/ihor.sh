@@ -99,6 +99,8 @@ export function evaluate(text, layout = {}) {
 // ---------- against a job ----------
 const SKILL_WORDS = "python java javascript typescript go golang rust c\\+\\+ c# ruby php scala kotlin swift sql nosql postgresql postgres mysql mongodb redis kafka spark hadoop airflow dbt snowflake bigquery redshift databricks aws azure gcp docker kubernetes terraform ansible jenkins git linux react angular vue node\\.js node django flask fastapi spring graphql rest grpc html css tableau looker power bi excel salesforce hubspot jira figma sketch photoshop illustrator pytorch tensorflow scikit-learn pandas numpy llm nlp machine learning deep learning computer vision statistics a/b testing etl data modeling data warehousing ci/cd microservices agile scrum product management seo sem crm gaap cpa cfa sox hipaa gdpr".split(" ");
 const STOP = new Set("the and for with you our are will this that from have your their about who what when where which while into than then them they team work working role roles years year experience experiences strong ability able skills skill including include includes using use used new well other more most also across within based such each both must should would could can may help helping make making build building join etc job jobs company companies business businesses people world best great good highly high level levels plus preferred required requirements responsibilities qualifications minimum bonus benefits salary range equal opportunity employer".split(" "));
+/** The years of experience a posting asks for ("5+ years of relevant experience"), or null. */
+export const yearsAsked = (jd) => { const y = +(jd.match(/(\d{1,2})\+?\s*(?:-\s*\d+\s*)?years?(?:\s+of)?(?:\s+\w+){0,4}\s+experience/i)?.[1] ?? NaN); return Number.isFinite(y) ? y : null; };
 /** What a job asks for: known skills and tools found in it, plus its frequent specific words, and the years it wants. */
 export function jobTerms(jd) {
   const t = ` ${jd.toLowerCase()} `;
@@ -106,8 +108,7 @@ export function jobTerms(jd) {
   const counts = new Map();
   for (const w of jd.match(/\b[A-Za-z][A-Za-z+#.-]{2,}\b/g) ?? []) { const k = w.toLowerCase(); if (STOP.has(k) || skills.includes(k)) continue; counts.set(k, (counts.get(k) ?? 0) + 1); }
   const frequent = [...counts].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([w]) => w);
-  const years = +(jd.match(/(\d{1,2})\+?\s*(?:-\s*\d+\s*)?years?(?:\s+of)?(?:\s+\w+){0,4}\s+experience/i)?.[1] ?? NaN);
-  return { skills, frequent, years: Number.isFinite(years) ? years : null };
+  return { skills, frequent, years: yearsAsked(jd) };
 }
 /** Which of a job's terms the résumé has, literally (many ATS match exact words), and the years it asks for. */
 export function compare(resumeText, jd) {

@@ -21,7 +21,7 @@ import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNode
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
-import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief } from "./server/jobs-ai.ts";
+import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
@@ -477,7 +477,7 @@ const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/jobs/check", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 type BriefJob = { at: number; step: string; result?: unknown; error?: string; once?: boolean };
 const briefJobs = new Map<string, BriefJob>();
 /** A slow AI answer as a job the page polls at /api/nyc/brief-job?id= (Cloudflare drops a reply that takes over 100 s).
@@ -1074,6 +1074,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
+    if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
     if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
     if ((url.pathname === "/api/jobs/match" || url.pathname === "/api/jobs/suggest" || url.pathname === "/api/jobs/tailor") && req.method === "POST") {
