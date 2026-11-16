@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Job</title>
+  <meta name="description" content="One open job: the posting, its red flags, how your résumé fits, a tailored version, similar jobs, and tracking your application." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 20px 16px 120px; }
+    [hidden] { display: none !important; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; color: var(--muted); align-items: center; }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); }
+    .chip.ok { color: var(--ok); border-color: var(--ok); } .chip.flag { color: var(--warn); border-color: var(--warn); }
+    .pay { font-weight: 700; color: var(--fg); }
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 16px 0 10px; overflow-x: auto; }
+    .tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+    .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+    .desc { white-space: pre-wrap; font-size: 14.5px; }
+    .row { padding: 8px 12px; margin: 6px 0; } .row h3 { margin: 0; font-size: 15px; }
+    .brief li { margin: 4px 0; } .brief sup { color: var(--muted); cursor: help; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/nyc/">NYC</a> · <a href="/nyc/jobs.html">Jobs</a> · <span id="crumb">Job</span></p>
+  <article id="head"><p class="hint">Loading…</p></article>
+  <nav class="tabs" role="tablist" aria-label="About this job">
+    <button type="button" role="tab" data-tab="details" aria-selected="true">Details</button>
+    <button type="button" role="tab" data-tab="flags" aria-selected="false">🔍 Red flags</button>
+    <button type="button" role="tab" data-tab="fit" aria-selected="false">📄 Fit &amp; tailor</button>
+    <button type="button" role="tab" data-tab="similar" aria-selected="false">Similar jobs</button>
+  </nav>
+  <section id="t-details"></section>
+  <section id="t-flags" hidden><p class="hint">AI reads the posting against this site's record of the employer: how long the job has been up, reposts, how long its jobs stay up, what similar jobs pay. Every flag cites that record or quotes the posting.</p><p><button type="button" id="checkGo">🔍 Check this job</button> <span class="hint" id="checkStep" aria-live="polite"></span></p><div id="checkOut"></div></section>
+  <section id="t-fit" hidden></section>
+  <section id="t-similar" hidden><p class="hint">Loading…</p></section>
+</main>
+<script type="module">
+import { $, esc, getJSON, LABEL, pay, age, verified, jobLink, companyLink, tracked, putTracked, STAGES, runCheck, checkHTML, pullAccount } from "/nyc/jobs-ui.js";
+import { compare } from "/nyc/resume.js";
+const id = new URLSearchParams(location.search).get("id") ?? "";
+let job = null;
+const kept = () => { try { return localStorage.getItem("resume-text"); } catch { return null; } };
+
+function head() {
+  const j = job, e = j.employer, t = tracked()[j.id];
+  document.title = `${j.title} at ${j.company}`; $("crumb").textContent = j.title;
+  $("head").innerHTML = `<h1 style="margin:4px 0">${esc(j.title)}</h1>
+    <div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
+      ${verified(j.source) ? `<span class="chip ok" title="Read from the employer's own system, checked again on schedule">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[j.source] ?? j.source)}</span>`}${j.closed ? `<span class="chip flag">closed ${new Date(j.closed * 1000).toLocaleDateString()}</span>` : ""}</div>
+    ${j.flags.length ? `<div class="meta" style="margin-top:4px">${j.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
+    <p class="meta" style="margin-top:10px"><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source] ?? j.source)} ↗</a>
+      <label>📋 <select id="stage" aria-label="Track this job"><option value="">not tracked</option>${STAGES.map((s) => `<option ${t?.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+      <button type="button" id="share">🔗 Copy link</button> <span class="hint" id="shareMsg"></span></p>
+    <p class="hint">${esc(j.company)} here: ${e.open} open job${e.open === 1 ? "" : "s"}${e.openOver60Days ? `, ${e.openOver60Days} open over 60 days` : ""}${e.closedLast30Days ? `, ${e.closedLast30Days} closed in the last 30 days` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</p>`;
+  $("stage").onchange = () => { const all = tracked(), s = $("stage").value;
+    if (!s) delete all[j.id]; else { const x = all[j.id] ?? { title: j.title, company: j.company, url: j.url, saved: Date.now(), notes: "", follow: "" }; x.status = s; x.at = { ...x.at, [s]: x.at?.[s] ?? Date.now() };
+      if (s === "applied" && !x.follow) x.follow = new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-CA"); all[j.id] = x; }
+    putTracked(all); };
+  $("share").onclick = () => navigator.clipboard?.writeText(location.href).then(() => ($("shareMsg").textContent = "copied"));
+}
+function details() { $("t-details").innerHTML = `<div class="desc">${esc(job.description)}</div>`; }
+function fit() {
+  const text = kept(), c = text && job.description.length > 80 ? compare(text, `${job.title}\n${job.description}`) : null;
+  $("t-fit").innerHTML = text ? `${c?.coverage != null ? `<p><b>${c.coverage}%</b> of the skills this job names are in your résumé.</p>` : "<p>The posting names no common skills we know.</p>"}
+      <p>${(c?.present ?? []).map((s) => `<span class="chip ok">✓ ${esc(s)}</span>`).join(" ")} ${(c?.missing ?? []).map((s) => `<span class="chip flag">✗ ${esc(s)}</span>`).join(" ")}</p>
+      ${(c?.advice ?? []).map((a) => `<p class="hint">${esc(a)}</p>`).join("")}
+      <p><a class="button" href="/nyc/resume.html?job=${encodeURIComponent(job.id)}">🎯 Build the best-matching version of my résumé</a></p>`
+    : `<p>Load your résumé on the <a href="/nyc/resume.html?job=${encodeURIComponent(job.id)}">résumé page</a> (tick "keep it in this browser") to see how it fits this job and build a tailored version.</p>`;
+}
+async function similar() {
+  try { const rows = await getJSON(`/api/jobs/similar?id=${encodeURIComponent(id)}`);
+    $("t-similar").innerHTML = rows.length ? rows.map((r) => `<div class="row card"><h3>${jobLink(r)}</h3><div class="meta"><b>${companyLink(r.company)}</b><span>${esc(LABEL.region[r.region] ?? "")}</span>${pay(r) ? `<span class="pay">${pay(r)}</span>` : ""}<span>${age(r.posted ?? r.first_seen)}</span></div></div>`).join("") : `<p class="hint">Nothing close enough yet (new jobs are compared within half an hour).</p>`;
+  } catch (e) { $("t-similar").innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
+}
+for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
+  for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
+  if (b.dataset.tab === "similar" && !similar.done) { similar.done = true; similar(); }
+};
+$("checkGo").onclick = async () => {
+  $("checkGo").disabled = true; $("checkStep").textContent = "Reading the posting and this employer's record (up to a minute)…";
+  try { $("checkOut").innerHTML = checkHTML(await runCheck(id, (s) => ($("checkStep").textContent = s))); $("checkStep").textContent = ""; }
+  catch (e) { $("checkStep").textContent = e.message; } finally { $("checkGo").disabled = false; }
+};
+try {
+  job = await getJSON(`/api/jobs/job?id=${encodeURIComponent(id)}`);
+  head(); details(); fit();
+  pullAccount().then((ok) => ok && head()); // your tracker from your account, when signed in
+} catch (e) { $("head").innerHTML = `<h1>That job isn't here</h1><p>${esc(e.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
+window.blipContext = () => ({ page: "One job on the NYC jobs finder", job: job && { title: job.title, company: job.company, location: job.location, pay: pay(job), flags: job.flags, posted: age(job.posted ?? job.first_seen) } });
+</script>
+</body>
+</html>

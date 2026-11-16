@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Employer</title>
+  <meta name="description" content="One employer in New York: its open jobs, how it hires (new, taken down, left open), what it pays, and where its jobs come from." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 960px; margin: 0 auto; padding: 20px 16px 120px; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+    .kpi { padding: 10px 12px; } .kpi b { display: block; font-size: 24px; line-height: 1.15; } .kpi span { color: var(--muted); font-size: 12.5px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; color: var(--muted); }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); margin: 2px; }
+    .chip.ok { color: var(--ok); border-color: var(--ok); } .chip.flag { color: var(--warn); border-color: var(--warn); }
+    .row { padding: 8px 12px; margin: 6px 0; } .row h3 { margin: 0; font-size: 15px; } .pay { font-weight: 700; color: var(--fg); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/nyc/">NYC</a> · <a href="/nyc/jobs.html">Jobs</a> · <span id="crumb">Employer</span></p>
+  <div id="out"><p class="hint">Loading…</p></div>
+</main>
+<script type="module">
+import { $, esc, getJSON, LABEL, pay, age, verified, jobLink } from "/nyc/jobs-ui.js";
+const name = new URLSearchParams(location.search).get("c") ?? "", k$ = (v) => (v == null ? "—" : `$${Math.round(v / 1000)}k`);
+let e = null;
+try {
+  e = await getJSON(`/api/jobs/company?c=${encodeURIComponent(name)}`);
+  document.title = `${e.name}: jobs in New York`; $("crumb").textContent = e.name;
+  const tile = (v, label, sub = "") => `<div class="kpi card"><b>${v}</b><span>${label}${sub ? `<br>${sub}` : ""}</span></div>`;
+  $("out").innerHTML = `<h1 style="margin:4px 0">${esc(e.name)}</h1>
+    <p class="hint">Its jobs in New York City, New Jersey, the metro and remote in the US, as this site reads them. <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">Search them with filters</a>.</p>
+    <div class="kpis">${tile(e.open, "open jobs", `${e.open ? Math.round((e.verified / e.open) * 100) : 0}% read from its own system`)}${tile(e.new30, "posted in 30 days")}${tile(e.gone30, "taken down in 30 days", "filled or withdrawn")}
+      ${tile(`${e.stale}%`, "of open jobs up over 60 days", e.stale >= 50 ? "many may be evergreen" : "")}${tile(e.medianDaysUp != null ? `${e.medianDaysUp} days` : "—", "a job usually stays up", "median, last 6 months")}
+      ${tile(e.pay ? k$(e.pay.median) : "—", "median stated pay", e.pay ? `middle half ${k$(e.pay.p25)}–${k$(e.pay.p75)} (${e.pay.n} salaries)` : "too few salaries stated")}</div>
+    <p>${e.fields.map(([f, n]) => `<span class="chip">${esc(LABEL.func[f] ?? f)} ${n}</span>`).join("")}</p>
+    ${e.boards.length ? `<p class="hint">Read from: ${e.boards.map((b) => `${esc(b.ats)} (${b.open ?? 0} jobs, checked ${b.checked ? age(b.checked) : "—"})`).join(", ")}.</p>` : `<p class="hint">Its jobs here come from aggregators (Adzuna) and public listings; its own job board isn't read yet.</p>`}
+    <h2>Open jobs</h2>${e.jobs.map((r) => `<div class="row card"><h3>${jobLink(r)}</h3><div class="meta"><span>${esc(r.location)}</span><span>${esc(LABEL.seniority[r.seniority] ?? "")}</span>${pay(r) ? `<span class="pay">${pay(r)}</span>` : ""}<span>${age(r.posted ?? r.first_seen)}</span>
+      ${verified(r.source) ? `<span class="chip ok">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}${r.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div></div>`).join("")}
+    ${e.open > e.jobs.length ? `<p class="hint">Showing the newest ${e.jobs.length} of ${e.open}: <a href="/nyc/jobs.html?company=${encodeURIComponent(e.name)}">see all in search</a>.</p>` : ""}`;
+} catch (err) { $("out").innerHTML = `<h1>${esc(name || "Employer")}</h1><p>${esc(err.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
+window.blipContext = () => ({ page: "One employer on the NYC jobs finder", employer: e && { name: e.name, open: e.open, posted30: e.new30, takenDown30: e.gone30, openOver60DaysPct: e.stale, medianPay: e.pay?.median } });
+</script>
+</body>
+</html>

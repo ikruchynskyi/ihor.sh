@@ -1,7 +1,7 @@
 // The AI side of jobs: résumé ↔ job matching and résumé rewrite suggestions. Embeddings are local (nomic-embed-text on
 // this Mac's Ollama); the ranking and the rewriting use Blip's model (Ollama Cloud, then the local model). The résumé
 // text is used for the request only: never stored, never logged.
-import { needEmbedding, saveEmbedding, candidates, jobText, jobHistory, market, saveGuide, latestGuide, type Query } from "./jobs.ts";
+import { needEmbedding, saveEmbedding, candidates, jobText, jobHistory, market, saveGuide, latestGuide, rowsByIds, filteredIds, search, getCheck, saveCheck, freshForChecks, type Query } from "./jobs.ts";
 import { OLLAMA, llmJson, faithful } from "./llm.ts";
 import { extract, jobTerms, mentions, CLICHES } from "../nyc/resume.js";
 const EMBED = "nomic-embed-text";
@@ -236,6 +236,7 @@ Good signs count too: pay stated and in line with similar jobs, clear must-haves
 const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "custom", "nycjobs", "usajobs"]);
 const checks = new Map<string, { at: number; p: Promise<any> }>();
 export function checkJob(id: string) {
+  const stored = getCheck(id); if (stored) return Promise.resolve(stored); // made overnight, or by an earlier visitor
   const hit = checks.get(id); if (hit && Date.now() - hit.at < 86400_000) return hit.p;
   for (const [k, c] of checks) if (Date.now() - c.at > 86400_000) checks.delete(k);
   const p = (async () => {
@@ -273,7 +274,8 @@ Copy every number exactly as its fact writes it. Don't flag what the facts and p
     const good = list("good").map((x: any) => { const c = cited(x); return { text: c.text, facts: c.facts.filter((id) => byId.has(id)), quote: String(x?.quote ?? "").trim() }; })
       .filter((g: any) => g.text && grounded(g.text, g.facts, g.quote)).slice(0, 3);
     const verdict = cited(out.verdict).text;
-    return { id, title: j.title, company: j.company, verdict: nums(verdict).length && !grounded(verdict, F.map((f) => f.id), "") ? "" : verdict, flags, good, facts: F, at: Math.floor(Date.now() / 1000) };
+    const result = { id, title: j.title, company: j.company, verdict: nums(verdict).length && !grounded(verdict, F.map((f) => f.id), "") ? "" : verdict, flags, good, facts: F, at: Math.floor(Date.now() / 1000) };
+    saveCheck(id, result); return result;
   })();
   checks.set(id, { at: Date.now(), p }); p.catch(() => checks.delete(id));
   return p;
@@ -289,4 +291,37 @@ export async function noteToBullet(resume: string, notes: string, role: string, 
     { type: "object", required: ["bullet"], properties: { bullet: { type: "string" } } }, 300);
   const g = guard(n, String(out.bullet ?? "").replace(/^\s*[•\-–]\s*/, "").trim(), `${resume}\n${n}`, `${resume}\n${n}\n${job?.description ?? ""}`, true);
   return g.after ? { text: g.after, notes: g.notes } : { error: "No bullet came back; try rewording your notes." };
+}
+
+/** Overnight (cron): red-flag checks for the day's fresh jobs from employers (NYC area, tech, data, finance), one at a
+ *  time on the local model, so the 🔍 button answers at once for them; stops at 5 am, before the day's visitors. */
+export async function precomputeChecks() {
+  let n = 0;
+  for (const id of freshForChecks()) {
+    if (new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }) === "5") break;
+    await checkJob(id).then(() => n++).catch(() => {});
+  }
+  return n;
+}
+
+// ---------- by meaning: similar jobs and search by meaning, from the jobs' embeddings ----------
+let vec: { at: number; ids: string[]; vs: Float32Array[]; keys: string[]; index: Map<string, number> } | null = null;
+const vectors = () => { // every open job's embedding, in memory (~40 MB for 13k jobs), read again every half hour
+  if (!vec || Date.now() - vec.at > 30 * 60_000) { const rows = candidates({}); vec = { at: Date.now(), ids: rows.map((r) => r.id), vs: rows.map((r) => r.v), keys: rows.map((r) => `${r.company}|${r.title}`), index: new Map(rows.map((r, i) => [r.id, i])) }; }
+  return vec;
+};
+const nearest = (q: Float32Array, keep: (id: string) => boolean, n: number) => { const v = vectors(), out: [number, number][] = [];
+  for (let i = 0; i < v.ids.length; i++) if (keep(v.ids[i])) out.push([cos(q, v.vs[i]), i]);
+  return out.sort((a, b) => b[0] - a[0]).slice(0, n).map(([s, i]) => ({ id: v.ids[i], sim: s })); };
+/** Jobs most like this one (by meaning), other employers' titles too. */
+export function similar(id: string, n = 10) {
+  const v = vectors(), i = v.index.get(id); if (i == null) return [];
+  const self = v.keys[i]; // the same job listed for other offices isn't "similar"
+  return rowsByIds(nearest(v.vs[i], (x) => x !== id && v.keys[v.index.get(x)!] !== self, n).map((r) => r.id));
+}
+/** Search by meaning: the words embedded as a query, the filtered open jobs ranked by closeness; 30 a page, up to 300. */
+export async function semanticSearch(qy: Query) {
+  const [q] = await embed([`search_query: ${String(qy.q ?? "").slice(0, 500)}`]), ok = filteredIds(qy), page = Math.max(0, qy.page ?? 0);
+  const ranked = nearest(q, (id) => ok.has(id), 300);
+  return { total: ranked.length, page, semantic: true, rows: rowsByIds(ranked.slice(page * 30, page * 30 + 30).map((r) => r.id)), facets: search({ ...qy, q: undefined, page: 0 }).facets };
 }

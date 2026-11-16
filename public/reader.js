@@ -41,7 +41,8 @@ const THEMES = {
 };
 const GROUPS = [["retro", "Retro"], ["cinematic", "Cinematic"], ["light", "Light"], ["color", "By world"]];
 const isHome = !!document.querySelector(".hud #snd");
-const DEFAULT_THEME = "arcade";
+// the jobs pages read best plain and light (Subway); the rest of the site keeps the Arcade look. A theme you pick wins.
+const DEFAULT_THEME = /^\/nyc\/(jobs|job|company|resume)\b/.test(location.pathname) ? "subway" : "arcade";
 const DEFAULTS = { theme: DEFAULT_THEME, line: isHome ? 1.5 : 1.7, letter: 0 };
 
 // Only what the visitor changed is stored, so each page keeps its own defaults for the rest; the font and the size

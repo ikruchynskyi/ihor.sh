@@ -55,6 +55,7 @@
     <p><b>Drop your résumé here</b> (PDF, Word .docx or .txt), or <label style="text-decoration:underline;cursor:pointer">choose a file<input type="file" id="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden></label></p>
     <details><summary class="hint">or paste the text</summary><textarea id="paste" placeholder="Paste your résumé's text"></textarea><button id="usePaste" type="button">Check this text</button></details>
     <label class="hint"><input type="checkbox" id="keep"> keep it in this browser (to match it against jobs later)</label>
+    <label class="hint" id="keepAcctBox" hidden><input type="checkbox" id="keepAcct"> keep it in my account too (to use it on my other devices)</label>
   </div>
   <p class="hint" id="status" aria-live="polite"></p>
 
@@ -96,6 +97,7 @@
 </main>
 <script type="module">
 import { evaluate, compare, extract, addedSkills, composeTailored, annotate, unwrap } from "/nyc/resume.js";
+import { tracked, putTracked, me } from "/nyc/jobs-ui.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
@@ -182,6 +184,7 @@ function show() {
   undo = []; sugs.clear(); draft = ""; setDraft(current.text, false);
   match();
   try { if ($("keep").checked) localStorage.setItem("resume-text", current.text); } catch {}
+  if ($("keepAcct").checked) saveToAccount();
 }
 function match() {
   if (!current) return;
@@ -324,11 +327,20 @@ $("dlDocx").onclick = async () => {
   download("resume.docx", await z.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
 };
 $("dlPdf").onclick = () => { const w = window.open("", "_blank"); if (!w) return; w.document.write(`<!doctype html><title>Résumé</title><style>body{font:11pt/1.4 Arial,sans-serif;margin:0.7in;white-space:pre-wrap}</style><body>${esc(draft)}</body>`); w.document.close(); w.focus(); w.print(); };
+// signed in: the résumé can live in your account too (only if you tick it), and comes back on another device
+me().then(async (u) => {
+  if (!u) return; $("keepAcctBox").hidden = false;
+  const d = await fetch("/api/me/data").then((r) => r.json()).catch(() => ({}));
+  $("keepAcct").checked = !!d.resume;
+  if (d.resume && !current) { current = { text: d.resume, layout: { kind: "txt" } }; $("status").textContent = "Using the résumé kept in your account (open the file again for the layout checks)."; show(); }
+});
+const saveToAccount = () => fetch("/api/me/data", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: "resume", value: $("keepAcct").checked && current ? current.text : "" }) }).catch(() => {});
+$("keepAcct").onchange = saveToAccount;
 $("keep").onchange = () => { try { if ($("keep").checked && current) localStorage.setItem("resume-text", current.text); else localStorage.removeItem("resume-text"); } catch {} };
 // ---------- the best-matching version for one job: the AI's draft, then you remove the skills you don't have ----------
 // Kept with the job in the jobs page's tracker (localStorage "jobs-tracker", entry.cv), so its dashboard lists it.
 let tailored = null, jobMeta = null;
-const TK = "jobs-tracker", trackerGet = () => { try { return JSON.parse(localStorage.getItem(TK) ?? "{}"); } catch { return {}; } };
+const trackerGet = tracked; // the jobs pages' store: in your account too, when you're signed in
 const trackId = () => jobId ?? `paste:${[...$("jd").value.trim().slice(0, 400)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0).toString(36)}`;
 const postJSON = (u, body) => fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (x) => { const d = await x.json().catch(() => ({})); if (!x.ok || d.error) throw new Error(d.error ?? `HTTP ${x.status}`); return d; });
 const poll = async (id, step) => { for (;;) { await new Promise((r) => setTimeout(r, 2500)); const r = await fetch(`/api/nyc/brief-job?id=${id}`), j = await r.json().catch(() => ({})); if (j.error) throw new Error(j.error); if (j.result) return j.result; step(j.step); } };
@@ -365,9 +377,9 @@ function keepCv(text) {
   $("covLine").innerHTML = c0 == null ? "the posting names no common skills we know" : `<b>${c0}%</b> of the skills it names are in your résumé → <b>${c1}%</b> in this version`;
   try {
     const t = trackerGet(), id = trackId(), e = t[id];
-    if (!$("keepCv")?.checked) { if (e?.cv) { delete e.cv; localStorage.setItem(TK, JSON.stringify(t)); } return; }
+    if (!$("keepCv")?.checked) { if (e?.cv) { delete e.cv; putTracked(t); } return; }
     t[id] = { status: "saved", saved: Date.now(), notes: "", follow: "", at: { saved: Date.now() }, ...e, title: e?.title ?? jobMeta?.title ?? jd.trim().split("\n")[0].slice(0, 120), company: e?.company ?? jobMeta?.company ?? "", url: e?.url ?? jobMeta?.url ?? "", cv: { text, cov0: c0, cov1: c1, at: Date.now() } };
-    localStorage.setItem(TK, JSON.stringify(t));
+    putTracked(t);
   } catch {}
 }
 $("tailor").addEventListener("change", (e) => { if (e.target.closest("#addedList")) applyTailor(); else if (e.target.id === "keepCv") keepCv(draft); });

@@ -39,6 +39,21 @@ export function userFrom(secret: string, token?: string): User | null {
 }
 export const signOutEverywhere = (id: string) => db.prepare("update users set gen = gen + 1 where id = ?").run(id);
 
+// ---------- a user's own data (the jobs pages: applications, saved searches, and a résumé only if they ask) ----------
+db.exec("create table if not exists user_data (user_id text, key text, value text, at int, primary key (user_id, key))");
+export const DATA_KEYS = ["tracker", "saved", "resume"];
+// web push (push.ts): each browser that asked for alerts, and this server's VAPID key, made once
+db.exec("create table if not exists push_subs (endpoint text primary key, user_id text, sub text, at int, last int); create table if not exists kv (k text primary key, v text)");
+export const vapidKey = (make: () => object) => { const r = db.prepare("select v from kv where k = 'vapid'").get() as any; if (r) return JSON.parse(r.v); const k = make(); db.prepare("insert into kv values ('vapid', ?)").run(JSON.stringify(k)); return k; };
+export const savePush = (uid: string, sub: { endpoint: string }) => db.prepare("insert or replace into push_subs (endpoint, user_id, sub, at, last) values (?, ?, ?, ?, ?)").run(String(sub.endpoint), uid, JSON.stringify(sub), now(), now());
+export const dropPush = (endpoint: string) => db.prepare("delete from push_subs where endpoint = ?").run(endpoint);
+export const pushSubs = () => db.prepare("select endpoint, user_id, sub, last from push_subs").all() as { endpoint: string; user_id: string; sub: string; last: number }[];
+export const pushed = (endpoint: string) => db.prepare("update push_subs set last = ? where endpoint = ?").run(now(), endpoint);
+export const getData = (uid: string) => Object.fromEntries((db.prepare("select key, value from user_data where user_id = ?").all(uid) as any[]).map((r) => [r.key, r.value]));
+export const putData = (uid: string, key: string, value: string) => value
+  ? db.prepare("insert into user_data values (?, ?, ?, ?) on conflict(user_id, key) do update set value = excluded.value, at = excluded.at").run(uid, key, value, now())
+  : db.prepare("delete from user_data where user_id = ? and key = ?").run(uid, key);
+
 // ---------- Google ----------
 export const googleReady = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 /** A path on this site to go back to after signing in; anything else (another site, //host) becomes "/". */

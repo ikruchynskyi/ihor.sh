@@ -20,15 +20,16 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
-import { embedJobs, refreshGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
+import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
+import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull, asker } from "./server/llm.ts";
 import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
-import { ADMIN, userFrom, sessionFor, signOutEverywhere, googleReady, googleStart, googleFinish } from "./server/auth.ts";
+import { ADMIN, userFrom, sessionFor, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
+import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
 import { voice } from "./server/voice.ts";
@@ -71,7 +72,7 @@ let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 // Files served at the site root ("/theme.css") live in public/; everything else is at its own path in the repo.
 const PUBLIC = path.join(ROOT, "public");
-const PUBLIC_FILES = new Set(["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"]);
+const PUBLIC_FILES = new Set(["/sw.js", "/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"]);
 const onDisk = (name: string) => path.join(PUBLIC_FILES.has(`/${name}`) ? PUBLIC : ROOT, name);
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(onDisk(name)).mtimeMs)}`;
 // The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.
@@ -84,7 +85,7 @@ const companion = () => `<script type="module" src="${asset("reader.js")}"></scr
 // fonts.css also has a size-matched fallback for Press Start 2P, so the pixel text wraps the same before the font arrives
 // (preloading the fonts instead cost the home page ~1 s of LCP in Lighthouse: they competed with theme.css and the scripts).
 const HEAD = `<script>(function(){var h=document.documentElement,r={};try{r=JSON.parse(localStorage.getItem("ihor-reader")||"{}")}catch(e){}
-var t=r.theme||"arcade";h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
+var t=r.theme||(/^\/nyc\/(jobs|job|company|resume)\b/.test(location.pathname)?"subway":"arcade");h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
 var W=window.__wait={active:new Map(),n:0,typical:{},on:new Set()};try{W.typical=JSON.parse(localStorage.getItem("ihor-wait")||"{}")}catch(e){}
 var f=window.fetch,tell=function(){W.on.forEach(function(l){try{l()}catch(e){}})};
 window.fetch=function(a){var u;try{u=new URL(typeof a==="string"?a:a&&a.url||"",location.href)}catch(e){return f.apply(window,arguments)}
@@ -500,6 +501,21 @@ function startJob(res: http.ServerResponse, run: (step: (s: string) => void) => 
   run((s) => (job.step = s)).then((r: any) => { if (r?.error) job.error = r.error; else job.result = r; })
     .catch((e) => (job.error = e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : (e as Error).message));
   return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ id }));
+}
+/** The morning alerts (cron): for each browser that asked, the signed-in user's saved searches' new jobs since the last
+ *  alert and their follow-ups due today, in one note; a subscription the push service says is gone is dropped. */
+async function sendAlerts() {
+  const k = vapidKey(newVapid), today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); let sent = 0;
+  for (const s of pushSubs()) {
+    const d = getData(s.user_id), saved: any[] = JSON.parse(d.saved ?? "[]"), entries = JSON.parse(d.tracker ?? "{}").entries ?? {}, since = s.last, days = Math.max(1, Math.ceil((Date.now() / 1000 - since) / 86400));
+    const news = saved.map((x) => [x.name, jobSearch({ ...jobQuery(new URLSearchParams(x.q)), days, page: 0, sort: "newest" }).rows.filter((r: any) => r.first_seen > since).length] as const).filter(([, n]) => n);
+    const due = Object.values(entries).filter((e: any) => e.follow && e.follow <= today && !["rejected", "withdrawn", "offer"].includes(e.status)).length;
+    if (!news.length && !due) continue;
+    const body = [...news.map(([n, c]) => `${c}${c >= 30 ? "+" : ""} new for “${n}”`), due ? `${due} follow-up${due > 1 ? "s" : ""} due` : ""].filter(Boolean).join(" · ");
+    const st = await sendPush(JSON.parse(s.sub), k, { title: "ihor.sh jobs", body, url: due && !news.length ? "/nyc/jobs.html#mine" : "/nyc/jobs.html" }).catch(() => 0);
+    if (st === 404 || st === 410) dropPush(s.endpoint); else if (st >= 200 && st < 300) { pushed(s.endpoint); sent++; }
+  }
+  return sent;
 }
 /** The jobs page's filters from a query string (search, market, RSS). */
 const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => Number(p.get(k)) || undefined;
@@ -1099,6 +1115,30 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), away = Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
     }
+    if (url.pathname === "/api/jobs/search" && url.searchParams.get("semantic") === "1" && url.searchParams.get("q")) { // by meaning (embeddings)
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await semanticSearch(jobQuery(url.searchParams)))); }
+      catch { return json403(res, "Search by meaning is unavailable right now; try plain search.", 503); }
+    }
+    if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
+    if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(e ?? { error: "No open jobs from that employer here." })); }
+    if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
+      const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
+      if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(getData(u.id)));
+      let raw = ""; for await (const c of req) { raw += c; if (raw.length > 1_500_000) return res.writeHead(413).end(); }
+      const b = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
+      if (!DATA_KEYS.includes(b.key) || typeof b.value !== "string") return res.writeHead(400).end();
+      putData(u.id, b.key, b.value); return res.writeHead(200, { "content-type": "application/json" }).end("{}");
+    }
+    if (url.pathname === "/api/push/key") return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ key: vapidPublic(vapidKey(newVapid)) }));
+    if (url.pathname === "/api/push/subscribe" && req.method === "POST") { // alerts for the signed-in user's saved searches and follow-ups
+      const u = currentUser(req); if (!u) return json403(res, "Sign in to get alerts.", 401);
+      let raw = ""; for await (const c of req) { raw += c; if (raw.length > 5000) return res.writeHead(413).end(); }
+      const sub = (() => { try { return JSON.parse(raw).sub; } catch { return null; } })();
+      if (!/^https:\/\//.test(String(sub?.endpoint ?? "")) || !sub?.keys?.p256dh || !sub?.keys?.auth) return res.writeHead(400).end();
+      savePush(u.id, sub); return res.writeHead(200, { "content-type": "application/json" }).end("{}");
+    }
+    if (url.pathname === "/api/push/unsubscribe" && req.method === "POST") { let raw = ""; for await (const c of req) { raw += c; if (raw.length > 5000) return res.writeHead(413).end(); }
+      const ep = (() => { try { return String(JSON.parse(raw).endpoint ?? ""); } catch { return ""; } })(); if (ep) dropPush(ep); return res.writeHead(200, { "content-type": "application/json" }).end("{}"); }
     if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
     if (url.pathname === "/api/auth/me") { const u = currentUser(req); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ user: u && { name: u.name, email: u.email, picture: u.picture, role: u.role }, google: googleReady() })); }
     if (url.pathname === "/api/auth/token" && req.method === "POST") { // the admin signs in with the owner key
@@ -1202,6 +1242,8 @@ if (IN_HOST_SUPERVISOR) {
   for (const [name, cron, note, run] of jobsTasks()) schedule(name, cron, note, run);
   schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", () => embedJobs());
   schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", () => refreshGuidance());
+  schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", () => precomputeChecks());
+  schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts());
   startCron();
   startEvening();
   startMesh();

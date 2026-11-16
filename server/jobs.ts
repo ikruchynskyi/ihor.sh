@@ -28,7 +28,8 @@ db.exec(`
   create table if not exists emb (id text primary key, v blob);
   create table if not exists adz_keys (k text primary key, n int, at int); -- Adzuna ads per company + title (30 days): reposts across runs
   create table if not exists adz_skip (id text primary key, at int); -- Adzuna ads left out (gig, repost), so a later sweep knows them
-  create table if not exists guides (at int primary key, body text); -- the weekly hiring context (jobs-ai.ts refreshGuidance)
+  create table if not exists guides (at int primary key, body text);
+  create table if not exists checks (id text primary key, at int, body text); -- red-flag checks (jobs-ai.ts checkJob): a day each, made overnight for fresh jobs -- the weekly hiring context (jobs-ai.ts refreshGuidance)
 `);
 const now = () => Math.floor(Date.now() / 1000);
 const UA = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json" };
@@ -46,7 +47,9 @@ const getJson = async (u: string, ms = 30_000, body?: object) => {
 // at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
 // Each run also has a request budget per platform (BUDGET; reset by refreshBoards): a board that hits it, or a 429, keeps
 // what it read so far and stops, and the next try is simply the next scheduled run (user, 2026-11-16: no retries).
-const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 3000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 1000 }; // a day's run (user: daily is fine for the fullest view)
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 1000 };
+// Workday's Cloudflare also turned the Mac away after sustained requests 1.5 s apart (2026-11-16): one every 3 s, once a day
+const WD_PACE = 3000; // a day's run (user: daily is fine for the fullest view)
 // A lane is a platform behind one front door (every Workday board shares Cloudflare's), or one employer's own host
 // (Oracle: each bank's own); lanes run in parallel, and each keeps its own pace and its own budget for the run.
 const pace = async (lane: string, ms: number) => {
@@ -300,19 +303,19 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     // the board's own location facets in our area and its job families for technology, engineering, data and finance
     const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant), out: In[] = [];
     try {
-    await pace(ats, 1500); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
+    await pace(ats, WD_PACE); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
     const places = vals.filter((v) => v.p === "locations" && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
     const pick = places.length ? places : states; if (!pick.length) return [];
     const fams = vals.filter((v) => /family/i.test(v.p) && WD_FAMILIES.test(v.d)), famP = fams[0]?.p;
     const facets = { [pick[0].p]: pick.filter((v) => v.p === pick[0].p).map((v) => v.id), ...(famP ? { [famP]: fams.filter((v) => v.p === famP).map((v) => v.id) } : {}) };
     for (let off = 0; off < 2000; off += 20) { // 20 a page is Workday's most (50 and 100 answer 400)
-      await pace(ats, 1500); const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
+      await pace(ats, WD_PACE); const d = await getJson(`${base}/jobs`, 30_000, { appliedFacets: facets, limit: 20, offset: off, searchText: "" });
       for (const p of d.jobPostings ?? []) {
         const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
         if ((!many && !region(loc)) || (!famP && !["engineering", "data", "finance"].includes(func(p.title ?? "")))) continue; // no family facet: by title
         if (known(id)) { out.push(brief(id, company, many ? "New York, NY" : loc)); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
-        await pace(ats, 1500); const i = (await getJson(`${base}${p.externalPath}`).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
+        await pace(ats, WD_PACE); const i = (await getJson(`${base}${p.externalPath}`).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
         out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? "", posted: Date.parse(i.startDate),
           url: i.externalUrl, employment: i.timeType ?? "", description: stripHtml(i.jobDescription ?? "") });
       }
@@ -716,7 +719,8 @@ function marketNow(qy: Query) {
     r as (select ago, pay, row_number() over (partition by ago order by pay) rn, count(*) over (partition by ago) n from p) select ago, pay from r where rn = n / 2 + 1 and n >= 5`)
     .all(t, ...args, ...late, t - nW * W) as any[]).map((r) => [r.ago, Math.round(r.pay)]));
   const open = rows.filter((r) => r.closed == null);
-  return { since: start, at: t, ...summary(rows),
+  const fromEmployers = open.filter((r) => !r.id.startsWith("az:")).length;
+  return { since: start, at: t, ...summary(rows), fromEmployers,
     weeks: Array.from({ length: nW }, (_, i) => { const ago = nW - 1 - i; return { from: t - (ago + 1) * W, new: born.get(ago) ?? 0, closed: gone.get(ago) ?? 0, pay: paid.get(ago) ?? null }; }),
     fields: by((r) => r.func), levels: by((r) => r.seniority),
     companies: by((r) => r.ckey, (l) => { const o = l.filter((r) => r.closed == null);
@@ -784,6 +788,39 @@ export function jobHistory(id: string) {
     copies: (one("select count(*) n from jobs where ckey = ? and fp = ? and closed is null and id != ?", j.ckey, j.fp, id)).n as number,
     pay: j.salary_min != null && !j.salary_est ? ((j.salary_min + (j.salary_max ?? j.salary_min)) / 2) * (j.salary_period === "hour" ? 2080 : 1) : null, market: { p25: m.p25, median: m.pay, p75: m.p75, n: m.withPay } };
 }
+/** A company page (nyc/company.html): the employer under any of its names, its open jobs here, how it hires, what it pays. */
+export function employer(name: string) {
+  const ck = ckey(name); if (!ck) return null;
+  const keys = (db.prepare("select distinct ckey from jobs where ckey like ? and closed is null").all(`${ck.slice(0, 4)}%`) as any[]).map((r) => r.ckey).filter((k: string) => sameCompany(k, ck));
+  if (!keys.length) return null;
+  const inK = `j.ckey in (${keys.map(() => "?").join(",")})`, t = now(), D = 86400;
+  const rows = db.prepare(`select j.id, j.source, j.company, j.title, j.location, j.region, j.remote, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.posted, j.first_seen, j.url, j.seniority, j.func, j.flags
+    from jobs j where ${inK} and j.closed is null and j.dup_of is null order by coalesce(j.posted, j.first_seen) desc`).all(...keys) as any[];
+  const one = (sql: string, ...a: any[]) => db.prepare(sql).get(...keys, ...a) as any;
+  const up = (db.prepare(`select (j.closed - coalesce(j.posted, j.first_seen)) / ${D}.0 d from jobs j where ${inK} and j.closed > ? and j.closed - j.first_seen >= ${D} and j.source != 'adzuna' and j.dup_of is null`).all(...keys, t - 180 * D) as any[]).map((r) => r.d).sort((a, b) => a - b);
+  const pays = rows.filter((r) => r.salary_min != null && !r.salary_est).map((r) => ((r.salary_min + (r.salary_max ?? r.salary_min)) / 2) * (r.salary_period === "hour" ? 2080 : 1)).sort((a, b) => a - b);
+  const boards = db.prepare(`select ats, slug, open, last_ok from companies where ${keys.map(() => "replace(lower(coalesce(name, slug)), ' ', '') like ?").join(" or ")}`).all(...keys.map((k: string) => `%${k}%`)) as any[];
+  return { name: rows[0]?.company ?? name, open: rows.length, jobs: rows.slice(0, 200).map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]") })),
+    new30: one(`select count(*) n from jobs j where ${inK} and coalesce(j.posted, j.first_seen) >= ? and j.dup_of is null`, t - 30 * D).n,
+    gone30: one(`select count(*) n from jobs j where ${inK} and j.closed >= ? and j.closed - j.first_seen >= ${D} and j.source != 'adzuna' and j.dup_of is null`, t - 30 * D).n,
+    stale: rows.length ? Math.round((rows.filter((r) => (r.posted ?? r.first_seen) < t - 60 * D).length / rows.length) * 100) : 0,
+    medianDaysUp: up.length >= 5 ? Math.round(pct(up, 0.5)!) : null, pay: pays.length >= 5 ? { p25: pct(pays, 0.25), median: pct(pays, 0.5), p75: pct(pays, 0.75), n: pays.length } : null,
+    fields: Object.entries(rows.reduce((m: any, r) => ((m[r.func] = (m[r.func] ?? 0) + 1), m), {})).sort((a: any, b: any) => b[1] - a[1]),
+    boards: boards.map((b) => ({ ats: b.ats, open: b.open, checked: b.last_ok })), verified: rows.filter((r) => r.source !== "adzuna").length };
+}
+/** The search page's row for each of these ids (similar jobs, search by meaning), in the order given. */
+export function rowsByIds(ids: string[]) {
+  if (!ids.length) return [];
+  const got = new Map((db.prepare(`select j.id, j.source, j.company, j.title, j.location, j.region, j.remote, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.posted, j.first_seen, j.last_seen, j.url, j.seniority, j.func, j.flags, j.also, substr(j.description, 1, 400) snippet
+    from jobs j where j.id in (${ids.map(() => "?").join(",")})`).all(...ids) as any[]).map((r) => [r.id, { ...r, flags: JSON.parse(r.flags ?? "[]"), also: r.also ? r.also.split(",") : [] }]));
+  return ids.map((id) => got.get(id)).filter(Boolean);
+}
+/** Ids of the open jobs that pass a query's filters (no words): what search by meaning ranks. */
+export const filteredIds = (qy: Query) => { const { w, args } = filters({ ...qy, q: undefined }); return new Set((db.prepare(`select j.id from jobs j where ${w}`).all(...args) as any[]).map((r) => r.id)); };
+export const getCheck = (id: string) => { const r = db.prepare("select at, body from checks where id = ?").get(id) as any; return r && now() - r.at < 86400 ? JSON.parse(r.body) : null; };
+export const saveCheck = (id: string, body: object) => { db.prepare("insert or replace into checks values (?, ?, ?)").run(id, now(), JSON.stringify(body)); db.prepare("delete from checks where at < ?").run(now() - 7 * 86400); };
+/** Fresh jobs worth a red-flag check overnight: new in the last day, from the employer, in the NYC area, tech, data or finance. */
+export const freshForChecks = (n = 120) => (db.prepare("select id from jobs where closed is null and dup_of is null and first_seen > ? and source != 'adzuna' and region in ('nyc','nj','metro') and func in ('engineering','data','finance') and id not in (select id from checks) order by first_seen desc limit ?").all(now() - 86400, n) as any[]).map((r) => r.id);
 export const saveGuide = (body: object) => db.prepare("insert or replace into guides values (?, ?)").run(now(), JSON.stringify(body));
 export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; if (!r) return null; const { by, ...g } = JSON.parse(r.body); return { at: r.at as number, ...g }; }; // no model names on the site
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;
