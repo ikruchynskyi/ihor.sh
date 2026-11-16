@@ -134,6 +134,7 @@ export async function refreshCards(n = 80) {
   let made = 0; await levelsMarket().catch(() => {});
   for (const name of topEmployers(n)) {
     if (Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })) >= 8) break;
+    if (Date.now() / 1000 - (getCompanyInfo(name)?.at ?? 0) < 12 * 3600) continue; // made today already (a rerun, or a visitor asked)
     await makeCard(name).then(() => made++).catch(() => {});
   }
   return made;
