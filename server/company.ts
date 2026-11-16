@@ -12,17 +12,21 @@ const get = async (u: string, headers: Record<string, string> = {}) => { const r
 const NASDAQ = { accept: "application/json", origin: "https://www.nasdaq.com", referer: "https://www.nasdaq.com/" };
 const norm = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
 /** The name as news and markets know it: "DoorDash USA" → "DoorDash", "Acme, Inc." → "Acme". */
+/** "Coherent Corp." is not Cohere, "Sierra Leone Company" not Sierra: a listing or page is the employer's only when its
+ *  name is the employer's plus at most corporate words. */
+const SUFFIX = /^(inc|corp|corporation|co|company|holdings?|group|ltd|lp|llc|plc|nv|sa|ag|global|platforms|technolog(y|ies)|markets|com|financial|healthcare|health|international|capital|assetmanagement|communications|transportation|services|solutions|systems|ai|the)*$/;
+const named = (full: string, want: string) => full.startsWith(want) && SUFFIX.test(full.slice(want.length));
 const plain = (name: string) => name.replace(/[,.]?\s+\b(USA|US|Inc|LLC|L\.P|LP|Corp|Corporation|Co|Ltd|PLC|Holdings|Group)\b\.?/gi, "").trim() || name;
 
 // ---------- the stock: a ticker from Nasdaq's symbol search (plain US stocks whose name starts with the company's) ----------
 const LISTED_AS: Record<string, string> = { google: "Alphabet", youtube: "Alphabet", instagram: "Meta Platforms", whatsapp: "Meta Platforms" };
 // the big banks' names find only their notes and CDs in Nasdaq's search
-const TICKER: Record<string, string> = { jpmorganchase: "JPM", chase: "JPM", goldmansachs: "GS", morganstanley: "MS", citi: "C", citigroup: "C", bankofamerica: "BAC", wellsfargo: "WFC", blackrock: "BLK", bny: "BK", capitalone: "COF", americanexpress: "AXP" };
-async function ticker(name: string) {
+const TICKER: Record<string, string> = { prudential: "PRU", jpmorganchase: "JPM", chase: "JPM", goldmansachs: "GS", morganstanley: "MS", citi: "C", citibank: "C", citigroup: "C", bankofamerica: "BAC", wellsfargo: "WFC", blackrock: "BLK", bny: "BK", capitalone: "COF", americanexpress: "AXP" };
+export async function ticker(name: string) {
   if (TICKER[norm(name)]) return TICKER[norm(name)];
   const as = LISTED_AS[norm(name)] ?? name, want = norm(as);
   const d = JSON.parse(await get(`https://api.nasdaq.com/api/autocomplete/slookup/10?search=${encodeURIComponent(as)}`, NASDAQ));
-  return (d.data ?? []).find((x: any) => x.asset === "STOCKS" && /^[A-Z]{1,5}$/.test(x.symbol) && norm(x.name).startsWith(want))?.symbol ?? null;
+  return (d.data ?? []).find((x: any) => x.asset === "STOCKS" && /^[A-Z]{1,5}$/.test(x.symbol) && named(norm(String(x.name).split(/\s+(?:Class [A-Z]\b|Common Stock|Capital Stock|Ordinary Shares|American Depositary)/)[0]), want))?.symbol ?? null;
 }
 /** Two years of daily closes (weekly in the card), the last price, its 1- and 2-year change and its 52-week range. */
 async function stock(sym: string) {
@@ -45,13 +49,13 @@ async function news(name: string) {
     const source = tag("source"); return { title: tag("title").replace(new RegExp(`\\s+-\\s+${source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), ""), source, url: tag("link"), at: Math.floor(Date.parse(tag("pubDate")) / 1000) };
   }).filter((n) => n.title && n.url.startsWith("https://")).sort((a, b) => b.at - a.at);
 }
-async function wiki(name: string) {
+export async function wiki(name: string) {
   const h = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)" };
   const s = JSON.parse(await get(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`${name} company`)}&srlimit=1&format=json`, h)), title = s.query?.search?.[0]?.title;
   if (!title) return null;
   const d = JSON.parse(await get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, h));
   const t = norm(String(d.title ?? "").replace(/\(.*\)/, "")), n = norm(name); // the search's best page may be about something else ("NYC Dept of Health" → a soda rule)
-  if (!(t.startsWith(n.slice(0, 5)) || n.startsWith(t.slice(0, 5)))) return null;
+  if (!named(t, n)) return null;
   return d.type === "standard" && d.extract ? { title: d.title, extract: String(d.extract), url: d.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}` } : null;
 }
 
@@ -142,6 +146,9 @@ export async function refreshCards(n = 80) {
 
 if (import.meta.url === `file://${process.argv[1]}` && process.argv[2] === "test") { // node server/company.ts test: the name and relevance rules
   const assert = (await import("node:assert/strict")).default;
+  for (const [full, want, ok] of [["Datadog, Inc.", "Datadog", 1], ["Coherent Corp.", "Cohere", 0], ["Sierra Bancorp", "Sierra", 0], ["Meta Platforms, Inc.", "Meta", 1], ["Coinbase Global, Inc.", "Coinbase", 1],
+    ["Sierra Leone Company", "Sierra", 0], ["Temporal paradox", "Temporal", 0], ["Bloomberg L.P.", "Bloomberg", 1], ["Citigroup", "Citi", 1], ["The New York Times Company", "The New York Times", 1], ["Charlie Baker", "Charlie Health", 0]] as const)
+    assert.equal(named(norm(full), norm(want)), !!ok, full);
   assert.equal(plain("DoorDash USA"), "DoorDash"); assert.equal(plain("Acme, Inc."), "Acme"); assert.equal(plain("Goldman Sachs"), "Goldman Sachs"); assert.equal(plain("US Bank"), "US Bank");
   console.log("company ok"); process.exit(0);
 }
