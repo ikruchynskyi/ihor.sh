@@ -25,7 +25,6 @@ export async function embedJobs(max = 2000) {
   } catch (e) { console.log("jobs embed:", (e as Error).message); } finally { embedding = false; }
   return n;
 }
-export function startEmbedding() { setTimeout(() => embedJobs(), 90_000); setInterval(() => embedJobs(), 30 * 60_000); }
 
 // résumé verbs and connectives: rewording with these isn't adding facts
 const COMMON = /^(assist|collab|contrib|coordin|creat|distrib|achiev|increas|improv|reduc|grow|boost|cut|reach|result|through|support|deliver|develop|design|manag|organiz|produc|launch|implem|maintain|partner|prepar|execut|handl|overs|ensur|enabl|provid|across|including|within|resulting|weekly|monthly|daily)/;
@@ -220,14 +219,6 @@ export async function refreshGuidance() {
   saveGuide({ findings, searched: S.length });
   return findings;
 }
-let guiding = false;
-/** Weekly: a new hiring context once the last is 7 days old (looked at every 6 hours, so a failed week retries). */
-export function startGuidance() {
-  const tick = async () => { if (guiding || (latestGuide()?.at ?? 0) > Date.now() / 1000 - 7 * 86400) return; guiding = true;
-    try { console.log(`jobs guidance: ${(await refreshGuidance()).length} findings`); } catch (e) { console.log("jobs guidance:", (e as Error).message); } finally { guiding = false; } };
-  setTimeout(tick, 5 * 60_000); setInterval(tick, 6 * 3600_000);
-}
-
 // ---------- 🔍 red-flag check, on request: one job against what this site has seen of its employer ----------
 // The checklist is adapted from the HR Skills library's job-description, culture and AI-ethics guides (requirement
 // inflation, coded wording, performative culture), plus ghost-job and scam signs. Facts come from code (jobHistory);
@@ -242,7 +233,7 @@ const RED_FLAGS = `Red flags to look for:
 - Process: unpaid trial work or long take-home assignments, many interview rounds, money, bank details or an SSN asked before an offer, chat apps or a personal email to apply.
 - A vague role: no clear purpose, outcomes or reporting line; mostly company superlatives.
 Good signs count too: pay stated and in line with similar jobs, clear must-haves vs nice-to-haves, an employer that is hiring (new postings and jobs filled), a recent posting.`;
-const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "nycjobs", "usajobs"]);
+const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "custom", "nycjobs", "usajobs"]);
 const checks = new Map<string, { at: number; p: Promise<any> }>();
 export function checkJob(id: string) {
   const hit = checks.get(id); if (hit && Date.now() - hit.at < 86400_000) return hit.p;

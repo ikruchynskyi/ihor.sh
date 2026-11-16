@@ -20,13 +20,14 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
-import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
+import { jobsTasks, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
+import { embedJobs, refreshGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull, asker } from "./server/llm.ts";
+import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
 import { ADMIN, userFrom, sessionFor, signOutEverywhere, googleReady, googleStart, googleFinish } from "./server/auth.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
@@ -1111,6 +1112,10 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const u = currentUser(req); if (u && url.searchParams.get("everywhere") === "1") signOutEverywhere(u.id);
       return res.writeHead(200, { "set-cookie": withCookies(res, "iha=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"), "content-type": "application/json", "cache-control": "no-store" }).end("{}");
     }
+    if (url.pathname === "/api/jobs/schedule") { // the crons: anyone may read them; the admin may run one now (POST ?run=name)
+      if (req.method === "POST") { if (!isAdmin(req)) return json403(res, "Admin only."); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ started: runTask(String(url.searchParams.get("run") ?? "")) })); }
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cronStatus()));
+    }
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobMarket(jobQuery(url.searchParams))));
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
@@ -1193,8 +1198,11 @@ if (IN_HOST_SUPERVISOR) {
   startCity().catch((e) => console.error("city:", e));
   startMeteorRecorder();
   startEvents();
-  startJobs();
-  startEmbedding(); startGuidance();
+  // the jobs radar's background work, as crons inside this container (server/cron.ts; New York time)
+  for (const [name, cron, note, run] of jobsTasks()) schedule(name, cron, note, run);
+  schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", () => embedJobs());
+  schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", () => refreshGuidance());
+  startCron();
   startEvening();
   startMesh();
   // HOST=0.0.0.0 (in .env) also serves the local network directly, e.g. /mcp at http://<this Mac's address>:8080/mcp;

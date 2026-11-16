@@ -15,6 +15,7 @@ import { transcribeLocal } from "./server/monitor.ts";
 import { upscaleLocal } from "./server/upscale.ts";
 import { readLocal } from "./server/ocr.ts";
 import { startVoice, voiceLocal } from "./server/voice.ts";
+import { crawl, CRAWLED } from "./server/crawl.ts";
 import { findMeshPort } from "./server/mesh.ts";
 
 const execFileAsync = promisify(execFile);
@@ -135,6 +136,13 @@ const httpBridge = http.createServer(async (req, res) => {
       let len = 0;
       for await (const c of req) { const b = Buffer.from(c); len += b.length; if (len > 15_000_000) return res.writeHead(413).end(); chunks.push(b); }
       return send(200, await readLocal(Buffer.concat(chunks)));
+    }
+    if (req.url === "/crawl" && req.method === "POST") { // a big employer's career site in a headless browser (server/crawl.ts), a minute at most
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 2_000_000) return res.writeHead(413).end(); }
+      const { site, known } = JSON.parse(raw || "{}");
+      if (!CRAWLED.includes(String(site))) return send(400, { error: "no crawler for that site" });
+      return send(200, await crawl(String(site), Array.isArray(known) ? known.map(String) : []));
     }
     if (req.url === "/fetch" && req.method === "POST") { // job boards whose Cloudflare turns the container away but answers this Mac (Workday, 2026-11-16; server/jobs.ts): only those hosts, https, no redirects
       let raw = "";

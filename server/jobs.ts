@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { yearsAsked } from "../nyc/resume.js";
+import { PLAIN } from "./bigtech.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
@@ -56,7 +57,6 @@ const pace = async (lane: string, ms: number) => {
   const t = Math.max(Date.now(), (nextSlot.get(lane) ?? 0) + ms); nextSlot.set(lane, t); await new Promise((r) => setTimeout(r, t - Date.now()));
 };
 const laneOf = (ats: string, slug: string) => (ats === "oracle" || ats === "eightfold" ? `${ats}:${slug.split("|")[0]}` : ats);
-const lastAt = (what: string) => (db.prepare("select max(at) t from runs where what = ?").get(what) as any)?.t ?? 0;
 
 // ---------- understanding a posting ----------
 const ENT: Record<string, string> = { nbsp: " ", mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", hellip: "…", bull: "•", middot: "·", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -145,7 +145,8 @@ export function flagsFor(j: { company: string; title: string; description: strin
   const f: string[] = [], text = `${j.title}\n${j.description}`, age = (now() - (j.posted ?? j.first_seen ?? now())) / 86400;
   if (age > 60) f.push(`open ${Math.round(age)} days`);
   if (/evergreen|talent (pool|community|network)|general (application|interest)|future (opportunities|openings)|always (hiring|looking)/i.test(text)) f.push("evergreen / talent-pool posting");
-  if (j.region !== "remote" && j.salary_min == null && j.source !== "adzuna") f.push("no salary range (NYC law requires one)");
+  // only when we read the posting itself (a list-only source like Meta's gives no text to find pay in)
+  if (j.region !== "remote" && j.salary_min == null && j.source !== "adzuna" && j.description.length >= 300) f.push("no salary range (NYC law requires one)");
   if (/telegram|whatsapp|signal app|text us at|send your (bank|ssn)|check deposit|purchase (your own )?equipment|upfront (fee|payment)|training fee/i.test(text)) f.push("scam signs (chat apps, upfront money)");
   if (/@(gmail|yahoo|hotmail|outlook|aol)\.com/i.test(text)) f.push("personal email to apply");
   if (STAFFING.test(j.company)) f.push("staffing agency, not the employer");
@@ -236,7 +237,7 @@ function sweep(source: string, seenIds: Set<string>, prefix: string) {
 // ---------- sources ----------
 const SEED: [string, string][] = JSON.parse(`[["greenhouse","stripe"],["greenhouse","oscar"],["greenhouse","datadog"],["greenhouse","brex"],["greenhouse","coinbase"],["greenhouse","affirm"],["ashby","ramp"],["greenhouse","twilio"],["greenhouse","pinterest"],["greenhouse","hellofresh"],["greenhouse","instacart"],["ashby","plaid"],["greenhouse","elastic"],["greenhouse","point72"],["greenhouse","janestreet"],["greenhouse","figma"],["greenhouse","airbnb"],["ashby","notion"],["ashby","headway"],["greenhouse","ripple"],["greenhouse","justworks"],["greenhouse","robinhood"],["greenhouse","mercury"],["greenhouse","braze"],["greenhouse","chime"],["greenhouse","mongodb"],["greenhouse","via"],["greenhouse","fanduel"],["greenhouse","zocdoc"],["greenhouse","clear"],["greenhouse","vercel"],["greenhouse","hearst"],["lever","spotify"],["ashby","hex"],["greenhouse","duolingo"],["greenhouse","schonfeld"],["greenhouse","seatgeek"],["lever","ro"],["greenhouse","dropbox"],["greenhouse","gemini"],["greenhouse","okta"],["ashby","kayak"],["greenhouse","axios"],["greenhouse","betterment"],["greenhouse","talkspace"],["greenhouse","squarespace"],["ashby","amplitude"],["greenhouse","newrelic"],["greenhouse","lyft"],["greenhouse","peloton"],["lever","anchorage"],["greenhouse","taboola"],["greenhouse","attentive"],["ashby","hopper"],["ashby","lemonade"],["ashby","paxos"],["ashby","substack"],["greenhouse","ziprecruiter"],["greenhouse","voxmedia"],["greenhouse","virtu"],["greenhouse","convene"],["greenhouse","cockroachlabs"],["ashby","industrious"],["greenhouse","harrys"],["greenhouse","mejuri"],["lever","wealthfront"],["greenhouse","asana"],["lever","theathletic"],["ashby","titan"],["greenhouse","pagerduty"],["ashby","patreon"],["ashby","acorns"],["greenhouse","consensys"],["greenhouse","sweetgreen"],["ashby","capsule"],["greenhouse","discord"],["greenhouse","glossier"],["greenhouse","modernhealth"],["ashby","ledger"],["ashby","away"],["greenhouse","insider"],["ashby","brooklinen"],["greenhouse","yext"],["greenhouse","greenhouse"],["ashby","column"],["lever","nomihealth"],["greenhouse","tripadvisor"],["ashby","sonder"],["greenhouse","thirdlove"],["greenhouse","everlane"],["greenhouse","flatironhealth"],["greenhouse","airtable"],["greenhouse","a24"],["greenhouse","misfitsmarket"],["greenhouse","kickstarter"]]`);
 for (const [ats, slug] of SEED) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
-const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab", smartrecruiters: "sr", workable: "wk", workday: "wd", oracle: "or", amazon: "amz", eightfold: "ef" }; // job ids are <prefix>:<slug>:<id>
+const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab", smartrecruiters: "sr", workable: "wk", workday: "wd", oracle: "or", amazon: "amz", eightfold: "ef", custom: "cu" }; // job ids are <prefix>:<slug>:<id>
 // Workday boards can't be found from a company's name (the host, number and site differ), so these are listed by hand:
 // big NYC-area employers whose boards answered on 2026-11-16. slug = tenant|wdN|site.
 const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Morgan Stanley"], ["pfizer|1|PfizerCareers", "Pfizer"], ["mastercard|1|CorporateCareers", "Mastercard"], ["nasdaq|1|Global_External_Site", "Nasdaq"],
@@ -248,13 +249,16 @@ const ORACLE: [string, string][] = [["jpmc.fa.oraclecloud.com|CX_1001", "JPMorga
 for (const [slug, name] of ORACLE) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('oracle', ?, ?, ?)").run(slug, name, now());
 db.prepare("insert or ignore into companies (ats, slug, name, added) values ('amazon', 'amazon', 'Amazon', ?)").run(now());
 const EIGHTFOLD: [string, string][] = [["explore.jobs.netflix.net|netflix.com|v2", "Netflix"], ["apply.careers.microsoft.com|microsoft.com|pcsx", "Microsoft"]]; // host|domain|API flavor
+// Big employers with no public ATS API, read from their own career sites (bigtech.ts in here; crawl.ts on the Mac)
+const CUSTOM: [string, string][] = [["google", "Google"], ["goldman", "Goldman Sachs"], ["blackrock", "BlackRock"], ["moodys", "Moody's"], ["meta", "Meta"], ["apple", "Apple"], ["bloomberg", "Bloomberg"]];
+for (const [slug, name] of CUSTOM) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('custom', ?, ?, ?)").run(slug, name, now());
 for (const [slug, name] of EIGHTFOLD) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('eightfold', ?, ?, ?)").run(slug, name, now());
 // Well-rated tech and trading firms whose boards answered with NYC or remote jobs (2026-11-16; Adzuna rarely lists them)
 const MORE: [string, string][] = [["greenhouse", "anthropic"], ["greenhouse", "gitlab"], ["greenhouse", "doordashusa"], ["ashby", "openai"], ["greenhouse", "thenewyorktimes"], ["greenhouse", "zscaler"], ["greenhouse", "reddit"], ["greenhouse", "databricks"], ["ashby", "harvey"], ["lever", "palantir"], ["ashby", "perplexity"], ["ashby", "supabase"], ["greenhouse", "fivetran"], ["ashby", "snowflake"], ["greenhouse", "scaleai"], ["greenhouse", "toast"], ["ashby", "temporal"], ["ashby", "vanta"], ["ashby", "cohere"], ["ashby", "elevenlabs"], ["ashby", "voleon"], ["greenhouse", "gusto"], ["greenhouse", "monzo"], ["greenhouse", "sigmacomputing"], ["greenhouse", "towerresearchcapital"], ["ashby", "modal"], ["greenhouse", "adyen"], ["ashby", "writer"], ["ashby", "clickhouse"], ["ashby", "snyk"], ["greenhouse", "jumptrading"], ["greenhouse", "smartsheet"], ["greenhouse", "block"], ["greenhouse", "imc"], ["greenhouse", "flowtraders"], ["greenhouse", "collibra"], ["ashby", "iterable"], ["greenhouse", "mixpanel"], ["greenhouse", "sofi"], ["greenhouse", "salesloft"], ["greenhouse", "planetscale"], ["greenhouse", "fireblocks"], ["greenhouse", "intercom"], ["greenhouse", "netlify"], ["ashby", "clickup"], ["greenhouse", "yugabyte"], ["ashby", "character"], ["greenhouse", "klaviyo"], ["greenhouse", "akunacapital"], ["greenhouse", "starburst"], ["greenhouse", "calm"], ["smartrecruiters", "ServiceNow"]];
 for (const [ats, slug] of MORE) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
 for (const [slug, name] of WORKDAY) db.prepare("insert or ignore into companies (ats, slug, name, added) values ('workday', ?, ?, ?)").run(slug, name, now());
 for (const [ats, slug] of [["smartrecruiters", "Equinox"], ["workable", "huggingface"]]) db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now());
-const BOARD_NAME = new Map([...WORKDAY, ...ORACLE, ...EIGHTFOLD]);
+const BOARD_NAME = new Map([...WORKDAY, ...ORACLE, ...EIGHTFOLD, ...CUSTOM]);
 // the families or categories big boards are asked for (user, 2026-11-16: tech, engineering, data / analysts, finance)
 const WD_FAMILIES = /technolog|engineer|software|information|\bit\b|data|analy|scien|machine learning|decision|financ|accounting|treasury|risk|quant|actuar|invest|trading|cyber/i;
 const FOCUS = (title: string) => ["engineering", "data", "finance"].includes(func(title));
@@ -336,6 +340,25 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
         if ((it?.requisitionList ?? []).length < 25) break;
       }
     } catch (e) { if (!/429|requests are used/.test((e as Error).message)) throw e; (out as any).partial = (e as Error).message; }
+    return out;
+  }
+  if (ats === "custom") { // a big employer's own career site, a minute at most (plain readers here, browser ones on the Mac)
+    const stored = (db.prepare("select id from jobs where id like ? and closed is null").all(`cu:${slug}:%`) as any[]).map((r) => r.id.slice(`cu:${slug}:`.length));
+    let r: { jobs: any[]; partial: boolean };
+    if (PLAIN[slug]) r = await PLAIN[slug].read(Date.now() + 60_000, new Set(stored));
+    else {
+      if (!process.env.HOST_BRIDGE) throw new Error("the browser crawler runs on the Mac (HOST_BRIDGE)");
+      const res = await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ site: slug, known: stored }), signal: AbortSignal.timeout(90_000) });
+      r = await res.json() as any; if (!res.ok) throw new Error((r as any).error ?? `crawl ${res.status}`);
+    }
+    const company = BOARD_NAME.get(slug) ?? slug, out: In[] = [];
+    for (const p of r.jobs) {
+      const id = `cu:${slug}:${p.id}`, location = usPlace(String(p.location ?? "")).split(/\s*;\s*/).map(usPlace).join("; ");
+      if (stored.includes(String(p.id)) && !p.description) { out.push(brief(id, company, location)); continue; }
+      if (!region(location) || !FOCUS(p.title ?? "")) continue;
+      out.push({ id, source: "custom", company, title: String(p.title), location, url: String(p.url), posted: p.posted, department: p.department ?? "", salary: p.salary ?? null, description: stripHtml(String(p.description ?? "")) || `${p.title}. ${p.department ?? ""}` });
+    }
+    if (r.partial) (out as any).partial = "a minute's reading";
     return out;
   }
   if (ats === "eightfold") { // Eightfold's career API (Netflix: v2; Microsoft: pcsx): NYC, tech, data and finance titles; a description costs one request
@@ -570,7 +593,7 @@ export async function discover(max = 100) {
  *  one: the employer's own record (its board > government > remote boards > Adzuna); the others point to it and show
  *  as "also on". One transaction for the lot (it was a commit per duplicate). */
 export function dedupe() {
-  const rank: Record<string, number> = { greenhouse: 0, lever: 0, ashby: 0, workday: 0, smartrecruiters: 0, workable: 0, oracle: 0, amazon: 0, eightfold: 0, nycjobs: 1, usajobs: 1, remotive: 2, himalayas: 2, adzuna: 3 };
+  const rank: Record<string, number> = { greenhouse: 0, lever: 0, ashby: 0, workday: 0, smartrecruiters: 0, workable: 0, oracle: 0, amazon: 0, eightfold: 0, custom: 0, nycjobs: 1, usajobs: 1, remotive: 2, himalayas: 2, adzuna: 3 };
   const open = db.prepare("select id, source, ckey, title, region, fp from jobs where closed is null").all() as any[];
   const up = open.map((_, i) => i), find = (i: number): number => (up[i] === i ? i : (up[i] = find(up[i]))), join = (a: number, b: number) => { up[find(a)] = find(b); };
   const groups = (key: (j: any) => string) => { const m = new Map<string, number[]>(); open.forEach((j, i) => { const k = key(j); (m.get(k) ?? m.set(k, []).get(k)!).push(i); }); return m.values(); };
@@ -714,29 +737,17 @@ export function prune() {
   });
 }
 
-/** Every source at least 4 times a day, each within its limits: employer boards on Greenhouse, Lever, Ashby and Workable
- *  and NYC's jobs hourly (free; liveness); Adzuna NYC every 4 hours (its monthly calls); Workday, SmartRecruiters,
- *  USAJOBS, Adzuna remote, Remotive and Himalayas every 6 hours; new employer boards daily. Then dedupe and prune. */
-let running = false, slowLane = false;
-export async function jobsTick() {
-  if (running) return; running = true;
-  try {
-    await refreshBoards().catch((e) => console.log("jobs boards:", e.message));
-    await refreshNycJobs().catch((e) => console.log("jobs nyc:", e.message));
-    const due = (what: string, h: number) => now() - lastAt(what) > h * 3600 - 300;
-    if (due("adzuna-nyc", 4)) await refreshAdzuna("nyc").catch((e) => console.log("jobs adzuna:", e.message));
-    // boards that cost a request per new job (SmartRecruiters, Workday), and USAJOBS: every 6 hours (two misses still close a job)
-    if (due("boards-slow", 20) && !slowLane) { // the big boards, paced (an hour or two), once a day in their own lane, so the hourly sources never wait
-      slowLane = true; refreshBoards(["smartrecruiters", "workday", "oracle", "amazon", "eightfold"], "boards-slow", 12).catch((e) => console.log("jobs boards-slow:", e.message)).finally(() => { slowLane = false; marketCache.clear(); });
-    }
-    if (due("usajobs", 6)) await refreshUsajobs().catch((e) => console.log("jobs usajobs:", e.message));
-    if (due("adzuna-remote", 6)) await refreshAdzuna("remote").catch((e) => console.log("jobs adzuna remote:", e.message));
-    if (due("remote", 6)) await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); // Remotive asks for a few reads a day at most
-    if (due("discover", 20)) await discover().catch((e) => console.log("jobs discover:", e.message)); // new employer boards, once a day
-    dedupe(); prune();
-  } finally { running = false; marketCache.clear(); }
-}
-export function startJobs() { setTimeout(jobsTick, 30_000); setInterval(jobsTick, 3600_000); }
+export const BIG = ["smartrecruiters", "workday", "oracle", "amazon", "eightfold", "custom"];
+/** The jobs radar's crons (server/cron.ts, New York time): every source at least 4 times a day, each within its limits. */
+export const jobsTasks = (): [string, string, string, () => Promise<unknown>][] => [
+  ["jobs-boards", "5 * * * *", "Greenhouse, Lever, Ashby and Workable boards and NYC's jobs (liveness); then dedupe and prune", async () => { await refreshBoards(); await refreshNycJobs(); dedupe(); prune(); marketCache.clear(); }],
+  ["jobs-adzuna-nyc", "20 */4 * * *", "Adzuna around NYC (40% IT, 30% finance, 30% everything), within its monthly calls", () => refreshAdzuna("nyc")],
+  ["jobs-adzuna-remote", "35 */6 * * *", "Adzuna remote US", () => refreshAdzuna("remote")],
+  ["jobs-remote-boards", "40 */6 * * *", "Remotive and Himalayas (a few reads a day at most)", () => refreshRemote()],
+  ["jobs-usajobs", "50 */6 * * *", "USAJOBS", () => refreshUsajobs()],
+  ["jobs-big-boards", "0 3 * * *", "the big employers' own systems (Workday, Oracle, Eightfold, Amazon, SmartRecruiters): paced lanes in parallel", async () => { await refreshBoards(BIG, "boards-slow", 12); dedupe(); marketCache.clear(); }],
+  ["jobs-discover", "0 5 * * *", "new employer boards, from Adzuna's employers", () => discover()],
+];
 
 /** A saved search as RSS: the 30 newest matches. */
 export function rss(qy: Query, selfUrl: string, title: string) {

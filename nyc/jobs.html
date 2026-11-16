@@ -71,8 +71,7 @@
 <main>
   <p class="eyebrow"><a href="/nyc/">NYC</a> · Jobs</p>
   <h1>Jobs that are real and still open</h1>
-  <p class="lede">New York City, New Jersey and the metro, and remote in the US. Most jobs come straight from employers' own job boards and are re-checked <b>every hour</b>: when an employer takes a job down, it drops off here. City and federal jobs come from NYC's open data and USAJOBS; Adzuna adds more, without gig ads or reposts. Duplicates are merged, and anything that looks off is flagged with the reason.</p>
-  <p class="hint" id="stats"></p>
+  <p class="lede" id="stats" aria-live="polite"></p>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" data-tab="jobs" aria-selected="true">🔎 Jobs</button>
     <button type="button" role="tab" data-tab="market" aria-selected="false">📊 Market</button>
@@ -160,7 +159,7 @@ const LABEL = {
   remote: { onsite: "On site", hybrid: "Hybrid", remote: "Remote" },
   seniority: { intern: "Intern", junior: "Entry / junior", mid: "Mid", senior: "Senior", staff: "Staff / principal", manager: "Manager / lead", director: "Director", executive: "VP / executive" },
   func: { engineering: "Engineering", data: "Data & analytics", design: "Design", product: "Product", sales: "Sales", marketing: "Marketing", finance: "Finance", legal: "Legal", people: "People / HR", support: "Customer support", operations: "Operations", health: "Health care", education: "Education", other: "Other" },
-  source: { greenhouse: "Employer (Greenhouse)", lever: "Employer (Lever)", ashby: "Employer (Ashby)", workday: "Employer (Workday)", smartrecruiters: "Employer (SmartRecruiters)", workable: "Employer (Workable)", oracle: "Employer (Oracle)", eightfold: "Employer (Eightfold)", amazon: "Employer (Amazon)", nycjobs: "NYC government", usajobs: "US government (USAJOBS)", remotive: "Remotive", himalayas: "Himalayas", adzuna: "Adzuna" },
+  source: { greenhouse: "Employer (Greenhouse)", lever: "Employer (Lever)", ashby: "Employer (Ashby)", workday: "Employer (Workday)", smartrecruiters: "Employer (SmartRecruiters)", workable: "Employer (Workable)", oracle: "Employer (Oracle)", eightfold: "Employer (Eightfold)", amazon: "Employer (Amazon)", custom: "Employer (own site)", nycjobs: "NYC government", usajobs: "US government (USAJOBS)", remotive: "Remotive", himalayas: "Himalayas", adzuna: "Adzuna" },
 };
 const MULTI = ["region", "remote", "seniority", "func", "source"];
 let last = null, page = 0;
@@ -199,7 +198,7 @@ function facets(f) {
 // ---------- search ----------
 const money = (v, per) => (per === "hour" ? `$${Math.round(v)}/h` : v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`);
 const age = (t) => { const d = (Date.now() / 1000 - t) / 86400; return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${Math.floor(d)} days ago` : `${Math.floor(d / 30)} months ago`; };
-const verified = (s) => ["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "nycjobs", "usajobs"].includes(s);
+const verified = (s) => ["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "custom", "nycjobs", "usajobs"].includes(s);
 async function run(keepPage = false) {
   filterSummary();
   if (!keepPage) page = 0;
@@ -475,7 +474,8 @@ $("matchBtn").onclick = async () => {
 
 getJSON("/api/jobs/stats").then((s) => {
   const ago = Math.round((Date.now() / 1000 - Math.max(...s.lastRuns.filter((r) => r.what === "boards").map((r) => r.at))) / 60);
-  $("stats").textContent = `${s.open.toLocaleString()} open jobs from ${s.companies} employer job boards, NYC's and federal listings, Adzuna and remote boards · employer boards re-checked ${ago <= 1 ? "just now" : `${ago} min ago`} · ${s.closedLastDay} closed and removed in the last day`;
+  // the summary first: how many jobs there are, and how fresh (the details live in "How this works")
+  $("stats").innerHTML = `<b>${s.open.toLocaleString()} open jobs</b> in New York City, New Jersey, the metro and remote in the US, from ${s.companies} employers' own boards and more · checked ${ago <= 1 ? "just now" : `${ago} min ago`}`;
 }).catch(() => {});
 restore(new URLSearchParams(location.search)); facets(null); setTab(location.hash.slice(1)); run();
 window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags; a Market tab with trends and pay; My applications)", tab, search: Object.fromEntries(state()),
