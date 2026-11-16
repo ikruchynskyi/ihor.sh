@@ -904,7 +904,7 @@ export async function makeDayBrief() {
   const F = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
   const schema = { type: "object", required: ["headline", ...DAY_SECTIONS.map(([k]) => k)], properties: { headline: item, ...Object.fromEntries(DAY_SECTIONS.map(([k]) => [k, { type: "array", items: item }])) } };
   let out: any = null;
-  try {
+  for (let attempt = 0; attempt < 2 && !out; attempt++) try { // the local model now and then answers nothing: once more
     out = await whenIdle(() => llmJson(`You write today's brief for people in New York City, as of ${hhmm(now())}: mostly what's on. Use only the numbered facts (each says its section). 'headline': one sentence on the best of today, mostly events, with the weather if it matters. 'happening' (the main part): up to 6 bullets on today's big events (the facts list only those: major venues and citywide occasions), a mix of kinds, each naming the event, place and time; [] when there are none. 'weather': 1 or 2 bullets (now, and what to wear or carry). 'alerts', 'transit', 'news', 'incidents': up to 3 bullets each, only what matters to someone out in the city today; [] when their facts are empty or minor. Each bullet is one short plain sentence (under 25 words) and lists the ids of the facts it uses; copy numbers and times exactly as the facts write them; add nothing the facts don't say. Reply as JSON.`,
       F.map((f) => `${f.id} [${f.sec}]: ${f.text}`).join("\n"), schema, 4000));
   } catch (e) { console.warn("city brief:", (e as Error).message); }
