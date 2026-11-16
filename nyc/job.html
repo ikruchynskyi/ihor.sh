@@ -73,8 +73,12 @@ function about(j) {
     f && `this kind of job there pays ${lv.length > 1 ? `${k$(lv[0].pay)} (${esc(lv[0].level)}) to ${k$(lv.at(-1).pay)} (${esc(lv.at(-1).level)})` : `${k$(f.median)} median`} in total pay, <a href="${esc(f.url)}" target="_blank" rel="noopener">Levels.fyi</a>${f.nycMarket ? `; NYC median ${k$(f.nycMarket)}` : ""}`].filter(Boolean);
   return `<div class="card" style="padding:10px 12px;margin-top:10px;font-size:14px">${c.business ? `${esc(c.business)} ` : ""}${bits.length ? `<span class="hint">${bits.join(" · ")}.</span> ` : ""}<a href="/nyc/company.html?c=${encodeURIComponent(j.company)}">About ${esc(j.company)} →</a></div>`;
 }
-function details() { $("t-details").innerHTML = job.description.trim().length > 200 ? `<div class="desc">${esc(job.description)}</div>`
-  : `<p>This site hasn't read the posting's text yet (it's read on the next pass of ${esc(job.company)}'s site). <a href="${esc(job.url)}" target="_blank" rel="noopener">Read it at ${esc(job.company)} ↗</a></p>`; }
+function details() {
+  if (job.description.trim().length > 200) { $("t-details").innerHTML = `<div class="desc">${esc(job.description)}</div>`; return; }
+  $("t-details").innerHTML = `<p class="hint">Reading the posting from ${esc(job.company)}'s site…</p>`; // not read by a crawl yet: read it now (server.ts /api/jobs/text)
+  getJSON(`/api/jobs/text?id=${encodeURIComponent(id)}`).then((d) => { if (d.description?.length > 200) { job.description = d.description; details(); fit(); } else throw new Error(); })
+    .catch(() => ($("t-details").innerHTML = `<p>${esc(job.company)}'s site didn't give the posting's text just now. <a href="${esc(job.url)}" target="_blank" rel="noopener">Read it at ${esc(job.company)} ↗</a></p>`));
+}
 function fit() {
   const text = kept(), c = text && job.description.length > 80 ? compare(text, `${job.title}\n${job.description}`) : null;
   $("t-fit").innerHTML = text ? `${c?.coverage != null ? `<p><b>${c.coverage}%</b> of the skills this job names are in your résumé.</p>` : "<p>The posting names no common skills we know.</p>"}

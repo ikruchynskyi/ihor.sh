@@ -15,7 +15,7 @@ import { transcribeLocal } from "./server/monitor.ts";
 import { upscaleLocal } from "./server/upscale.ts";
 import { readLocal } from "./server/ocr.ts";
 import { startVoice, voiceLocal } from "./server/voice.ts";
-import { crawl, CRAWLED } from "./server/crawl.ts";
+import { crawl, CRAWLED, jobText } from "./server/crawl.ts";
 import { findMeshPort } from "./server/mesh.ts";
 
 const execFileAsync = promisify(execFile);
@@ -140,7 +140,8 @@ const httpBridge = http.createServer(async (req, res) => {
     if (req.url === "/crawl" && req.method === "POST") { // a big employer's career site in a headless browser (server/crawl.ts), a minute at most
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 2_000_000) return res.writeHead(413).end(); }
-      const { site, known } = JSON.parse(raw || "{}");
+      const { site, known, page, title } = JSON.parse(raw || "{}");
+      if (page) return send(200, { description: await jobText(String(page), String(title ?? "")).catch(() => "") }); // one job's page, read now
       if (!CRAWLED.includes(String(site))) return send(400, { error: "no crawler for that site" });
       return send(200, await crawl(String(site), Array.isArray(known) ? known.map(String) : []));
     }

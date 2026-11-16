@@ -8,10 +8,10 @@ const PW_DIR = process.env.PLAYWRIGHT_DIR ?? `${process.env.HOME}/.npm/_npx/9833
 const CHROME = process.env.PLAYWRIGHT_CHROME ?? `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
 const text = (s: unknown) => String(s ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-/** Each job's page opened in the browser, 4 tabs at a time until the minute runs out: the page's main text (Meta's and
+/** Each job's page opened in the browser, 6 tabs at a time until the minute runs out: the page's main text (Meta's and
  *  Apple's job pages only render in a browser). */
 async function pagesText(page: any, jobs: Posting[], until: number) {
-  const ctx = page.context(), queue = jobs.filter((j) => !j.description), tabs = await Promise.all(Array.from({ length: Math.min(4, queue.length) }, () => ctx.newPage()));
+  const ctx = page.context(), queue = jobs.filter((j) => !j.description), tabs = await Promise.all(Array.from({ length: Math.min(6, queue.length) }, () => ctx.newPage()));
   await Promise.all(tabs.map(async (tab: any) => {
     for (let j = queue.shift(); j && Date.now() < until - 4000; j = queue.shift()) {
       try { await tab.goto(j.url, { waitUntil: "domcontentloaded", timeout: 15_000 }); await tab.waitForTimeout(1500); const t = await tab.$eval("main, [role=main], body", (e: any) => e.innerText).catch(() => ""), at = t.indexOf(j.title); j.description = (at >= 0 ? t.slice(at) : t).slice(0, 20_000); } catch {} // from the title on: no site menu
@@ -82,6 +82,17 @@ export async function crawl(site: string, known: string[] = [], ms = 60_000) {
     const jobs = await SITES[site](page, until, new Set(known));
     return { jobs: jobs.map((j) => ({ ...j, description: text(j.description) ? j.description : "" })), partial: Date.now() > until - 3000 };
   } finally { clearTimeout(stop); await browser.close().catch(() => {}); }
+}
+
+/** One job's page, read now (someone opened it on the site before a crawl got to it): its text from the title on. */
+const PAGE_HOSTS = /^(www\.metacareers\.com|jobs\.apple\.com|bloomberg\.avature\.net)$/;
+export async function jobText(url: string, title: string) {
+  const u = new URL(url); if (u.protocol !== "https:" || !PAGE_HOSTS.test(u.hostname)) throw new Error("not a page this reader serves");
+  const { chromium } = createRequire(PW_DIR)("playwright"), browser = await chromium.launch({ executablePath: CHROME });
+  try {
+    const page = await (await browser.newContext({ userAgent: UA, locale: "en-US" })).newPage(), job: Posting = { id: "", company: "", title, location: "", url: u.href, description: "" };
+    await pagesText(page, [job], Date.now() + 30_000); return job.description;
+  } finally { await browser.close().catch(() => {}); }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) { // node server/crawl.ts [site…]: crawl live from this Mac

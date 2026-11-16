@@ -2,8 +2,15 @@
 // applications store, the red-flag check's card, and your data in your account when you're signed in.
 export const $ = (id) => document.getElementById(id);
 export const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-export const getJSON = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
-export const post = (u, body) => fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+// reCAPTCHA v3 (server.ts): a call the server wants checked answers 403 { captcha: <site key> }; Google's script loads
+// then (not before), scores the visit, and the call goes once more with the token.
+let rc;
+const captcha = (key) => (rc ??= new Promise((ok, no) => { const s = document.createElement("script"); s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(key)}`; s.onload = () => grecaptcha.ready(ok); s.onerror = no; document.head.append(s); }))
+  .then(() => grecaptcha.execute(key, { action: "jobs" }));
+const fetchHuman = async (u, init = {}) => { const r = await fetch(u, init), d = r.status === 403 ? await r.clone().json().catch(() => ({})) : {};
+  return d.captcha ? fetch(u, { ...init, headers: { ...init.headers, "x-recaptcha": await captcha(d.captcha) } }) : r; };
+export const getJSON = (u) => fetchHuman(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+export const post = (u, body) => fetchHuman(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
 /** A slow AI answer started as a job (server.ts startJob): poll until it's done. */
 export const poll = async (id, step) => { for (;;) { await new Promise((r) => setTimeout(r, 2500)); const j = await getJSON(`/api/nyc/brief-job?id=${id}`); if (j.error) throw new Error(j.error); if (j.result) return j.result; step?.(j.step); } };
 export const LABEL = {

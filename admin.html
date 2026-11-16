@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Site admin</title>
+  <meta name="description" content="The site's controls, for its owner: accounts and their rights, and what visitors and members do on the site." />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+    [hidden] { display: none !important; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 14px 0; overflow-x: auto; }
+    .tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+    .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+    .kpi { padding: 10px 12px; } .kpi b { display: block; font-size: 24px; line-height: 1.15; } .kpi span { color: var(--muted); font-size: 12.5px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; } .grid2 > * { min-width: 0; }
+    .scrollx { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13.5px; } th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; } td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+    tr[data-who] { cursor: pointer; } tr[data-who]:hover td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .chart svg { display: block; width: 100%; height: auto; } .chart .bar { fill: var(--accent); } .chart .ax { fill: var(--muted); font-size: 11px; } .chart g:hover .bar { opacity: .7; }
+    .chip { display: inline-block; font-size: 11.5px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .bad { color: var(--warn); } h2 { margin: 18px 0 6px; font-size: 17px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/">ihor.sh</a> · Admin</p>
+  <h1 style="margin:4px 0">Site admin</h1>
+  <p class="hint">Only the admin sees this page. More controls will live here; for now: accounts and their rights, and what everyone does on the site.</p>
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="users" aria-selected="true">👤 Users &amp; rights</button>
+    <button type="button" role="tab" data-tab="activity" aria-selected="false">📈 Activity</button>
+  </nav>
+  <section id="t-users"><p class="hint">Loading…</p></section>
+  <section id="t-activity" hidden>
+    <p><label>Last <select id="days"><option value="1">day</option><option value="7" selected>7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label> <span class="hint" id="actStep"></span></p>
+    <div id="act"></div>
+  </section>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const get = (u, init) => fetch(u, init).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+const when = (t) => (t ? new Date(t * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
+let users = [];
+const nameOf = (who, uid) => { const u = users.find((x) => x.id === (uid ?? who)); return u ? `${esc(u.name)}${u.email ? ` <span class="hint">${esc(u.email)}</span>` : ""}` : who.startsWith("g:") ? `Guest <span class="hint">${esc(who.slice(2, 8))}</span>` : `Guest, no cookie <span class="hint">${esc(who.slice(3, 9))}</span>`; };
+
+async function loadUsers() {
+  users = await get("/api/admin/users");
+  const s = await get("/api/admin/stats?days=30").catch(() => null), by = new Map((s?.people ?? []).map((p) => [p.user_id ?? p.who, p]));
+  $("t-users").innerHTML = `<p class="hint">${users.length} account${users.length === 1 ? "" : "s"}. <b>Cloud model</b>: the user's AI (Blip, the job and résumé tools, company cards) runs on the cloud model with no throttling or line, as the admin's does; everyone else gets the local model and the limits.</p>
+    <div class="scrollx"><table><thead><tr><th>User</th><th>Signed in with</th><th>Joined</th><th>Last sign-in</th><th class="n">Pages, 30 d</th><th class="n">Actions, 30 d</th><th>Cloud model, no limits</th></tr></thead><tbody>
+    ${users.map((u) => { const a = by.get(u.id); return `<tr data-who="${esc(u.id)}"><td>${u.picture ? `<img src="${esc(u.picture)}" alt="" width="20" height="20" style="border-radius:50%;vertical-align:-5px;margin-right:6px" referrerpolicy="no-referrer">` : ""}<b>${esc(u.name)}</b>${u.role === "admin" ? ' <span class="chip">admin</span>' : ""}<br><span class="hint">${esc(u.email ?? u.id)}</span></td>
+      <td>${esc(u.provider)}</td><td>${when(u.created)}</td><td>${when(u.seen)}</td><td class="n">${a?.pages ?? 0}</td><td class="n">${a?.actions ?? 0}</td>
+      <td>${u.role === "admin" ? '<span class="hint">always</span>' : `<label><input type="checkbox" data-cloud="${esc(u.id)}" ${u.cloud ? "checked" : ""}> allowed</label>`}</td></tr>`; }).join("")}</tbody></table></div>
+    <div id="userLog"></div>`;
+}
+$("t-users").addEventListener("change", async (e) => {
+  const id = e.target.dataset?.cloud; if (!id) return;
+  e.target.disabled = true;
+  try { await get(`/api/admin/users?id=${encodeURIComponent(id)}&cloud=${e.target.checked ? 1 : 0}`, { method: "POST" }); } catch (err) { e.target.checked = !e.target.checked; alert(err.message); } finally { e.target.disabled = false; }
+});
+
+/** One person's latest page views and actions. */
+async function showLog(who, box) {
+  const ev = await get(`/api/admin/events?who=${encodeURIComponent(who)}`);
+  $(box).innerHTML = `<h2>${nameOf(who)}: latest</h2>${eventsTable(ev)}`; $(box).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+const eventsTable = (ev) => ev.length ? `<div class="scrollx"><table><thead><tr><th>When</th><th>Who</th><th>What</th><th>Detail</th><th class="n">ms</th></tr></thead><tbody>${ev.map((e) => `<tr><td>${when(e.at)}</td><td>${nameOf(e.who, e.user_id)}${e.bot ? ' <span class="chip">bot</span>' : ""}</td>
+  <td>${e.kind === "page" ? `<span class="hint">page</span> ${esc(e.name)}` : esc(e.name)}${e.status >= 400 ? ` <span class="bad">${e.status}</span>` : ""}</td><td>${esc(e.detail)}</td><td class="n">${e.ms}</td></tr>`).join("")}</tbody></table></div>` : `<p class="hint">Nothing yet.</p>`;
+for (const [box, log] of [["t-users", "userLog"], ["act", "actLog"]]) $(box).addEventListener("click", (e) => { const tr = e.target.closest("tr[data-who]"); if (tr && !e.target.closest("input,label")) showLog(tr.dataset.who, log); });
+
+/** People per day: a bar a day (hover for the numbers). */
+function daily(d) {
+  if (!d.length) return "";
+  const W = 600, H = 120, B = 18, max = Math.max(1, ...d.map((x) => x.people)), bw = W / d.length;
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="People a day: ${d.map((x) => `${x.day} ${x.people}`).join(", ")}">${d.map((x, i) => { const h = Math.max(2, (x.people / max) * (H - B - 8));
+    return `<g><title>${x.day}: ${x.people} people, ${x.pages} page views, ${x.actions} actions</title><rect x="${i * bw}" y="0" width="${bw}" height="${H - B}" fill="transparent"/><rect class="bar" x="${i * bw + 1}" y="${H - B - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2"/></g>`; }).join("")}
+    <text class="ax" x="0" y="${H - 4}">${d[0].day}</text><text class="ax" x="${W}" y="${H - 4}" text-anchor="end">${d.at(-1).day}</text><text class="ax" x="0" y="10">${max} people</text></svg></div>`;
+}
+async function loadActivity() {
+  $("actStep").textContent = "Loading…";
+  const s = await get(`/api/admin/stats?days=${$("days").value}`), t = s.totals ?? {}, tile = (v, l, sub = "") => `<div class="kpi card"><b>${(v ?? 0).toLocaleString()}</b><span>${l}${sub ? `<br>${sub}` : ""}</span></div>`;
+  const recent = await get("/api/admin/events");
+  $("act").innerHTML = `<div class="kpis">${tile(t.people, "people", `${t.members ?? 0} signed in`)}${tile(t.pages, "page views")}${tile(t.actions, "actions", "searches, Blip, AI tools…")}${tile(t.api, "data loads", "what pages fetch")}${tile(s.bots?.n, "bot requests", `${s.bots?.who ?? 0} bots, kept apart`)}</div>
+    <h2>People a day</h2>${daily(s.daily)}
+    <div class="grid2"><div><h2>Actions</h2><table><thead><tr><th>Action</th><th class="n">Times</th><th class="n">People</th><th class="n">Failed</th></tr></thead><tbody>${s.actions.map((a) => `<tr><td>${esc(a.name)}</td><td class="n">${a.n}</td><td class="n">${a.people}</td><td class="n ${a.failed ? "bad" : ""}">${a.failed || ""}</td></tr>`).join("") || '<tr><td colspan="4" class="hint">None yet.</td></tr>'}</tbody></table></div>
+      <div><h2>Pages</h2><table><thead><tr><th>Page</th><th class="n">Views</th><th class="n">People</th></tr></thead><tbody>${s.pages.map((p) => `<tr><td><a href="${esc(p.name)}">${esc(p.name)}</a></td><td class="n">${p.n}</td><td class="n">${p.people}</td></tr>`).join("") || '<tr><td colspan="3" class="hint">None yet.</td></tr>'}</tbody></table></div></div>
+    <div class="grid2"><div><h2>What people search for</h2><table><thead><tr><th>Where</th><th>Words</th><th class="n">Times</th></tr></thead><tbody>${s.searches.map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.detail)}</td><td class="n">${x.n}</td></tr>`).join("") || '<tr><td colspan="3" class="hint">None yet.</td></tr>'}</tbody></table></div>
+      <div><h2>People</h2><p class="hint">Click one for their latest steps.</p><div class="scrollx"><table><thead><tr><th>Who</th><th class="n">Pages</th><th class="n">Actions</th><th>Last seen</th></tr></thead><tbody>${s.people.map((p) => `<tr data-who="${esc(p.who)}"><td>${nameOf(p.who, p.user_id)}</td><td class="n">${p.pages}</td><td class="n">${p.actions}</td><td>${when(p.last)}</td></tr>`).join("")}</tbody></table></div></div></div>
+    <div id="actLog"><h2>Latest, everyone</h2>${eventsTable(recent.slice(0, 120))}</div>`;
+  $("actStep").textContent = "";
+}
+$("days").onchange = () => loadActivity().catch((e) => ($("actStep").textContent = e.message));
+for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
+  for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
+  if (b.dataset.tab === "activity" && !loadActivity.done) { loadActivity.done = true; loadActivity().catch((e) => ($("actStep").textContent = e.message)); }
+};
+loadUsers().catch((e) => ($("t-users").innerHTML = `<p>${esc(e.message)}</p>`));
+</script>
+</body>
+</html>

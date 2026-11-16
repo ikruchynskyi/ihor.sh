@@ -20,7 +20,8 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, type Query as JobQuery } from "./server/jobs.ts";
+import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, type Query as JobQuery } from "./server/jobs.ts";
+import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
@@ -29,7 +30,7 @@ import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull, asker } from "./server/llm.ts";
 import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
-import { ADMIN, userFrom, sessionFor, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
+import { ADMIN, userFrom, sessionFor, listUsers, setCloud, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
 import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
@@ -264,28 +265,40 @@ ${image.endsWith("og.png") ? '<meta property="og:image:width" content="1200"><me
 // which let GPTBot & co. into /api/. AI crawlers come in three kinds, each its own decision: search indexing, fetching for
 // a user's question in real time, and training. (Cloudflare's own bot settings can still block one of them at the edge.)
 const RULES = "Content-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\nDisallow: /api/\nDisallow: /mcp\nDisallow: /a2a";
-const ROBOTS = `User-agent: *
-${RULES}
+// The jobs (user, 2026-11-16): other job sites and scrapers may not copy them; search engines may index the pages, and AI
+// crawlers may not (agents get jobs through /mcp). robots.txt asks; it can't enforce.
+const JOBS_OFF = "Disallow: /nyc/job.html\nDisallow: /nyc/company.html\nDisallow: /nyc/jobs.html\nDisallow: /jobs/feed.xml\nDisallow: /admin";
+const ROBOTS = `# Search engines: everything but the API and the agent endpoints
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: DuckDuckBot
+User-agent: Applebot
+User-agent: Slurp
+${RULES}\nDisallow: /admin
+
+# Everyone else (scrapers, job aggregators): not the jobs
+User-agent: *
+${RULES}\n${JOBS_OFF}
 
 # AI agents: /llms.txt maps the site; /search?q= searches it (JSON, or Markdown with Accept: text/markdown); live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
 # AI search indexing
 User-agent: OAI-SearchBot
 User-agent: Claude-SearchBot
 User-agent: PerplexityBot
-${RULES}
+${RULES}\n${JOBS_OFF}
 
 # AI answers, fetched live for a user's question
 User-agent: ChatGPT-User
 User-agent: Claude-User
 User-agent: Perplexity-User
-${RULES}
+${RULES}\n${JOBS_OFF}
 
 # AI training
 User-agent: GPTBot
 User-agent: ClaudeBot
 User-agent: Google-Extended
 User-agent: Applebot-Extended
-${RULES}
+${RULES}\n${JOBS_OFF}
 
 Sitemap: ${SITE}/sitemap.xml
 `;
@@ -482,6 +495,8 @@ const reviewOwner = (req: http.IncomingMessage) => isAdmin(req) || same(/(?:^|;\
 // its AI calls go to the cloud model (asker, below).
 const currentUser = (req: http.IncomingMessage) => userFrom(SESSION_SECRET, cookie(req.headers.cookie, "iha"));
 const isAdmin = (req: http.IncomingMessage) => currentUser(req)?.role === "admin";
+/** The cloud model, unthrottled: the admin and the users the admin let (admin.html); everyone else gets the local model (user, 2026-11-16). */
+const canCloud = (req: http.IncomingMessage) => !!currentUser(req)?.cloud;
 const isLive = (req: http.IncomingMessage) => /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
 const signedIn = (req: http.IncomingMessage, id: string) => `iha=${sessionFor(SESSION_SECRET, id)}; Path=/; Max-Age=${90 * 86400}; HttpOnly; SameSite=Lax${isLive(req) ? "; Secure" : ""}`;
 /** Cookies set by this response so far (a fresh ihs), plus these. */
@@ -522,6 +537,19 @@ async function sendAlerts() {
 const jobQuery = (p: URLSearchParams): JobQuery => { const s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => Number(p.get(k)) || undefined;
   return { q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"), salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"),
     seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" }; };
+// reCAPTCHA v3 (invisible) on job search, the Market view and the AI overview (user, 2026-11-16): a session that scores
+// as a person is trusted for 30 minutes; the admin and users with the cloud right skip it. Off until RECAPTCHA_SITE_KEY
+// and RECAPTCHA_SECRET are in .env (a v3 key for ihor.sh and localhost at google.com/recaptcha/admin).
+const CAPTCHA_PATHS = new Set(["/api/jobs/search", "/api/jobs/market", "/api/jobs/brief"]), humanUntil = new Map<string, number>();
+async function human(req: http.IncomingMessage, sessionId: string) {
+  const secret = process.env.RECAPTCHA_SECRET; if (!secret || !process.env.RECAPTCHA_SITE_KEY) return true;
+  if ((humanUntil.get(sessionId) ?? 0) > Date.now()) return true;
+  const token = String(req.headers["x-recaptcha"] ?? ""); if (!token) return false;
+  const r: any = await fetch("https://www.google.com/recaptcha/api/siteverify", { method: "POST", body: new URLSearchParams({ secret, response: token, remoteip: clientIp(req) }), signal: AbortSignal.timeout(10_000) }).then((x) => x.json()).catch(() => null);
+  if (!r?.success || (r.score ?? 0) < 0.5) return false;
+  if (humanUntil.size > 50_000) humanUntil.clear();
+  humanUntil.set(sessionId, Date.now() + 30 * 60_000); return true;
+}
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -627,8 +655,9 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
   if (url.pathname.startsWith("/api/")) {
     if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");
     const ip = clientIp(req);
-    if (METERED.some((p) => url.pathname.startsWith(p)) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
+    if (METERED.some((p) => url.pathname.startsWith(p)) && !canCloud(req) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
+    if (CAPTCHA_PATHS.has(url.pathname) && !canCloud(req) && !(await human(req, session.id))) return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "Checking that you're not a bot didn't work. Reload the page and try again.", captcha: process.env.RECAPTCHA_SITE_KEY }));
   }
   try {
     if (url.pathname.startsWith("/api/radio/monitor")) { // listen on the server SDR with captions (monitor.ts)
@@ -754,8 +783,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
-      // visitors: the per-IP cap, one question per 30 s, and the line (one answer at a time); the admin: none of them (user, 2026-11-16)
-      const ip = clientIp(req), admin = isAdmin(req), turn = <T,>(fn: () => Promise<T>, ahead?: (n: number) => void) => (admin ? fn() : inLine(fn, ahead));
+      // visitors: the per-IP cap, one question per 30 s, and the line (one answer at a time); the admin and users it let use the cloud: none of them (user, 2026-11-16)
+      const ip = clientIp(req), admin = canCloud(req), turn = <T,>(fn: () => Promise<T>, ahead?: (n: number) => void) => (admin ? fn() : inLine(fn, ahead));
       if (!admin && !allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
       const wait = admin ? 0 : askWait(session!.id);
       if (wait) return res.writeHead(429, { "content-type": "application/json", "retry-after": String(wait) }).end(JSON.stringify({ error: `Blip takes one question every 30 seconds. Ask again in ${wait} s.`, retryAfter: wait }));
@@ -1122,8 +1151,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     }
     if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
     if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name) } : { error: "No open jobs from that employer here." })); }
-    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); const cloud = !!currentUser(req); // signed in: the cloud model; a visitor: the local one (user, 2026-11-16)
-      return startJob(res, (step) => (step("Reading its news, stock, pay and reviews, searching the web, then writing the overview (up to three minutes)…"), asker.run({ cloud }, () => makeCard(c))), "Waiting for the AI…"); }
+    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock, pay and reviews, searching the web, then writing the overview (up to three minutes)…"), makeCard(c)), "Waiting for the AI…"); }
     if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
       const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
       if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(getData(u.id)));
@@ -1163,6 +1191,16 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify({ ...jobMarket(jobQuery(url.searchParams)), levelsFyi: getCompanyInfo(LEVELS_MARKET) }));
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
+    if (url.pathname === "/api/jobs/text") { try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ description: await readJobText(String(url.searchParams.get("id") ?? "").slice(0, 300)) })); } catch { return json403(res, "Couldn't read the posting right now.", 502); } }
+    if (url.pathname.startsWith("/api/admin/")) { // admin.html: accounts and their rights, and what everyone does on the site
+      if (!isAdmin(req)) return json403(res, "Not found.", 404);
+      const send = (v: unknown) => res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(v));
+      if (url.pathname === "/api/admin/users" && req.method === "POST") return send({ changed: setCloud(String(url.searchParams.get("id") ?? ""), url.searchParams.get("cloud") === "1") });
+      if (url.pathname === "/api/admin/users") return send(listUsers());
+      if (url.pathname === "/api/admin/stats") return send(activityStats(Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 7))));
+      if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
+      return json403(res, "Not found.", 404);
+    }
     if (url.pathname === "/api/jobs/job") { const j0 = jobOne(String(url.searchParams.get("id") ?? "")), j = j0 && { ...j0, card: miniCard(j0.company) }; return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
     if (["/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/bullet"].includes(url.pathname) && req.method === "POST") {
       // the résumé is used for this request only: not stored, not logged (errors log the message, never the body)
@@ -1194,6 +1232,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
+    if (url.pathname === "/admin") return isAdmin(req) ? serveFile(res, path.join(ROOT, "admin.html"), SITE_LABEL, url.pathname, url.searchParams) : res.writeHead(302, { location: "/" }).end();
+    if (url.pathname === "/admin.html") return res.writeHead(302, { location: "/admin" }).end();
     if (url.pathname === "/terms") return serveFile(res, path.join(ROOT, "terms.html"), SITE_LABEL, url.pathname, url.searchParams);
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(ROBOTS);
     if (WELL_KNOWN[url.pathname]) { const [type, body] = WELL_KNOWN[url.pathname](); return res.writeHead(200, { "content-type": type, "access-control-allow-origin": "*", "cache-control": "public, max-age=3600" }).end(body); }
@@ -1232,7 +1272,14 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
 };
 // Each request runs as who's asking: the signed-in admin's AI calls go to the cloud model (llm.ts asker). run(), not
 // enterWith(): the tunnel reuses connections across visitors, so the context must end with the request.
-const server = http.createServer((req, res) => void asker.run({ cloud: isAdmin(req) }, () => serve(req, res)));
+const server = http.createServer((req, res) => {
+  const t0 = Date.now(), user = currentUser(req), url = new URL(req.url ?? "/", "http://x");
+  res.on("finish", () => { try { // every request, logged for the admin page (activity.ts)
+    track({ method: req.method ?? "GET", path: url.pathname, query: url.searchParams, status: res.statusCode, html: /text\/html/.test(String(res.getHeader("content-type") ?? "")), ms: Date.now() - t0,
+      userId: user?.id, session: check(SESSION_SECRET, cookie(req.headers.cookie))?.id, ip: createHmac("sha256", SESSION_SECRET).update(clientIp(req)).digest("base64url").slice(0, 10), ua: String(req.headers["user-agent"] ?? "") });
+  } catch {} });
+  void asker.run({ cloud: !!user?.cloud }, () => serve(req, res));
+});
 
 if (IN_HOST_SUPERVISOR) {
   await import("./host.ts");

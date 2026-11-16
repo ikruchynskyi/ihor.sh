@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { yearsAsked } from "../nyc/resume.js";
-import { PLAIN } from "./bigtech.ts";
+import { PLAIN, jobPostingLd } from "./bigtech.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
@@ -863,4 +863,21 @@ export const saveCheck = (id: string, body: object) => { db.prepare("insert or r
 export const freshForChecks = (n = 120) => (db.prepare("select id from jobs where closed is null and dup_of is null and first_seen > ? and source != 'adzuna' and region in ('nyc','nj','metro') and func in ('engineering','data','finance') and id not in (select id from checks) order by first_seen desc limit ?").all(now() - 86400, n) as any[]).map((r) => r.id);
 export const saveGuide = (body: object) => db.prepare("insert or replace into guides values (?, ?)").run(now(), JSON.stringify(body));
 export const latestGuide = () => { const r = db.prepare("select at, body from guides order by at desc limit 1").get() as any; if (!r) return null; const { by, ...g } = JSON.parse(r.body); return { at: r.at as number, ...g }; }; // no model names on the site
+/** A job opened on the site before a crawl read its text (Meta, Apple, Bloomberg render it only in a browser): read its
+ *  page now, through the Mac's browser for those three and plainly for the rest, and keep it with its pay and flags. */
+const reading = new Map<string, Promise<string>>();
+export function readJobText(id: string) {
+  const j = db.prepare("select * from jobs where id = ?").get(id) as any;
+  if (!j || j.description.length >= 300 || j.source !== "custom") return Promise.resolve(j?.description ?? "");
+  if (!reading.has(id)) reading.set(id, (async () => {
+    const slug = id.split(":")[1]; let d = "";
+    if (!PLAIN[slug] && process.env.HOST_BRIDGE) d = String((await (await fetch(`${process.env.HOST_BRIDGE}/crawl`, { method: "POST", body: JSON.stringify({ page: j.url, title: j.title }), signal: AbortSignal.timeout(45_000) })).json() as any).description ?? "");
+    else { const jp = jobPostingLd(await (await fetch(j.url, { headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" }, signal: AbortSignal.timeout(20_000) })).text()); d = stripHtml(String(jp?.description ?? "")); }
+    if (d.length < 300) return j.description;
+    const sal = j.salary_min == null ? parseSalary(d) : null, row = { ...j, description: d, salary_min: sal?.min ?? j.salary_min, salary_max: sal?.max ?? j.salary_max };
+    db.prepare("update jobs set description = ?, salary_min = ?, salary_max = ?, salary_period = coalesce(?, salary_period), flags = ? where id = ?").run(d, row.salary_min, row.salary_max, sal?.period ?? null, JSON.stringify(flagsFor({ ...row, reposts: reposts(j.ckey, j.title, j.region, j.id) })), id);
+    return d;
+  })().finally(() => reading.delete(id)));
+  return reading.get(id)!;
+}
 export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;

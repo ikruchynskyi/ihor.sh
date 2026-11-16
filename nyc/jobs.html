@@ -65,6 +65,7 @@
     .seg button[aria-pressed="true"] { font-weight: 700; outline: 2px solid var(--accent); }
     h2.sec { font-size: 18px; margin: 20px 0 6px; }
     .brief li { margin: 4px 0; } .brief sup { color: var(--muted); cursor: help; }
+      .grecaptcha-badge { visibility: hidden; } /* the notice below the page says it instead (Google's terms allow either) */
   </style>
 </head>
 <body>
@@ -150,6 +151,7 @@
       <div id="v-market" hidden aria-live="polite"></div>
     </section>
   </div>
+  <p class="hint" style="margin-top:28px">Search and the AI overview are protected by reCAPTCHA: Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a> apply.</p>
 </main>
 <script type="module">
 import { $, esc, getJSON, post, poll, LABEL, money, age, verified, jobLink, companyLink, tracked, putTracked as putT, savedSearches as saved, putSaved, TK, STAGES, runCheck, checkHTML, pullAccount, me } from "/nyc/jobs-ui.js";

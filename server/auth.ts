@@ -12,11 +12,13 @@ mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(process.env.USERS_DB ?? path.join(dir, "users.db")); // tests: USERS_DB=:memory:
 db.exec(`create table if not exists users (id text primary key, email text, name text, picture text, provider text, role text not null default 'user', gen int not null default 0, created int, seen int);
   create unique index if not exists users_email on users (email) where email is not null;`);
+// cloud: the admin let this user use the cloud model, unthrottled (admin.html; user, 2026-11-16)
+if (!(db.prepare("pragma table_info(users)").all() as any[]).some((c) => c.name === "cloud")) db.exec("alter table users add column cloud int not null default 0");
 const now = () => Math.floor(Date.now() / 1000);
 export const ADMIN = "irishdash";
 db.prepare("insert or ignore into users (id, name, provider, role, created) values (?, ?, 'token', 'admin', ?)").run(ADMIN, ADMIN, now());
 
-export type User = { id: string; email: string | null; name: string; picture: string | null; provider: string; role: string };
+export type User = { id: string; email: string | null; name: string; picture: string | null; provider: string; role: string; cloud: boolean };
 const TTL = 90 * 86400;
 const sig = (secret: string, body: string) => createHmac("sha256", secret).update(`account:${body}`).digest("base64url").slice(0, 32);
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -34,9 +36,12 @@ export function sessionFor(secret: string, id: string) {
 export function userFrom(secret: string, token?: string): User | null {
   const m = token?.match(/^([\w-]+)\.(\d+)\.([0-9a-z]+)\.([\w-]{32})$/);
   if (!m || !same(sig(secret, `${m[1]}.${m[2]}.${m[3]}`), m[4]) || now() - parseInt(m[3], 36) > TTL) return null;
-  const u = db.prepare("select id, email, name, picture, provider, role, gen from users where id = ?").get(unb64(m[1])) as any;
-  return u && String(u.gen) === m[2] ? { id: u.id, email: u.email, name: u.name, picture: u.picture, provider: u.provider, role: u.role } : null;
+  const u = db.prepare("select id, email, name, picture, provider, role, gen, cloud from users where id = ?").get(unb64(m[1])) as any;
+  return u && String(u.gen) === m[2] ? { id: u.id, email: u.email, name: u.name, picture: u.picture, provider: u.provider, role: u.role, cloud: u.role === "admin" || !!u.cloud } : null;
 }
+/** Every account, newest first (admin.html). */
+export const listUsers = () => db.prepare("select id, email, name, picture, provider, role, cloud, created, seen from users order by created desc").all() as any[];
+export const setCloud = (id: string, on: boolean) => db.prepare("update users set cloud = ? where id = ? and role != 'admin'").run(on ? 1 : 0, id).changes;
 export const signOutEverywhere = (id: string) => db.prepare("update users set gen = gen + 1 where id = ?").run(id);
 
 // ---------- a user's own data (the jobs pages: applications, saved searches, and a résumé only if they ask) ----------

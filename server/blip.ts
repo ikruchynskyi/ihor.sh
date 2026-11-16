@@ -20,7 +20,7 @@ import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 import { generateMeme, searchTemplates } from "./memes.ts";
 
-import { OLLAMA, LOCAL_MODEL as MODEL, OWNER_MODEL, localThink } from "./llm.ts";
+import { asker, OLLAMA, LOCAL_MODEL as MODEL, OWNER_MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? OWNER_MODEL; // DeepSeek on Ollama Cloud for everyone (user, 2026-11-16: no gemma)
 const MAX_STEPS = 6, DEEP_STEPS = 16, DEADLINE_MS = 50_000; // past the deadline (not "think hard") Blip answers with what it has
 
@@ -632,12 +632,12 @@ function pageTools(page: any) {
       parameters: { type: "object", properties: Object.fromEntries(Object.entries(a.parameters ?? {}).slice(0, 8).map(([k, v]: [string, any]) => [k, param(v)])), required: [] } } }));
 }
 
-/** One model call: Ollama Cloud's model first, the local model if the cloud fails, times out or has no key.
+/** One model call: for the admin and users it let, Ollama Cloud's model first; everyone else, and a cloud that fails or times out, the local model.
  *  deep (the chat's "think hard" box): high reasoning effort, room for it in the token budget, and longer timeouts. */
 async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [], deep = false) {
   const tools = withTools ? { tools: [...toolSpecs, ...extraTools] } : {};
   const budget = { options: { num_predict: deep ? 8000 : 1500 } };
-  const key = process.env.BLIP_LOCAL ? undefined : process.env.OLLAMA_CLOUD_KEY;
+  const key = process.env.BLIP_LOCAL || !asker.getStore()?.cloud ? undefined : process.env.OLLAMA_CLOUD_KEY; // the cloud only for the admin and users it let (user, 2026-11-16)
   if (key) {
     try {
       const r = await fetch("https://ollama.com/api/chat", {

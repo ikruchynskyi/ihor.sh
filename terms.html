@@ -37,7 +37,7 @@
   <h2>AI answers</h2>
   <p>Blip, the site's chat, Yomu's conversation practice and the job and resume tools write their answers with AI language models. Those answers can be wrong, out of date or made up, even when they sound sure. Check anything important with a reliable source.</p>
   <ul>
-    <li>What you type into Blip, together with the text of the page you're on, is sent to a model on Ollama Cloud (ollama.com), or to the model running on the author's own computer when the cloud isn't available. When Blip searches the web, your question may go to a search service (Tavily, Ollama or DuckDuckGo). Resume text you paste into the job tools is sent the same way. Yomu's chat runs only on the author's own computer.</li>
+    <li>What you type into Blip, together with the text of the page you're on, is sent to the model running on the author's own computer; for the site's owner and the accounts the owner allows, to a model on Ollama Cloud (ollama.com). When Blip searches the web, your question may go to a search service (Tavily, Ollama or DuckDuckGo). Resume text you paste into the job tools is sent the same way. Yomu's chat runs only on the author's own computer.</li>
     <li>Don't type passwords, financial details or anything you'd want kept private.</li>
     <li>To keep it fair for everyone, Blip takes one question per visitor every 30 seconds, and questions wait in line while the model is busy.</li>
   </ul>
@@ -47,7 +47,9 @@
 
   <h2>What the site stores</h2>
   <ul>
-    <li><b>One cookie</b> (<code>ihs</code>): a random, signed session token that lasts 24 hours. It lets the site's own pages use its data API and keeps the rate limits fair. It isn't used to track you across sites, and there are no analytics or advertising trackers.</li>
+    <li><b>One cookie</b> (<code>ihs</code>): a random, signed session token that lasts 24 hours. It lets the site's own pages use its data API and keeps the rate limits fair. It isn't used to track you across sites, and there are no third-party analytics or advertising trackers.</li>
+    <li><b>An activity log</b> on the server: which pages are opened and which features are used (a search and its words, a job tool, a question to Blip but not what it says, résumé text never), with your session or account, a scrambled form of your IP address and your browser's name. The site's owner reads it to see how the site is used and to keep it working; it's kept 180 days (automatic data loads, 14).</li>
+    <li><b>reCAPTCHA</b>: the jobs page's search and AI overview may ask Google reCAPTCHA v3 whether a visit looks like a person or a bot, which sends Google information about your browser and how you use the page; <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a> apply.</li>
     <li><b>An account, if you make one</b> (optional; nothing on the site needs it): signing in with Google stores your Google account id, email address, name and picture, and a second signed cookie (<code>iha</code>, 90 days) keeps you signed in. Signing out removes the cookie; to have the account deleted, ask the site's owner.</li>
     <li><b>Your browser's storage</b> keeps your theme and reading settings, course progress and chat history on your device. Settings and progress stay there; a chat sends its conversation along with each new question, so the model has the context, and the server doesn't keep it. Clearing your browser's site data removes all of it.</li>
     <li><b>Your location</b> is used only when you ask for something near you, and only to look it up. It isn't stored.</li>
