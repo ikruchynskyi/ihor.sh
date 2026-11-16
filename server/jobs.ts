@@ -82,7 +82,7 @@ const US_REMOTE = new RegExp(`\\b(united states|usa|us|u\\.s\\.|anywhere in the 
 /** Where a job is, for our scope: "nyc", "nj", "metro", "remote" (US), or null when it's outside it. */
 export function region(loc: string, remoteHint = false): string | null {
   const l = loc ?? "", parts = l.split(/;|\|/);
-  if (NYC.test(l) || parts.some((x) => NYC_BARE.test(x))) return "nyc";
+  if (NYC.test(l) || parts.some((x) => NYC_BARE.test(x) || NYC_BARE.test(x.split(",")[0]))) return "nyc"; // Accenture: "New York, 120 Wall Street, Song"
   if (NJ.test(l)) return "nj";
   if (METRO.test(l)) return "metro";
   const remote = remoteHint || /\bremote\b|anywhere|work from home|distributed/i.test(l);
@@ -95,6 +95,7 @@ const ST: Record<string, string> = { "new york": "NY", "new jersey": "NJ", conne
 /** Places as Workday and USAJOBS write them ("New York New York United States", "Jersey City, New Jersey", "US-NY-New
  *  York", "Newark-NJ-USA") in the shape region() reads ("New York, NY"). */
 export const usPlace = (s: string) => {
+  const st = String(s ?? "").trim().match(/^([A-Z]{2})-(?![A-Z]{2}-)(\S.*)$/); if (st) return st[1] === "US" ? `${st[2]}, US` : `${st[2]}, ${st[1]}`; // PwC: "NY-New York", "US-Remote"
   const t = String(s ?? "").replace(/[-_]+/g, " ").replace(/[,\s]+(united states( of america)?|usa|us)\s*$/i, "").trim(), us = t.match(/^us\s+(ny|nj|ct)\s+(.+)$/i);
   if (us) return `${us[2]}, ${us[1].toUpperCase()}`;
   const m = t.match(/^(.+?),?\s+(new york|new jersey|connecticut)$/i); return m ? `${m[1]}, ${ST[m[2].toLowerCase()]}` : t;
@@ -219,6 +220,7 @@ if (!db.prepare("select 1 from runs where what = 'migrate-flags-2'").get()) batc
   for (const r of db.prepare("select * from jobs where closed is null").all() as any[]) fl.run(JSON.stringify(flagsFor({ ...r, reposts: reposts(r.ckey, r.title, r.region, r.id) })), r.id);
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-flags-2", 1, 0, "");
 });
+db.prepare("delete from companies where ats = 'workday' and slug = 'pwc|3|Global_Experienced_Careers'").run(); // PwC's global site: 3 New York jobs; its US one has them
 // 2026-11-16: amazon.jobs names each job's legal entity ("Amazon.com Services LLC", "Amazon Web Services, Inc."…), which split Amazon into a dozen employers here
 db.exec("update jobs set company = 'Amazon', ckey = 'amazon' where source = 'amazon' and company != 'Amazon'; update companies set name = 'Amazon' where ats = 'amazon'");
 function save(j: In) {
@@ -251,7 +253,7 @@ const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Mo
   ["att|1|ATTGeneral", "AT&T"], ["salesforce|12|External_Career_Site", "Salesforce"], ["verizon|12|verizon-careers", "Verizon"], ["nvidia|5|NVIDIAExternalCareerSite", "NVIDIA"], ["target|5|targetcareers", "Target"],
   ["adobe|5|external_experienced", "Adobe"], ["capitalone|12|Capital_One", "Capital One"], ["visa|5|Visa", "Visa"], // the last three found from their careers pages
   // big employers with many remote US jobs, the Big 4's PwC and audit firms among them (user, 2026-11-16)
-  ["pwc|3|Global_Experienced_Careers", "PwC"], ["rsm|1|RSMCareers", "RSM"], ["accenture|103|AccentureCareers", "Accenture"], ["bah|1|BAH_Jobs", "Booz Allen Hamilton"], ["fmr|1|FidelityCareers", "Fidelity Investments"],
+  ["pwc|3|US_Experienced_Careers", "PwC"], ["rsm|1|RSMCareers", "RSM"], ["accenture|103|AccentureCareers", "Accenture"], ["bah|1|BAH_Jobs", "Booz Allen Hamilton"], ["fmr|1|FidelityCareers", "Fidelity Investments"],
   ["ghr|1|Lateral-US", "Bank of America"], ["wf|1|WellsFargoJobs", "Wells Fargo"], ["vanguard|5|vanguard_external", "Vanguard"], ["tiaa|1|Search", "TIAA"], ["cigna|5|cignacareers", "Cigna"],
   ["travelers|5|External", "Travelers"], ["fis|5|SearchJobs", "FIS"]];
 // Big NYC employers on their own systems, verified 2026-11-16: Oracle Recruiting Cloud (host|site) and amazon.jobs
@@ -287,14 +289,14 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
       isRemote: !!j.telecommuting && /united states|^us$/i.test(j.country ?? j.locations?.[0]?.country ?? ""), posted: Date.parse(j.published_on ?? j.created_at), url: j.url ?? j.application_url,
       department: j.department ?? "", employment: j.employment_type ?? "", description: stripHtml(j.description ?? "") }));
   }
-  if (ats === "smartrecruiters") { // the list is filtered to NY, NJ and CT by SmartRecruiters; a description costs one request
+  if (ats === "smartrecruiters") { // its US list, each job's place checked (states come as "NY" or "New York"; remote ones anywhere in the US); a description costs one request
     const out: In[] = [];
     try {
-    for (const st of ["NY", "NJ", "CT"]) for (let off = 0; off < 1000; off += 100) {
-      await pace(ats, 500); const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us&region=${st}`);
+    for (let off = 0; off < 2000; off += 100) {
+      await pace(ats, 500); const d = await getJson(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=100&offset=${off}&country=us`);
       for (const p of d.content ?? []) {
-        const id = `sr:${slug}:${p.id}`, loc = `${p.location?.city ?? ""}, ${p.location?.region ?? st}`;
-        if (!region(loc)) continue;
+        const id = `sr:${slug}:${p.id}`, loc = usPlace(`${p.location?.city ?? ""}, ${p.location?.region ?? ""}`);
+        if (!region(loc, !!p.location?.remote)) continue;
         if (known(id)) { out.push(brief(id, p.company?.name ?? slug, loc)); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
         await pace(ats, 500); const j = await getJson(p.ref).catch(() => null); if (!j) continue;
@@ -312,7 +314,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     try {
     await pace(ats, WD_PACE); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" })).facets);
     const places = vals.filter((v) => /location/i.test(v.p) && !/country/i.test(v.p) && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")).sort((a, b) => Number(b.p === "locations") - Number(a.p === "locations")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
-    const pick = places.length ? places : states;
+    const pick = states.length ? states : places; // a state's facet when there is one (Fidelity, Wells Fargo): each job's place is checked anyway
     const fams = vals.filter((v) => /family/i.test(v.p) && WD_FAMILIES.test(v.d)), famP = fams[0]?.p, famF = famP ? { [famP]: fams.filter((v) => v.p === famP).map((v) => v.id) } : {};
     // and its remote jobs in the US (user, 2026-11-16): a remote-type facet with the US, else locations that are remote US
     const rType = vals.filter((v) => /remote|workplace/i.test(v.p) && /remote|virtual/i.test(v.d) && !/hybrid|flex/i.test(v.d)), us = vals.filter((v) => /country/i.test(v.p) && /^(united states( of america)?|usa?)$/i.test(v.d.trim()));
