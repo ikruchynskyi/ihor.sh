@@ -296,7 +296,8 @@ export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "wo
       });
     } catch (e) { bad++; if (/HTTP 429$/.test((e as Error).message)) resting.set(ats, Date.now() + 3600_000); db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
   }));
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
+  // a run where most boards failed (a platform resting after a 429) isn't a run: the next hourly tick tries again
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), bad > list.length / 2 ? `${what}-failed` : what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`);
   return { boards: list.length, failed: bad, jobs: n };
 }
 
