@@ -25,6 +25,21 @@
     table.fields td { padding: 2px 10px 2px 0; vertical-align: top; font-size: 14px; }
     .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); margin: 2px; }
     .chip.miss { border-color: var(--warn); color: var(--warn); } .chip.have { border-color: var(--ok); color: var(--ok); }
+    .edbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; margin: 8px 0; position: sticky; top: 52px; z-index: 5; background: var(--card); }
+    .ed { padding: 6px 4px; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .ln { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 2px 8px; border-radius: 6px; }
+    .ln:hover, .ln:focus-within { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+    .ln .tx { white-space: pre-wrap; cursor: text; min-height: 1.5em; overflow-wrap: anywhere; } .ln.head .tx { font-weight: 700; margin-top: 8px; }
+    .ln.weak .tx { text-decoration: underline wavy color-mix(in srgb, var(--warn) 60%, transparent); text-underline-offset: 4px; text-decoration-skip-ink: none; }
+    .ln mark { background: color-mix(in srgb, var(--warn) 25%, transparent); color: inherit; border-radius: 3px; }
+    .ln .tools { display: flex; gap: 4px; align-items: start; opacity: 0; } .ln:hover .tools, .ln:focus-within .tools { opacity: 1; }
+    @media (hover: none) { .ln .tools { opacity: 1; } }
+    .ln .tools button { font-size: 12px; padding: 0 6px; }
+    .ln .iss { grid-column: 1 / -1; font-size: 12px; color: var(--warn); }
+    .ed.quiet .iss { display: none; } .ed.quiet .ln.weak .tx { text-decoration: none; } .ed.quiet mark { background: none; }
+    .ln textarea.edit { width: 100%; box-sizing: border-box; font: inherit; resize: none; overflow: hidden; }
+    .sug { grid-column: 1 / -1; border-left: 3px solid var(--accent); padding: 6px 10px; margin: 4px 0 8px; background: var(--bg); }
+    .sug textarea { min-height: 2.6em; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; } .sug p { margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -59,17 +74,19 @@
     <p><button id="tailorGo" type="button">🎯 Build it</button> <span class="hint" id="tailorStatus" aria-live="polite"></span></p>
     <div id="tailor"></div>
 
-    <h2>Rewrite with AI</h2>
-    <p class="hint">Suggestions for your weakest bullets and a summary, tailored to the job above if you've given one. The AI is told never to invent facts: numbers it doesn't know become placeholders like <b>[X%]</b> for you to fill in, and anything it adds that isn't in your résumé is replaced with [X]. Your text goes to this site's server for the request only and isn't stored. Read every suggestion before you accept it: it's your name on the résumé.</p>
-    <p><button id="aiGo" type="button">✨ Suggest rewrites</button> <span class="hint" id="aiStatus"></span></p>
-    <div id="ai"></div>
-    <div id="draftBox" hidden>
-      <h3>Your improved résumé <span class="hint" id="draftScore"></span></h3>
-      <textarea id="draft" style="min-height:260px"></textarea>
-      <p class="hint">Pick the skills first, then edit the text: changing the skills rebuilds it.</p>
-      <p><button id="dlTxt" type="button">Download .txt</button> <button id="dlDocx" type="button">Download .docx</button> <button id="dlPdf" type="button">Print / save as PDF</button> <span class="hint">All single-column and plain, the way parsers like it.</span></p>
+    <h2 id="edTitle">✍️ Your résumé, line by line</h2>
+    <p class="hint">Lines with weak spots are underlined, with a note saying why, and filler words are marked. Click a line to edit it. ✨ asks the AI for a better version (aimed at the job above if you've given one): it appears under the line, and nothing changes until you accept it. Numbers the AI doesn't know come back as [X] for you to fill in. Your text goes to this site's server for each request only and isn't stored.</p>
+    <div class="edbar card">
+      <span>Score <b id="edScore">–</b> <span class="hint" id="edWas"></span></span>
+      <span class="hint" id="edWeak"></span>
+      <button type="button" id="edAll">✨ Suggest for all weak lines</button>
+      <button type="button" id="edUndo" disabled>↶ Undo</button>
+      <label class="hint"><input type="checkbox" id="edNotes" checked> show notes</label>
+      <span class="hint" id="edStatus" aria-live="polite"></span>
     </div>
-
+    <div id="ed" class="ed card"></div>
+    <details><summary class="hint">Edit as plain text</summary><textarea id="draft" style="min-height:260px"></textarea><p><button type="button" id="edApply">Use this text</button></p></details>
+    <p><button id="dlTxt" type="button">Download .txt</button> <button id="dlDocx" type="button">Download .docx</button> <button id="dlPdf" type="button">Print / save as PDF</button> <span class="hint">All single-column and plain, the way parsers like it.</span></p>
 
     <h2>What the system sees</h2>
     <table class="fields" id="fields"></table>
@@ -78,7 +95,7 @@
   </section>
 </main>
 <script type="module">
-import { evaluate, compare, extract, addedSkills, composeTailored } from "/nyc/resume.js";
+import { evaluate, compare, extract, addedSkills, composeTailored, annotate } from "/nyc/resume.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
@@ -160,51 +177,133 @@ function show() {
   $("fields").innerHTML = row("Name", x.name) + row("Email", x.email) + row("Phone", x.phone) + row("Location", x.location) + row("LinkedIn", x.linkedin) + row("Links", x.urls.join(", "), true)
     + row("Sections", [...new Set(x.sections.map((s) => s.text))].join(" · ")) + row("Date ranges", x.dates.map((d) => `${d.from} – ${d.to}`).join("; ")) + row("Skills", x.skills.join(", ")) + row("Bullets", String(x.bullets.length), x.bullets.length > 0);
   $("ats").textContent = current.text;
+  undo = []; sugs.clear(); draft = ""; setDraft(current.text, false);
   match();
   try { if ($("keep").checked) localStorage.setItem("resume-text", current.text); } catch {}
 }
 function match() {
   if (!current) return;
   const jd = $("jd").value.trim();
-  if (jd.length < 80) { $("match").innerHTML = ""; return; }
+  if (jd.length < 80) { $("match").innerHTML = ""; if (draft) renderEditor(); return; }
   const c = compare(current.text, jd);
   $("match").innerHTML = `<p>${c.coverage != null ? `<b>${c.coverage}%</b> of the skills this job names are in your résumé.` : "The posting names no common skills we know; check its words below."}</p>
     <p>${c.present.map((s) => `<span class="chip have">✓ ${esc(s)}</span>`).join("")}${c.missing.map((s) => `<span class="chip miss">✗ ${esc(s)}</span>`).join("")}</p>
     ${c.advice.map((a) => `<p class="fix card">${esc(a)}</p>`).join("")}`;
+  if (draft) renderEditor(); // the editor's job tools follow the job
 }
 $("jd").addEventListener("input", match);
 
-// ---------- AI rewrites, accepted one by one into a working copy ----------
-const VERB = /^(achieved|accelerated|added|advised|analyzed|architected|automated|built|closed|coached|collaborated|created|cut|decreased|defined|delivered|deployed|designed|developed|directed|doubled|drove|eliminated|enabled|engineered|established|exceeded|expanded|generated|grew|guided|identified|implemented|improved|increased|integrated|introduced|launched|led|managed|mentored|migrated|negotiated|optimized|organized|owned|partnered|planned|produced|raised|reduced|redesigned|refactored|resolved|saved|scaled|shipped|simplified|solved|streamlined|supervised|trained|transformed|wrote)\b/i;
-let draft = "";
+// ---------- the editor: the résumé line by line, weak spots marked; the AI only on request, and you decide ----------
+let draft = "", undo = [];
 const jobId = new URLSearchParams(location.search).get("job");
-function setDraft(t) { draft = t; $("draft").value = t; $("draftBox").hidden = false; const r = evaluate(t, { kind: "txt" }); $("draftScore").textContent = `(score now ${r.score}${current ? `, was ${evaluate(current.text, { kind: "txt" }).score}` : ""}, without layout checks)`; }
-$("draft").addEventListener("input", () => { setDraft($("draft").value); if (tailored) keepCv(draft); });
-$("aiGo").onclick = async () => {
-  if (!current) return;
-  const bullets = extract(current.text).bullets, weak = bullets.filter((b) => !VERB.test(b) || !/\d|%|\$/.test(b) || b.split(/\s+/).length > 30 || b.split(/\s+/).length < 6);
-  $("aiStatus").textContent = "Reading your résumé… (up to a minute)"; $("aiGo").disabled = true;
-  try {
-    const r = await fetch("/api/jobs/suggest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ resume: current.text, bullets: (weak.length ? weak : bullets).slice(0, 20), job: jobId ?? undefined, jd: jobId ? undefined : $("jd").value.trim().slice(0, 8000) || undefined }) }).then(async (x) => { const d = await x.json().catch(() => ({})); if (!x.ok || d.error) throw new Error(d.error ?? `HTTP ${x.status}`); return d; });
-    if (!draft) setDraft(current.text);
-    $("aiStatus").textContent = `${r.bullets.length} bullet${r.bullets.length === 1 ? "" : "s"} to improve${r.summary ? " and a summary" : ""}. Accept the ones you agree with; edit them first if you like.`;
-    $("ai").innerHTML = (r.summary ? `<div class="fix card" data-kind="summary"><b>Summary</b><textarea data-after>${esc(r.summary)}</textarea><p><button data-act="ok" type="button">Accept</button> <button data-act="skip" type="button">Skip</button></p></div>` : "")
-      + r.bullets.map((b) => `<div class="fix card" data-kind="bullet" data-before="${esc(b.before)}"><p class="hint" style="text-decoration:line-through;margin:0">${esc(b.before)}</p><textarea data-after style="min-height:50px">${esc(b.after)}</textarea><p class="hint" style="margin:2px 0">${esc(b.why)}</p><p><button data-act="ok" type="button">Accept</button> <button data-act="skip" type="button">Skip</button></p></div>`).join("")
-      + (r.terms?.length ? `<div class="card" style="padding:8px 12px"><b>Words the job uses that your résumé doesn't</b> <span class="hint">(add one only if it's true for you)</span><ul>${r.terms.map((t) => `<li><b>${esc(t.term)}</b>: ${esc(t.where)}</li>`).join("")}</ul></div>` : "");
-  } catch (e) { $("aiStatus").textContent = e.message; } finally { $("aiGo").disabled = false; }
-};
-$("ai").addEventListener("click", (e) => {
-  const act = e.target.dataset.act, card = e.target.closest("[data-kind]"); if (!act || !card) return;
-  if (act === "ok") {
-    const after = card.querySelector("[data-after]").value.trim();
-    if (card.dataset.kind === "bullet") { const before = card.dataset.before, i = draft.indexOf(before); setDraft(i >= 0 ? draft.slice(0, i) + after + draft.slice(i + before.length) : `${draft}\n• ${after}`); }
-    else { const lines = draft.split("\n"), h = lines.findIndex((l) => /^(summary|professional summary|profile)\s*:?$/i.test(l.trim()));
-      if (h >= 0) { let k = h + 1; while (k < lines.length && lines[k].trim() && !/^[A-Z][A-Za-z ]{2,30}:?$/.test(lines[k].trim())) k++; lines.splice(h + 1, k - h - 1, after); }
-      else { const at = Math.min(3, lines.findIndex((l) => !l.trim()) + 1 || 2); lines.splice(at, 0, "Summary", after, ""); }
-      setDraft(lines.join("\n")); }
-    card.style.opacity = 0.5; card.querySelectorAll("button").forEach((b) => (b.disabled = true)); e.target.textContent = "✓ Accepted";
-  } else card.remove();
+const sugs = new Map(); // what's open under a line, by the line's text (headings: "§summary", "§skills")
+const jdNow = () => $("jd").value.trim();
+const jobBody = () => (jobId ? { job: jobId } : jdNow().length >= 80 ? { jd: jdNow().slice(0, 8000) } : {});
+const bodyOf = (l) => l.trim().replace(/^([•\-–▪◦●*·]|\d+\.)\s*/, "");
+const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function setDraft(t, push = true) {
+  if (push && draft && t !== draft) { undo.push(draft); if (undo.length > 50) undo.shift(); }
+  draft = t; $("draft").value = t; $("edUndo").disabled = !undo.length;
+  const r = evaluate(t, { kind: "txt" }), a = annotate(t), weak = a.filter((n) => n.issues.length).length;
+  $("edScore").textContent = r.score; $("edScore").style.color = r.score >= 80 ? "var(--ok)" : r.score >= 55 ? "var(--accent)" : "var(--warn)";
+  $("edWas").textContent = current ? `(was ${evaluate(current.text, { kind: "txt" }).score}; the layout checks need the file)` : "";
+  $("edWeak").textContent = weak ? `${weak} line${weak > 1 ? "s" : ""} with notes` : "no notes left";
+  renderEditor(a);
+  if (tailored) keepCv(draft);
+}
+const marked = (l, words) => words.reduce((h, w) => h.replace(new RegExp(`(^|[^a-z0-9])(${escRe(esc(w))})(?=[^a-z0-9]|$)`, "gi"), '$1<mark title="Filler: say what you did instead">$2</mark>'), esc(l));
+function toolsFor(n) {
+  const forJob = jobId || jdNow().length >= 80, add = `<button type="button" data-do="add" title="Add a line below" aria-label="Add a line below">＋</button>`, del = `<button type="button" data-do="del" title="Delete this line" aria-label="Delete this line">✕</button>`;
+  if (n.kind === "bullet") return `<button type="button" data-do="ai" title="Suggest a better version${forJob ? " for this job" : ""}" aria-label="Suggest a better version">✨</button>${add}${del}`;
+  if (n.kind === "head" && n.section === "summary") return `<button type="button" data-do="summary">✨ Write a summary${forJob ? " for this job" : ""}</button>`;
+  if (n.kind === "head" && n.section === "skills" && forJob) { const m = compare(draft, jdNow()).missing; return m.length ? `<button type="button" data-do="skills">🎯 The job's skills you could add (${m.length})</button>` : ""; }
+  if (n.kind === "text" && n.section === "experience") return `<button type="button" data-do="note" title="Write a bullet for this role from your rough notes">＋ Bullet from my notes</button>${add}`;
+  return n.kind === "text" || n.kind === "contact" ? add + del : "";
+}
+function sugHTML(x) {
+  if (x.busy) return `<div class="sug hint">${esc(x.busy)}</div>`;
+  if (x.error) return `<div class="sug"><span class="bad">${esc(x.error)}</span> <button type="button" data-do="close">Close</button></div>`;
+  if (x.kind === "skills") return `<div class="sug"><b>The job names these; your résumé doesn't.</b> <span class="hint">Click only the ones you really have: each goes into your skills line.</span><p>${x.list.map((k) => `<button type="button" class="chip miss" data-do="addskill" data-skill="${esc(k)}">＋ ${esc(k)}</button>`).join(" ")}</p><button type="button" data-do="close">Done</button></div>`;
+  const result = x.text != null ? `<textarea data-after rows="2">${esc(x.text)}</textarea>${x.why ? `<p class="hint">${esc(x.why)}</p>` : ""}` : "";
+  if (x.kind === "note") return `<div class="sug"><label class="hint">What did you do in this role? Rough notes are fine: what, for whom, how much.<textarea data-notes rows="2">${esc(x.notes ?? "")}</textarea></label><p><button type="button" data-do="write">✨ Write the bullet</button> <button type="button" data-do="close">Cancel</button></p>${result}${x.text != null ? `<p><button type="button" data-do="accept">Add it under this role</button></p>` : ""}</div>`;
+  return `<div class="sug">${result}<p><button type="button" data-do="accept">Accept</button> <button type="button" data-do="again">Try again</button> <button type="button" data-do="close">Skip</button></p></div>`;
+}
+function renderEditor(a = annotate(draft)) {
+  $("ed").innerHTML = draft.split("\n").map((l, i) => {
+    const n = a[i], x = sugs.get(n.kind === "head" ? `§${n.section}` : l.trim());
+    if (n.kind === "blank") return `<div class="ln blank" data-i="${i}"><div class="tx" tabindex="0" data-do="edit" aria-label="Empty line: click to write">&nbsp;</div></div>`;
+    return `<div class="ln ${n.kind}${n.issues.length ? " weak" : ""}" data-i="${i}"><div class="tx" tabindex="0" role="button" aria-label="Edit this line" data-do="edit">${marked(l, n.filler)}</div><div class="tools">${toolsFor(n)}</div>${n.issues.length ? `<div class="iss">⚠ ${esc(n.issues.join(" · "))}</div>` : ""}${x ? sugHTML(x) : ""}</div>`;
+  }).join("");
+}
+function startEdit(i) {
+  const row = $("ed").querySelector(`[data-i="${i}"]`), tx = row?.querySelector(".tx"); if (!tx) return;
+  const ta = document.createElement("textarea"); ta.className = "edit"; ta.rows = 1; ta.value = draft.split("\n")[i]; ta.setAttribute("aria-label", "Line text: Enter to save, Escape to cancel");
+  tx.replaceWith(ta); const fit = () => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight}px`; }; fit(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  let done = false;
+  const commit = (save) => { if (done) return; done = true; const L = draft.split("\n"), v = ta.value.replace(/\n/g, " "); if (save && L[i] !== v) { L[i] = v; setDraft(L.join("\n")); } else renderEditor(); };
+  ta.addEventListener("input", fit);
+  ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(true); } else if (e.key === "Escape") commit(false); });
+  ta.addEventListener("blur", () => commit(true));
+}
+const ai = async (path, body) => { const { id } = await postJSON(path, { resume: draft, ...jobBody(), ...body }); return poll(id, () => {}); };
+async function suggestFor(i) {
+  const l = draft.split("\n")[i], k = l.trim(); sugs.set(k, { kind: "bullet", busy: "The AI is reading this line…" }); renderEditor();
+  try { const b = (await ai("/api/jobs/suggest", { bullets: [bodyOf(l)] })).bullets?.[0]; sugs.set(k, b ? { kind: "bullet", text: b.after, why: b.why } : { kind: "bullet", error: "It found nothing to improve in this line." }); }
+  catch (e) { sugs.set(k, { kind: "bullet", error: e.message }); }
+  renderEditor();
+}
+$("ed").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset?.do === "edit") { e.preventDefault(); startEdit(+e.target.closest("[data-i]").dataset.i); } });
+$("ed").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-do]"), row = e.target.closest("[data-i]"); if (!btn || !row) return;
+  const i = +row.dataset.i, act = btn.dataset.do, L = draft.split("\n"), a = annotate(draft), n = a[i], k = n.kind === "head" ? `§${n.section}` : L[i].trim();
+  if (act === "edit") return startEdit(i);
+  if (act === "del") { sugs.delete(k); L.splice(i, 1); return setDraft(L.join("\n")); }
+  if (act === "add") { L.splice(i + 1, 0, n.kind === "bullet" || n.section === "experience" ? "• " : ""); setDraft(L.join("\n")); return startEdit(i + 1); }
+  if (act === "close") { sugs.delete(k); return renderEditor(); }
+  if (act === "ai" || act === "again") return suggestFor(i);
+  if (act === "accept") {
+    const x = sugs.get(k), text = btn.closest(".sug").querySelector("[data-after]")?.value.trim(); sugs.delete(k); if (!x || !text) return renderEditor();
+    if (x.kind === "bullet") L[i] = (L[i].match(/^\s*([•\-–▪◦●*·]|\d+\.)\s*/)?.[0] ?? "• ") + text;
+    else if (x.kind === "summary") { let j = i + 1; while (j < L.length && L[j].trim() && a[j].kind !== "head") j++; L.splice(i + 1, j - i - 1, text); }
+    else if (x.kind === "note") { let j = i + 1; while (j < L.length && a[j].kind === "bullet") j++; L.splice(j, 0, `• ${text}`); }
+    return setDraft(L.join("\n"));
+  }
+  if (act === "summary") {
+    sugs.set(k, { kind: "summary", busy: "The AI is writing a summary from your résumé…" }); renderEditor();
+    try { const r = await ai("/api/jobs/suggest", { bullets: [] }); sugs.set(k, r.summary ? { kind: "summary", text: r.summary, why: "From your résumé's titles, years and skills; a sentence naming a skill the job wants but your résumé doesn't show is left out. Accepting replaces the summary." } : { kind: "summary", error: "No summary came back; try again." }); }
+    catch (err) { sugs.set(k, { kind: "summary", error: err.message }); }
+    return renderEditor();
+  }
+  if (act === "skills") { sugs.set(k, { kind: "skills", list: compare(draft, jdNow()).missing }); return renderEditor(); }
+  if (act === "addskill") {
+    const skill = btn.dataset.skill; let j = i + 1; while (j < L.length && !L[j].trim()) j++;
+    if (j < L.length && a[j].kind === "text") L[j] = `${L[j].replace(/[,\s]+$/, "")}, ${skill}`; else L.splice(i + 1, 0, skill);
+    const x = sugs.get(k); if (x) x.list = x.list.filter((s2) => s2 !== skill);
+    return setDraft(L.join("\n"));
+  }
+  if (act === "note") { sugs.set(k, { kind: "note" }); renderEditor(); return $("ed").querySelector(`[data-i="${i}"] [data-notes]`)?.focus(); }
+  if (act === "write") {
+    const notes = btn.closest(".sug").querySelector("[data-notes]").value; sugs.set(k, { kind: "note", notes, busy: "Writing a bullet from your notes…" }); renderEditor();
+    try { const r = await ai("/api/jobs/bullet", { notes, role: L[i].trim() }); sugs.set(k, { kind: "note", notes, text: r.text, why: r.notes?.length ? `⚠ ${r.notes.join("; ")}` : "Only what your notes say; check it before you add it." }); }
+    catch (err) { sugs.set(k, { kind: "note", notes, error: err.message }); }
+    return renderEditor();
+  }
 });
+$("edAll").onclick = async () => {
+  const L = draft.split("\n"), a = annotate(draft), weak = L.filter((l, i) => a[i].kind === "bullet" && a[i].issues.length).slice(0, 12);
+  if (!weak.length) { $("edStatus").textContent = "No weak bullets left."; return; }
+  $("edAll").disabled = true; $("edStatus").textContent = `The AI is reading ${weak.length} line${weak.length > 1 ? "s" : ""} (up to a minute or two)…`;
+  for (const l of weak) sugs.set(l.trim(), { kind: "bullet", busy: "Waiting for the AI…" }); renderEditor();
+  try {
+    const got = (await ai("/api/jobs/suggest", { bullets: weak.map(bodyOf) })).bullets ?? [];
+    for (const l of weak) { const b = got.find((x) => bodyOf(l) === String(x.before).trim() || l.includes(String(x.before).trim())); if (b) sugs.set(l.trim(), { kind: "bullet", text: b.after, why: b.why }); else sugs.delete(l.trim()); }
+    $("edStatus").textContent = got.length ? `${got.length} suggestion${got.length > 1 ? "s" : ""} under the lines: accept, edit or skip each.` : "No suggestions came back; try one line's ✨.";
+  } catch (e) { for (const l of weak) sugs.delete(l.trim()); $("edStatus").textContent = e.message; }
+  $("edAll").disabled = false; renderEditor();
+};
+$("edUndo").onclick = () => { if (undo.length) setDraft(undo.pop(), false); };
+$("edNotes").onchange = () => $("ed").classList.toggle("quiet", !$("edNotes").checked);
+$("edApply").onclick = () => setDraft($("draft").value);
 const download = (name, blob) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
 $("dlTxt").onclick = () => download("resume.txt", new Blob([draft], { type: "text/plain" }));
 $("dlDocx").onclick = async () => {
@@ -245,12 +344,13 @@ function renderTailor() {
       : `<p class="hint">It added no skills your résumé doesn't already show.</p>`}
     ${notes.length ? `<details><summary>${notes.length} line${notes.length > 1 ? "s" : ""} to double-check</summary><ul>${notes.map((b) => `<li>${esc(b.text)}<br><span class="hint">⚠ ${esc(b.notes.join("; "))}</span></li>`).join("")}</ul></details>` : ""}
     <p class="hint">Your roles and dates are copied from your résumé, and numbers it doesn't have became [X] for you to fill in or delete.</p>
+    <p class="hint">It's in the editor below. Pick the skills first, then edit the lines: changing the skills rebuilds the text (↶ Undo brings your edits back).</p>
     <label class="hint"><input type="checkbox" id="keepCv" checked> keep this version with the job in <a href="/nyc/jobs.html#mine">📋 My applications</a> (in this browser)</label></div>`;
   applyTailor();
 }
 function applyTailor() {
   const drop = [...document.querySelectorAll("#addedList input:not(:checked)")].map((i) => i.value);
-  setDraft(composeTailored(current.text, tailored, drop)); $("draftBox").scrollIntoView({ block: "nearest" }); keepCv(draft);
+  setDraft(composeTailored(current.text, tailored, drop)); $("edTitle").scrollIntoView({ block: "start", behavior: "smooth" });
 }
 /** Saves (or, unticked, removes) this version with the job in the jobs page's tracker, with the skills match before and after. */
 function keepCv(text) {

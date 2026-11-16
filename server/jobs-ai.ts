@@ -53,13 +53,13 @@ const STRONG = /\b(led|spearheaded|owned|directed|headed|managed|oversaw|archite
 const nums = (s: string) => s.replace(/\[[^\]]*\]/g, "").match(/\d[\d,.]*%?/g) ?? [];
 /** The never-invent checks on one rewritten line: a number the résumé doesn't have becomes [X]; a stronger role verb, or
  *  specific words in neither the original line nor `known` (the résumé, plus the job when tailoring), get a note. */
-export function guard(before: string, after: string, resume: string, known = resume) {
+export function guard(before: string, after: string, resume: string, known = resume, rewording = false) { // rewording: notes put into words, so new words are expected
   const notes: string[] = [], added = nums(after).filter((n) => !nums(before).includes(n) && !resume.includes(n)).sort((a, b) => b.length - a.length); // "50%" before "5"
   if (added.length) { after = after.replace(new RegExp(added.map((a) => a.replace(/[.%]/g, (c) => `\\${c}`)).join("|"), "g"), "[X]"); notes.push("a number your résumé doesn't have became [X]: put in your real figure"); }
   const promoted = after.match(STRONG)?.[0], b = before.toLowerCase(), k = known.toLowerCase();
   if (promoted && !b.includes(promoted.toLowerCase())) notes.push(`"${promoted}" is stronger than the original: keep it only if it's true`);
   const newWords = (after.replace(/\[[^\]]*\]/g, "").toLowerCase().match(/[a-z][a-z-]{5,}/g) ?? []).filter((w) => !b.includes(w) && !k.includes(w) && !COMMON.test(w));
-  if (newWords.length > 2) notes.push(`adds details that aren't in your résumé (${newWords.slice(0, 4).join(", ")}): keep only what's true`);
+  if (!rewording && newWords.length > 2) notes.push(`adds details that aren't in your résumé (${newWords.slice(0, 4).join(", ")}): keep only what's true`);
   return { after, notes };
 }
 /** Jobs that fit a résumé: the 50 nearest by meaning (embeddings), then the 15 best re-ranked by the model, each with
@@ -286,4 +286,16 @@ Copy every number exactly as its fact writes it. Don't flag what the facts and p
   })();
   checks.set(id, { at: Date.now(), p }); p.catch(() => checks.delete(id));
   return p;
+}
+
+/** One bullet from the person's own rough notes ("Bullet from my notes" in the résumé editor): only what the notes say,
+ *  numbers only from them (any other becomes [X]), in the job's words when there is a job. */
+export async function noteToBullet(resume: string, notes: string, role: string, jobId?: string, jd?: string) {
+  const job = jobOf(jobId, jd), n = clip(notes.trim(), 1200);
+  if (n.length < 8) return { error: "Write a few words about what you did first." };
+  const out = await llmJson(`You turn a person's rough notes into one résumé bullet for the role given. Use only what the notes say: no new tools, numbers, results or scope, and never a stronger role than the notes describe. Past-tense action verb first, under 30 words, no first person. Where a result would help but the notes don't give it, add one placeholder such as [N users] or [X%].${job ? " Use the job's words for things the notes already say." : ""} No filler recruiters skim past: never write ${CLICHES.join(", ")}.${context()} Reply as JSON.`,
+    `ROLE: ${clip(role, 200)}\nNOTES: ${n}${job ? `\n\nTARGET JOB: ${job.title} at ${job.company}\n${clip(String(job.description).replace(/\s+/g, " "), 1500)}` : ""}`,
+    { type: "object", required: ["bullet"], properties: { bullet: { type: "string" } } }, 300);
+  const g = guard(n, String(out.bullet ?? "").replace(/^\s*[•\-–]\s*/, "").trim(), `${resume}\n${n}`, `${resume}\n${n}\n${job?.description ?? ""}`, true);
+  return g.after ? { text: g.after, notes: g.notes } : { error: "No bullet came back; try rewording your notes." };
 }

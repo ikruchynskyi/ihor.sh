@@ -1,6 +1,6 @@
 // Run: node nyc/resume.test.mjs
 import assert from "node:assert/strict";
-import { extract, evaluate, compare, yearsOfExperience, mentions, addedSkills, composeTailored } from "./resume.js";
+import { extract, evaluate, compare, yearsOfExperience, mentions, addedSkills, composeTailored, annotate } from "./resume.js";
 
 const good = `Jane Rivera
 Brooklyn, NY · jane.rivera@example.com · (917) 555-0142 · linkedin.com/in/janerivera
@@ -62,4 +62,11 @@ assert.ok(!/kubernetes|terraform/i.test(honest), honest);
 assert.ok(honest.startsWith("Jane Rivera") && honest.includes("cutting report latency") && honest.includes("B.S. Computer Science"), "header, original bullet and education kept");
 assert.ok(honest.includes("Data engineer with 6 years of pipelines.") && !honest.includes("Runs"), "the summary sentence naming a removed skill goes");
 assert.ok(compare(all, jd).coverage > compare(honest, jd).coverage);
+// the editor's line notes
+const notes = annotate(`Jane Rivera\njane@x.com\n\nExperience\nData Engineer, Acme — 2021 – Present\n• Responsible for the ETL jobs\n• Built a Spark pipeline processing 2 TB a day for 40 analysts\n• Leveraged synergy to deliver results-driven dashboards for my team\n\nSkills\nPython, SQL`);
+assert.deepEqual(notes.map((n) => n.kind), ["contact", "contact", "blank", "head", "text", "bullet", "bullet", "bullet", "blank", "head", "text"]);
+assert.ok(notes[5].issues.some((i) => i.startsWith("starts weak")) && notes[5].issues.some((i) => i.startsWith("no result")));
+assert.deepEqual(notes[6].issues, [], "a strong bullet has no notes");
+assert.ok(notes[7].filler.includes("synergy") && notes[7].filler.includes("results-driven") && notes[7].issues.some((i) => i.includes("I / my")));
+assert.equal(notes[10].section, "skills");
 console.log(`resume ok: good ${e.score}, bad ${b.score}, coverage ${c.coverage}% missing ${c.missing.join(",")}`);

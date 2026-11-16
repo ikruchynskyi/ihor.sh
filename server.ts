@@ -21,7 +21,7 @@ import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNode
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, type Query as JobQuery } from "./server/jobs.ts";
-import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob } from "./server/jobs-ai.ts";
+import { startEmbedding, startGuidance, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
@@ -486,7 +486,7 @@ const withCookies = (res: http.ServerResponse, ...more: string[]) => [...[res.ge
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/jobs/check", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/jobs/check", "/api/jobs/bullet", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 type BriefJob = { at: number; step: string; result?: unknown; error?: string; once?: boolean };
 const briefJobs = new Map<string, BriefJob>();
 /** A slow AI answer as a job the page polls at /api/nyc/brief-job?id= (Cloudflare drops a reply that takes over 100 s).
@@ -1115,7 +1115,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
     if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
-    if ((url.pathname === "/api/jobs/match" || url.pathname === "/api/jobs/suggest" || url.pathname === "/api/jobs/tailor") && req.method === "POST") {
+    if (["/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/bullet"].includes(url.pathname) && req.method === "POST") {
       // the résumé is used for this request only: not stored, not logged (errors log the message, never the body)
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
@@ -1124,6 +1124,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       // the long answers as polled jobs (the local model can take over Cloudflare's 100 s); the quick match (meaning only) stays a request
       if (url.pathname === "/api/jobs/suggest") return startJob(res, () => jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Reading your résumé…", true);
       if (url.pathname === "/api/jobs/match" && b.rank !== false) return startJob(res, () => jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, true), "Scoring the closest jobs against your résumé…", true);
+      if (url.pathname === "/api/jobs/bullet") return startJob(res, () => noteToBullet(resume, String(b.notes ?? "").slice(0, 2000), String(b.role ?? "").slice(0, 200), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Writing a bullet from your notes…", true);
       if (url.pathname === "/api/jobs/tailor") return startJob(res, () => jobTailor(resume, b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Rebuilding your résumé for this job (up to two minutes)…", true);
       try {
         const d: any = url.pathname === "/api/jobs/match"

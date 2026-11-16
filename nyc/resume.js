@@ -97,7 +97,8 @@ export function evaluate(text, layout = {}) {
 }
 
 // ---------- against a job ----------
-const SKILL_WORDS = "python java javascript typescript go golang rust c\\+\\+ c# ruby php scala kotlin swift sql nosql postgresql postgres mysql mongodb redis kafka spark hadoop airflow dbt snowflake bigquery redshift databricks aws azure gcp docker kubernetes terraform ansible jenkins git linux react angular vue node\\.js node django flask fastapi spring graphql rest grpc html css tableau looker power bi excel salesforce hubspot jira figma sketch photoshop illustrator pytorch tensorflow scikit-learn pandas numpy llm nlp machine learning deep learning computer vision statistics a/b testing etl data modeling data warehousing ci/cd microservices agile scrum product management seo sem crm gaap cpa cfa sox hipaa gdpr".split(" ");
+// multi-word skills are written with "_" (the list is split on spaces; "deep learning" had become "deep" and "learning")
+const SKILL_WORDS = "python java javascript typescript go golang rust c\\+\\+ c# ruby php scala kotlin swift sql nosql postgresql postgres mysql mongodb redis kafka spark hadoop airflow dbt snowflake bigquery redshift databricks aws azure gcp docker kubernetes terraform ansible jenkins git linux react angular vue node\\.js node django flask fastapi spring graphql rest grpc html css tableau looker power_bi excel salesforce hubspot jira figma sketch photoshop illustrator pytorch tensorflow scikit-learn pandas numpy llm nlp machine_learning deep_learning computer_vision statistics a/b_testing etl data_modeling data_warehousing ci/cd microservices agile scrum product_management seo sem crm gaap cpa cfa sox hipaa gdpr".split(" ").map((w) => w.replace(/_/g, " "));
 const STOP = new Set("the and for with you our are will this that from have your their about who what when where which while into than then them they team work working role roles years year experience experiences strong ability able skills skill including include includes using use used new well other more most also across within based such each both must should would could can may help helping make making build building join etc job jobs company companies business businesses people world best great good highly high level levels plus preferred required requirements responsibilities qualifications minimum bonus benefits salary range equal opportunity employer".split(" "));
 /** The years of experience a posting asks for ("5+ years of relevant experience"), or null. */
 export const yearsAsked = (jd) => { const y = +(jd.match(/(\d{1,2})\+?\s*(?:-\s*\d+\s*)?years?(?:\s+of)?(?:\s+\w+){0,4}\s+experience/i)?.[1] ?? NaN); return Number.isFinite(y) ? y : null; };
@@ -141,4 +142,31 @@ export function composeTailored(text, t, drop = []) {
   return [L.slice(0, first).join("\n"), `Summary\n${t.summary.split(/(?<=[.!?])\s+/).filter(keep).join(" ")}`,
     `Skills\n${t.skills.filter(keep).join(", ")}`, `Experience\n${roles.join("\n\n")}`,
     ...x.sections.filter((s) => !["summary", "skills", "experience"].includes(s.kind)).map((s) => L.slice(s.line, next(s)).join("\n"))].filter((b) => b.trim() && !/^Summary\n$/.test(b)).join("\n\n");
+}
+
+// ---------- the editor's notes on each line (resume.html): what's weak and why, without AI ----------
+/** For each line of the text, blank ones too, in order: its kind (head, bullet, text, contact before the first heading,
+ *  blank), its section, what's weak about it (the same rules as evaluate()), and the filler words to mark. */
+export function annotate(text) {
+  let section = "", seenHead = false;
+  return text.split(/\r?\n/).map((line) => {
+    const t = line.trim(), h = t.replace(/[:|•\-–—]+$/g, "").trim();
+    if (!t) return { kind: "blank", section, issues: [], filler: [] };
+    const head = h.length <= 40 && h.split(/\s+/).length <= 5 && Object.entries(HEADINGS).find(([, re]) => re.test(h))?.[0];
+    if (head) { section = head; seenHead = true; return { kind: "head", section, issues: [], filler: [] }; }
+    const isBullet = /^[•\-–▪◦●*·]\s*/.test(t) || /^\d+\.\s/.test(t), body = t.replace(/^([•\-–▪◦●*·]|\d+\.)\s*/, "");
+    const kind = !seenHead ? "contact" : isBullet ? "bullet" : "text", issues = [], filler = kind === "contact" ? [] : CLICHES.filter((c) => mentions(body, c));
+    if (kind === "bullet") {
+      const w = body.split(/\s+/);
+      if (WEAK.test(body)) issues.push("starts weak: say what you did (Built, Led, Cut…)");
+      else if (!VERBS.includes(w[0]?.toLowerCase().replace(/[^a-z]/g, ""))) issues.push("start with an action verb");
+      const holes = body.match(/\[[^\]]+\]/g);
+      if (holes) issues.push(`fill in ${holes.join(", ")}, or take it out`); else if (!/\d|%|\$/.test(body)) issues.push("no result in numbers: how much, how many, how fast");
+      if (w.length > 35) issues.push("long: one idea, under 30 words"); else if (w.length < 6) issues.push("too short to show what came of it");
+    }
+    if (kind !== "contact" && /\b(I|my|me)\b/.test(body)) issues.push("drop I / my");
+    if (filler.length) issues.push(`filler: ${filler.join(", ")}`);
+    if (section === "summary" && kind === "text" && body.split(/\s+/).length > 80) issues.push("long for a summary: 2-3 sentences");
+    return { kind, section, issues, filler };
+  });
 }
