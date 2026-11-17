@@ -317,18 +317,22 @@ export async function companyCard(name: string) {
   return card;
 }
 
+export const CARD_TTL = 7 * 86400;
+const isFreshCard = (c: any) => !!c && "layoffs" in c && Date.now() / 1000 - (c.at ?? 0) < CARD_TTL;
 const making = new Map<string, Promise<any>>(); // one card made at a time per company, however many visitors ask
-export const makeCard = (name: string) => { const k = name.toLowerCase(); if (!making.has(k)) making.set(k, companyCard(name).finally(() => making.delete(k))); return making.get(k)!; };
+export const makeCard = (name: string, force = false) => {
+  if (!force) { const prev = getCompanyInfo(name); if (isFreshCard(prev)) return Promise.resolve(prev); }
+  const k = name.toLowerCase(); if (!making.has(k)) making.set(k, companyCard(name).finally(() => making.delete(k))); return making.get(k)!;
+};
 /** The job page's line about its employer: the card without its long parts. */
 export const miniCard = (name: string) => { const c = getCompanyInfo(name); return c && { at: c.at, ticker: c.ticker, stock: c.stock && { ...c.stock, weekly: undefined }, business: c.overview?.business?.text ?? null, levels: c.levels, blind: c.blind && { overall: c.blind.overall, reviews: c.blind.reviews, url: c.blind.url }, layoffs: c.layoffs && { total: c.layoffs.total, rounds: c.layoffs.rounds, latest: c.layoffs.latest, url: c.layoffs.url } }; };
-/** Each morning (cron): the cards of the employers with the most open jobs here, on the cloud model, done by 8. */
+/** Each morning (cron): the cards of the employers with the most open jobs here, on the cloud model, done by 8 (cached 7 days). */
 export const refreshCards = (n = 80) => asker.run({ cloud: true }, () => cards(n));
 async function cards(n: number) {
   let made = 0; await levelsMarket().catch(() => {});
   for (const name of topEmployers(n)) {
     if (Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })) >= 8) break;
-    const prev = getCompanyInfo(name);
-    if (prev && "layoffs" in prev && Date.now() / 1000 - (prev.at ?? 0) < 12 * 3600) continue; // made today already (and includes layoffs field)
+    if (isFreshCard(getCompanyInfo(name))) continue; // cached for 7 days (and includes layoffs field)
     await makeCard(name).then(() => made++).catch(() => {});
   }
   return made;

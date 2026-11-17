@@ -181,11 +181,11 @@ function introHTML(c) {
     <p class="hint" style="margin:12px 0 0">Updated ${age(c.at)}. Sources: Wikipedia, Nasdaq, Google News, Levels.fyi, Layoffs.fyi, Blind and the web; the overview is written by AI.</p>`;
 }
 async function intro() {
-  const box = $("intro");
+  const box = $("intro"), CARD_TTL = 7 * 86400;
   if (e.card) {
     box.innerHTML = introHTML(e.card); wireCharts();
-    if ("layoffs" in e.card) return;
-    box.insertAdjacentHTML("beforeend", `<p class="hint" id="introStep" aria-live="polite" style="margin-top:6px">Updating with Layoffs.fyi data…</p>`);
+    if ("layoffs" in e.card && Date.now() / 1000 - (e.card.at ?? 0) < CARD_TTL) return;
+    box.insertAdjacentHTML("beforeend", `<p class="hint" id="introStep" aria-live="polite" style="margin-top:6px">Refreshing company overview…</p>`);
     try { const { id } = await post(`/api/jobs/company-card?c=${encodeURIComponent(e.name)}`, {}); e.card = await poll(id, (s) => { if ($("introStep")) $("introStep").textContent = s; }); box.innerHTML = introHTML(e.card); wireCharts(); } catch { $("introStep")?.remove(); }
     return;
   }
