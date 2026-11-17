@@ -1,6 +1,6 @@
 #!/bin/sh
-# Restart ihor.sh services: ./restart.sh [web|server] [fli] [stays] [tts] [memegen] [tunnel] [host] [sdr] [sdr-sat] [ollama]  (no arguments: all)
-# Containerized services (web, tts, memegen, tunnel) run in Docker Compose; hardware/MLX services (host, sdr, sdr-sat, ollama)
+# Restart ihor.sh services: ./restart.sh [web|server] [fli] [stays] [tts] [tunnel] [host] [sdr] [sdr-sat] [ollama]  (no arguments: all)
+# Containerized services (web, fli, stays, tts, tunnel) run in Docker Compose; hardware/MLX services (host, sdr, sdr-sat, ollama)
 # run on the Mac host as LaunchDaemons (or login agents) and restart without sudo when their process exits.
 set -u
 cd "$(dirname "$0")"
@@ -33,7 +33,7 @@ restart_launchd() {
   fi
 }
 
-for s in ${@:-web fli stays tts memegen tunnel host sdr sdr-sat ollama}; do
+for s in ${@:-web fli stays tts tunnel host sdr sdr-sat ollama}; do
   case "$s" in
     server|web)
       ensure_docker
@@ -68,17 +68,6 @@ for s in ${@:-web fli stays tts memegen tunnel host sdr sdr-sat ollama}; do
         docker compose up -d tts && echo "started tts (docker)"
       fi
       ;;
-    memegen)
-      ensure_docker
-      if [ -z "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' memegen 2>/dev/null)" ]; then
-        docker rm -f memegen >/dev/null 2>&1 || true
-      fi
-      if docker compose ps --status running --format '{{.Service}}' 2>/dev/null | grep -qx "memegen"; then
-        docker compose restart memegen && echo "restarted memegen (docker)"
-      else
-        docker compose up -d memegen && echo "started memegen (docker)"
-      fi
-      ;;
     tunnel)
       ensure_docker
       if docker compose ps --status running --format '{{.Service}}' 2>/dev/null | grep -qx "tunnel"; then
@@ -97,16 +86,29 @@ for s in ${@:-web fli stays tts memegen tunnel host sdr sdr-sat ollama}; do
       if launchctl print "gui/$(id -u)/sh.ihor.ollama" >/dev/null 2>&1 || [ -f "/Library/LaunchDaemons/sh.ihor.ollama.plist" ]; then
         restart_launchd "sh.ihor.ollama" "ollama"
       else
+        pkill -TERM -x Ollama 2>/dev/null || true
         pkill -f "Ollama.app/Contents/Resources/ollama serve" 2>/dev/null || true
-        sleep 1
+        for _ in $(seq 1 10); do
+          pgrep -x Ollama >/dev/null || pgrep -f "Ollama.app/Contents/Resources/ollama serve" >/dev/null || break
+          sleep 1
+        done
+        pkill -KILL -x Ollama 2>/dev/null || true
         if ! curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && [ -x /Applications/Ollama.app/Contents/Resources/ollama ]; then
-          nohup /Applications/Ollama.app/Contents/Resources/ollama serve >/dev/null 2>&1 &
+          mkdir -p "$HOME/.ollama/logs"
+          OLLAMA_HOST="${OLLAMA_HOST:-0.0.0.0:11434}" \
+          OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-65536}" \
+          OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}" \
+          OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}" \
+          OLLAMA_MAX_LOADED_MODELS="${OLLAMA_MAX_LOADED_MODELS:-2}" \
+          OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-1}" \
+          OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}" \
+          nohup /Applications/Ollama.app/Contents/Resources/ollama serve >>"$HOME/.ollama/logs/server.log" 2>&1 </dev/null &
         fi
-        echo "restarted ollama (host)"
+        echo "restarted ollama (host, headless)"
       fi
       ;;
     *)
-      echo "Unknown service: $s (choose from: web, fli, stays, tts, memegen, tunnel, host, sdr, sdr-sat, ollama)" >&2
+      echo "Unknown service: $s (choose from: web, fli, stays, tts, tunnel, host, sdr, sdr-sat, ollama)" >&2
       exit 1
       ;;
   esac

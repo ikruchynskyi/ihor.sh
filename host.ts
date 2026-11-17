@@ -6,9 +6,10 @@
 //      on Metal through ~/Irodori-TTS/.venv: server/voice.py).
 //    - TCP  127.0.0.1:8076: raw serial bridge to the Meshtastic USB radio (`/dev/cu.usbmodem*`).
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { closeSync, createReadStream, existsSync, openSync, statSync, writeSync, constants } from "node:fs";
+import { closeSync, createReadStream, existsSync, mkdirSync, openSync, statSync, writeSync, constants } from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import { homedir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { transcribeLocal } from "./server/monitor.ts";
@@ -41,8 +42,22 @@ async function ensureOllama() {
   } catch {}
   const bin = "/Applications/Ollama.app/Contents/Resources/ollama";
   if (existsSync(bin)) {
-    console.log("host: starting Ollama server on 127.0.0.1:11434");
-    const p = spawn(bin, ["serve"], { detached: true, stdio: "ignore" });
+    console.log("host: starting headless Ollama server on 0.0.0.0:11434");
+    const logDir = path.join(homedir(), ".ollama", "logs");
+    let logFd: number | null = null;
+    try { mkdirSync(logDir, { recursive: true }); logFd = openSync(path.join(logDir, "server.log"), "a"); } catch {}
+    const env = {
+      ...process.env,
+      OLLAMA_HOST: process.env.OLLAMA_HOST ?? "0.0.0.0:11434",
+      OLLAMA_CONTEXT_LENGTH: process.env.OLLAMA_CONTEXT_LENGTH ?? "65536",
+      OLLAMA_FLASH_ATTENTION: process.env.OLLAMA_FLASH_ATTENTION ?? "1",
+      OLLAMA_KV_CACHE_TYPE: process.env.OLLAMA_KV_CACHE_TYPE ?? "q8_0",
+      OLLAMA_MAX_LOADED_MODELS: process.env.OLLAMA_MAX_LOADED_MODELS ?? "2",
+      OLLAMA_NUM_PARALLEL: process.env.OLLAMA_NUM_PARALLEL ?? "1",
+      OLLAMA_KEEP_ALIVE: process.env.OLLAMA_KEEP_ALIVE ?? "30m",
+    };
+    const p = spawn(bin, ["serve"], { detached: true, env, stdio: logFd !== null ? ["ignore", logFd, logFd] : "ignore" });
+    if (logFd !== null) closeSync(logFd);
     p.unref();
   }
 }
@@ -73,14 +88,6 @@ async function ensureDockerAndContainers() {
       console.error("host: Docker daemon still not ready; will retry in 60s");
       return;
     }
-    // Remove legacy standalone memegen container if it wasn't created by docker compose
-    try {
-      const { stdout } = await execFileAsync("docker", ["inspect", "--format", "{{index .Config.Labels \"com.docker.compose.project\"}}", "memegen"], { timeout: 5000 });
-      if (!stdout.trim()) {
-        console.log("host: replacing standalone memegen container with compose service");
-        await execFileAsync("docker", ["rm", "-f", "memegen"], { timeout: 10_000 });
-      }
-    } catch {}
     // A deploy (manage.sh rebuild, restart.sh) is recreating containers right now: running `compose up` too would race it
     // for port 8080. The file is removed when the deploy ends; one older than 10 minutes is a deploy that died, so heal anyway.
     const lock = path.join(ROOT, "data", ".deploying");
@@ -88,7 +95,7 @@ async function ensureDockerAndContainers() {
     // Check if web container is running; if not, run `docker compose up -d`
     const { stdout: psOut } = await execFileAsync("docker", ["compose", "ps", "--status", "running", "--format", "{{.Service}}"], { cwd: ROOT, timeout: 10_000 }).catch(() => ({ stdout: "" }));
     const running = new Set(psOut.trim().split(/\r?\n/).filter(Boolean));
-    if (!running.has("web") || !running.has("fli") || !running.has("stays") || !running.has("tts") || !running.has("memegen")) {
+    if (!running.has("web") || !running.has("fli") || !running.has("stays") || !running.has("tts")) {
       console.log("host: bringing up docker compose services...");
       await execFileAsync("docker", ["compose", "up", "-d"], { cwd: ROOT, timeout: 300_000 });
       console.log("host: docker compose services are up");

@@ -57,11 +57,8 @@ case "$cmd" in
 
   up)
     ensure_docker
-    if [ -z "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' memegen 2>/dev/null)" ]; then
-      docker rm -f memegen >/dev/null 2>&1 || true
-    fi
     pkill -f "yomu/src/edge_tts_server.py" 2>/dev/null || true
-    docker compose up -d "$@"
+    docker compose up -d --remove-orphans "$@"
     wait_web
     ;;
 
@@ -75,12 +72,9 @@ case "$cmd" in
     mkdir -p data && touch data/.deploying && trap 'rm -f data/.deploying' EXIT
     echo "Building radio/dist on host..."
     npm run build
-    if [ -z "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' memegen 2>/dev/null)" ]; then
-      docker rm -f memegen >/dev/null 2>&1 || true
-    fi
     pkill -f "yomu/src/edge_tts_server.py" 2>/dev/null || true
     echo "Rebuilding and starting Docker containers..."
-    docker compose up -d --build ${@:-web fli stays tts memegen tunnel}
+    docker compose up -d --remove-orphans --build ${@:-web fli stays tts tunnel}
     wait_web
     echo "Containerized site ready on http://localhost:8080"
     ;;

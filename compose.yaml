@@ -1,5 +1,5 @@
 # ihor.sh containerized stack on macOS (or Linux: see MIGRATE.md).
-# Runs web (server.ts + Meteor recorder), tts (Edge neural TTS), memegen, and tunnel (cloudflared) on one isolated network (`ihor`).
+# Runs web (server.ts + Meteor recorder), fli, stays, tts (Edge neural TTS), and tunnel (cloudflared) on one isolated network (`ihor`).
 # Host-only hardware/MLX services (Ollama :11434, SDR :8073, SDR-sat :8074, MLX bridge :8075, Meshtastic serial :8076)
 # stay on the host and are reached by `web` via `host.docker.internal`.
 services:
@@ -17,7 +17,6 @@ services:
       SDR_HOST: host.docker.internal
       HOST_BRIDGE: http://host.docker.internal:8075
       MESH_HOST: host.docker.internal:8076
-      MEMEGEN_URL: http://memegen:5000
       EDGE_TTS_URL: http://tts:5056
       FLI_MCP_URL: http://fli:8000/mcp
       STAYS_MCP_URL: http://stays:8000/mcp
@@ -103,16 +102,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-  memegen:
-    image: memegen:latest
-    container_name: memegen
-    restart: unless-stopped
-    cap_drop: ["ALL"]
-    security_opt: ["no-new-privileges:true"]
-    networks:
-      ihor:
-        ipv4_address: 172.30.0.4
 
   tunnel:
     image: cloudflare/cloudflared:latest

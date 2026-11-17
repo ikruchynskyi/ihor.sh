@@ -8,12 +8,11 @@
 |---|---|---|---|
 | `web` | Docker (`ihor-web`) | `127.0.0.1:8080` (`172.30.0.2`) | `server.ts` and the Meteor pass recorder (`meteor-rec.ts`) |
 | `tts` | Docker (`ihor-tts`) | `http://tts:5056` | Edge neural TTS (`yomu/src/edge_tts_server.py`) |
-| `memegen` | Docker (`memegen`) | `http://memegen:5000` | Local meme generator for Blip and Yomu |
 | `tunnel` | Docker (`ihor-tunnel`) | `172.30.0.10` | `cloudflared` tunnel (`ihor.sh`, `www.ihor.sh` → `http://web:8080`) |
 | `host` | Mac (`sh.ihor.server`) | `127.0.0.1:8075`, `:8076` | `host.ts`: starts Docker Desktop + Compose on boot; bridges `mlx_whisper` (`:8075/whisper`), `mflux` SeedVR2 upscaler (`:8075/upscale`), and Meshtastic USB serial (`:8076`) |
 | `sdr` | Mac (`sh.ihor.sdr`) | `127.0.0.1:8073` | `radio/server.ts` (`SDR_DEVICE=rtl`, Nooelec RTL-SDR) |
 | `sdr-sat` | Mac (`sh.ihor.sdr-sat`) | `127.0.0.1:8074` | `radio/server.ts` (`SDR_DEVICE=hackrf`, HackRF Pro for weather satellites) |
-| `ollama` | Mac (`Ollama.app`) | `127.0.0.1:11434` | Local LLM & embeddings (`qwen3.6:35b-mlx`, `nomic-embed-text`) |
+| `ollama` | Mac (`ollama serve`, headless) | `127.0.0.1:11434` | Local LLM & embeddings (`qwen3.6:35b-mlx`, `nomic-embed-text`) |
 
 ## Managing from the host
 
@@ -23,7 +22,7 @@ Use `./manage.sh` (or the matching `npm run` scripts):
 ./manage.sh status              # container health + host services (sdr, sdr-sat, host-bridge, ollama)
 ./manage.sh rebuild             # build radio/dist, rebuild & restart Docker containers (npm run rebuild)
 ./manage.sh deploy              # rebuild containers, restart host daemons, run npm run check (npm run deploy)
-./manage.sh restart [service]   # restart web, tts, memegen, tunnel, host, sdr, sdr-sat, ollama (./restart.sh)
+./manage.sh restart [service]   # restart web, fli, stays, tts, tunnel, host, sdr, sdr-sat, ollama (./restart.sh)
 ./manage.sh test [file...]      # run unit tests inside the web container (npm test)
 ./manage.sh check               # run lint.py + scripts/check.ts + scripts/aso-check.ts (npm run check)
 ./manage.sh logs [service]      # follow container logs, or ~/Library/Logs/ihor-*.log for sdr/sdr-sat/host
