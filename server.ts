@@ -74,7 +74,7 @@ let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 // Files served at the site root ("/theme.css") live in public/; everything else is at its own path in the repo.
 const PUBLIC = path.join(ROOT, "public");
-const PUBLIC_FILES = new Set(["/sw.js", "/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"]);
+const PUBLIC_FILES = new Set(["/sw.js", "/dialogs.js", "/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"]);
 const onDisk = (name: string) => path.join(PUBLIC_FILES.has(`/${name}`) ? PUBLIC : ROOT, name);
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(onDisk(name)).mtimeMs)}`;
 // The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.

@@ -17,7 +17,8 @@
     .page { min-height: 100%; display: flex; flex-direction: column; gap: 1.1em; padding: clamp(14px, 2vw, 40px); max-width: 2200px; margin: 0 auto; }
     .kiosk .back { display: none; } .idle body, .idle * { cursor: none !important; }
     .fgear { position: fixed; right: 1.2em; bottom: 1.2em; z-index: 5; font-size: 1.4em; padding: .35em .55em; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; opacity: 0; transition: opacity .3s; }
-    .fgear.on, .fgear:focus-visible { opacity: 1; } .fgear:focus-visible, .opts :focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .fgear:not(.on):not(:focus-visible) { pointer-events: none; } /* hidden, it mustn't catch clicks meant for the footer */
+    .fgear.on, .fgear:focus-visible { opacity: 1; } footer { padding-right: 3.6em; } .fgear:focus-visible, .opts :focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     .pair { display: flex; gap: 1em; align-items: center; background: var(--bg); border-radius: 10px; padding: .7em .9em; margin-bottom: .9em; } .pair .code { font: 700 1.6em ui-monospace, monospace; letter-spacing: .15em; color: var(--accent); }
     .pair input { font: 700 1.3em ui-monospace, monospace; letter-spacing: .12em; width: 6.5em; text-transform: uppercase; padding: .2em .4em; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
     header { display: flex; align-items: flex-end; gap: 1.2em; flex-wrap: wrap; }
@@ -88,6 +89,7 @@ const q = new URLSearchParams(location.search), kiosk = q.has("kiosk");
 if (kiosk) document.documentElement.classList.add("kiosk");
 const theme = q.get("theme") ?? (kiosk ? "dark" : ""); if (theme) document.documentElement.dataset.theme = theme;
 </script>
+<script type="module" src="/dialogs.js"></script>
 <script type="module">
 const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const NY = { timeZone: "America/New_York" }, ICON = { headline: "✦", happening: "🎟", weather: "☁", alerts: "🚨", transit: "🚇", news: "📰", incidents: "⚠" };
@@ -195,7 +197,7 @@ function settings(target = setupCode) {
     const h = pick();
     if (remote) { const ok = await sendScreen(id, h).then((r) => r.ok).catch(() => false); $("optMsg").textContent = ok ? `Sent to ${id} ✓ It changes within half a minute.` : "Couldn't send it. Try again."; return; }
     hide = h; try { localStorage.setItem(KEY, JSON.stringify([...h])); } catch {} sendScreen(screenId, h).catch(() => {});
-    if (fromUrl != null) { const u = new URL(location.href); u.searchParams.delete("hide"); history.replaceState(null, "", u); }
+    if (fromUrl != null) { const u = new URL(location.href); u.searchParams.delete("hide"); history.replaceState(history.state, "", u); }
     $("dlg").close(); render();
   };
   if (!remote) {

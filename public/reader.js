@@ -3,6 +3,7 @@
 // text/background pair is >= 7:1 contrast (WCAG AAA). Choices are kept per browser in localStorage.
 // Arcade (the default) is the pixel look; every other theme uses the sleek look (theme.css: glass panels, soft light).
 // It also draws the "still working" bar for the page's API calls (tracked by the inline script server.ts puts in <head>).
+import "/dialogs.js"; // pop-ups close with Back or a click outside them
 
 const FONTS = {
   inter: { label: "Inter", css: '"Inter", ui-sans-serif, system-ui, -apple-system, sans-serif', google: "Inter:wght@400;600;700" },
