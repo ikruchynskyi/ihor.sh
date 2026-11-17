@@ -141,6 +141,14 @@ button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b86b1e; }
 :host(.sleek) .panel footer button, :host(.sleek) .panel footer a { background: none; box-shadow: none; border: 0; padding: 4px 0; font: inherit; letter-spacing: .1em; text-transform: uppercase; transform: none; }
 :host(.sleek) .panel footer button:hover, :host(.sleek) .panel footer a:hover { color: var(--accent, #5ee1ff); }
 :host(.sleek) .x { width: 36px; height: 36px; padding: 0; border-radius: 999px; display: grid; place-items: center; font-size: 14px; }
+.mic { display: inline-grid; place-items: center; padding: 8px; color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); flex: none; }
+.mic:hover { color: var(--accent, #ffb347); }
+.mic.listening { color: #fff; background: #e0315a; box-shadow: 0 4px 0 #8f1836; animation: mic-pulse 1.1s ease-in-out infinite; }
+:host(.sleek) .mic { width: 36px; height: 36px; padding: 0; border-radius: 999px; color: var(--fg, #e8edff); background: color-mix(in srgb, var(--fg, #fff) 6%, transparent); border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent); box-shadow: none; }
+:host(.sleek) .mic:hover { border-color: var(--accent, #5ee1ff); color: var(--accent, #5ee1ff); box-shadow: 0 0 0 1px var(--glow, transparent); }
+:host(.sleek) .mic.listening, :host(.sleek) .mic.listening:hover { color: #fff; background: #e0315a; border-color: #ff5c8a; box-shadow: 0 0 14px rgba(255,92,138,.55); }
+@keyframes mic-pulse { 50% { filter: brightness(1.2); } }
+@media (prefers-reduced-motion: reduce) { .mic.listening { animation: none; } }
 button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-offset: 2px; }
 .chips button { color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); text-align: left; line-height: 1.5; }
 .panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
@@ -212,7 +220,7 @@ root.innerHTML = `<style>${CSS}</style>
     </header>
     <div class="log" aria-live="polite"></div>
     <div class="wardrobe" hidden></div>
-    <form><span class="caret" aria-hidden="true">▶</span><input aria-label="Your question" autocomplete="off" maxlength="500" placeholder="Ask me anything about this page…"><button>SEND</button></form>
+    <form><span class="caret" aria-hidden="true">▶</span><input aria-label="Your question" autocomplete="off" maxlength="500" placeholder="Ask me anything about this page…"><button type="button" class="mic" aria-label="Voice input" aria-pressed="false" title="Speak your question" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button><button>SEND</button></form>
     <footer><span>B OPEN · ESC CLOSE</span><a href="/">⌂ HOME</a><label class="deep" title="Slower: Blip reasons harder and may call many tools, for hard or many-part questions"><input type="checkbox"> 🧠 THINK HARD</label><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
   </section>
 </div>`;
@@ -681,6 +689,7 @@ function placeMochi(x, y) {
 }
 addEventListener("resize", () => { if (mochi) { mochi.box.style.transition = "none"; placeMochi(mochi.box.offsetLeft, mochiFloor()); } });
 
+let micRec = null;
 /** Mochi (on) or Blip as the companion; says whether Mochi is the one on screen now. */
 function useMochi(on) {
   local.set("blip:who", on ? "mochi" : "");
@@ -730,6 +739,7 @@ function useMochi(on) {
   $(".hide").textContent = `HIDE ${NAME()}`; askBtn.setAttribute("aria-label", `Ask ${mochi ? "Mochi" : "Blip"}`);
   root.querySelector("svg.portrait").toggleAttribute("hidden", !!mochi); root.querySelector(".portrait.cat").hidden = !mochi;
   input.placeholder = mochi ? "Tell me anything, or ask about this page~" : "Ask me anything about this page…";
+  if (micRec) input.placeholder = "Listening…";
   $(".wear").textContent = mochi ? "🤖 BLIP" : "👕 WARDROBE"; $(".wear").title = mochi ? "Switch back to Blip" : "";
   $(".wardrobe").hidden = true;
   if (dialogOpen) renderLog();
@@ -798,6 +808,7 @@ function openDialog(q) {
 }
 function closeDialog() {
   if (!dialogOpen) return;
+  cancelMic();
   dialogOpen = false; dialog.hidden = true; askBtn.hidden = hidden;
   if (!hidden) blipEl.focus({ preventScroll: true });
 }
@@ -816,6 +827,66 @@ $(".wear").onclick = () => { if (mochi) return useMochi(false); const w = $(".wa
 root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); e.stopPropagation(); });
 for (const type of ["keyup", "keypress"]) root.addEventListener(type, (e) => e.stopPropagation());
 form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
+
+// Voice input (Web Speech API): same browser capability check as Yomu chat; hidden where unsupported.
+const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+const micBtn = $(".mic");
+const defaultPlaceholder = () => (mochi ? "Tell me anything, or ask about this page~" : "Ask me anything about this page…");
+const resetMicUi = (placeholder = defaultPlaceholder()) => {
+  micBtn.classList.remove("listening");
+  micBtn.setAttribute("aria-pressed", "false");
+  micBtn.title = "Speak your question";
+  input.placeholder = placeholder;
+};
+const cancelMic = () => {
+  if (!micRec) return;
+  const r = micRec;
+  micRec = null;
+  resetMicUi();
+  try { r.abort(); } catch {}
+};
+if (Recognition) {
+  micBtn.hidden = false;
+  micBtn.onclick = () => {
+    if (micRec) {
+      try { micRec.stop(); } catch { cancelMic(); }
+      return;
+    }
+    const r = new Recognition();
+    micRec = r;
+    r.lang = navigator.language || document.documentElement.lang || "en-US";
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+    const base = input.value.trim();
+    let finalText = "";
+    let denied = false;
+    micBtn.classList.add("listening");
+    micBtn.setAttribute("aria-pressed", "true");
+    micBtn.title = "Stop listening";
+    input.placeholder = "Listening…";
+    r.onresult = (e) => {
+      if (micRec !== r) return;
+      const spoken = Array.from(e.results, (res) => res[0]?.transcript ?? "").join(" ").replace(/\s+/g, " ").trim();
+      if (!spoken) return;
+      const combined = base ? `${base} ${spoken}` : spoken;
+      input.value = combined.slice(0, input.maxLength);
+      if (e.results[e.results.length - 1]?.isFinal) finalText = input.value;
+    };
+    r.onerror = (e) => {
+      if (e?.error === "not-allowed" || e?.error === "service-not-allowed") denied = true;
+    };
+    r.onend = () => {
+      const active = micRec === r;
+      if (active) {
+        micRec = null;
+        resetMicUi(denied ? "Microphone permission blocked" : defaultPlaceholder());
+      }
+      if (active && finalText && !pending) send(finalText);
+      else if (active && input.value) input.focus();
+    };
+    try { r.start(); } catch { cancelMic(); }
+  };
+}
 
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
@@ -868,6 +939,7 @@ const pageInfo = () => ({
 
 let pending = false;
 async function send(q) {
+  cancelMic();
   const deep = deepBox.checked;
   q = q.trim().slice(0, deep ? 2000 : 500);
   if (!q || pending) return;
