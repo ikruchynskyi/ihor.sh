@@ -867,10 +867,10 @@ const isBig = (e: any) => (BIG_VENUE.test(`${e.venue ?? ""} ${e.address ?? ""}`)
 export async function dayFacts() {
   const { F, add } = factList(), put = (sec: string, text: string, at?: { lat: number | null; lon: number | null }, url?: string) => { add(text, at); Object.assign(F[F.length - 1], { sec }, /^https?:\/\//.test(url ?? "") ? { url } : {}); };
   const { events } = await import("./evening.ts"); // evening.ts imports this file: loaded when it's needed, not at the top
-  const ev = await events({ from: nyHHMM() } as any).catch(() => null), list = (ev?.events ?? []) as any[];
+  const ev = await events({ from: nyHHMM() } as any).catch(() => null), list = (ev?.events ?? []) as any[], bigOnes: any[] = [];
   if (list.length) {
     const cats: Record<string, number> = {}; for (const e of list) cats[e.category] = (cats[e.category] ?? 0) + 1;
-    const big = list.filter(isBig);
+    const big = list.filter(isBig); bigOnes.push(...big);
     put("happening", `Events still to come today in the city: ${list.length} (${Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, n]) => `${n} ${c}`).join(", ")}); ${big.length} at a major venue or a citywide occasion`);
     // happenings before attractions: a museum's timed entries, all-day listings and things that started earlier come last
     const score = (e: any) => (PRIORITY[e.source] ?? 5) + ((e.times?.length ?? 1) > 2 ? 6 : 0) + (e.all_day ? 4 : 0) + (e.ongoing ? 3 : 0) + (/museum|exhibit|experience|immersive/i.test(`${e.title} ${e.venue ?? ""}`) ? 3 : 0);
@@ -896,16 +896,24 @@ export async function dayFacts() {
   if ((p.customersOut ?? 0) >= 1000) put("alerts", `Con Ed: ${p.outages} power outages with ${p.customersOut} customers out`);
   const news = todaysNews().sort((a, b) => b.outlets.length - a.outlets.length || b.starts - a.starts).slice(0, 6);
   for (const n of news) put("news", `${n.title} (${n.outlets.join(", ")}, ${hhmm(n.starts)})`, n, n.url);
+  const topNews = todaysNews().sort((a, b) => b.outlets.length - a.outlets.length || b.starts - a.starts).slice(0, 24);
   for (const c of incidents().filter((c) => c.sev >= 2 && (c.probability ?? 0) >= 0.7).slice(0, 3))
     put("incidents", `${c.title}${c.lat != null ? ` (${[neighborhood(c.lat, c.lon), borough(c.lat, c.lon)].filter(Boolean).join(", ")})` : ""}: severity ${c.sev} of 3, ${c.events.length} report${c.events.length > 1 ? "s" : ""}, since ${hhmm(c.starts)}`, c);
-  return F;
+  // the display (nyc/today.html) lists these itself, filtered by what its viewer wants to see
+  const when = (e: any) => (e.all_day ? "All day" : hhmm(Date.parse(`${e.start}-05:00`) / 1000));
+  // big ones first, then the display's second tier: ticketed shows and the city's festivals, never tours, classes or permits (they fill a screen that hides some kinds)
+  const notable = list.filter((e) => !isBig(e) && !SMALL.test(e.title) && (e.times?.length ?? 1) <= 2 && (e.source === "ticketmaster" || (["music", "theater", "comedy", "arts", "community", "food"].includes(e.category) && e.source !== "eventbrite")));
+  const eventsList = [...bigOnes.sort((a, b) => a.start.localeCompare(b.start)).map((e) => ({ ...e, big: true })), ...notable.sort((a, b) => (PRIORITY[a.source] ?? 5) - (PRIORITY[b.source] ?? 5) || a.start.localeCompare(b.start)).map((e) => ({ ...e, big: false }))].slice(0, 50).map((e) => ({ big: e.big, title: e.title, venue: e.venue ?? null, borough: e.borough ?? null, start: e.start, time: when(e), allDay: !!e.all_day,
+    free: !!e.free, priceMin: e.price_min ?? null, category: e.category ?? "other", url: /^https?:\/\//.test(e.url ?? "") ? e.url : null }));
+  const newsList = topNews.map((n) => ({ title: n.title, outlets: n.outlets, topic: n.topic ?? "other", at: n.starts, url: n.url ?? null }));
+  return { F, events: eventsList, news: newsList };
 }
 export async function makeDayBrief() {
-  const F = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
+  const { F, events: eventsList, news: newsList } = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
   const schema = { type: "object", required: ["headline", ...DAY_SECTIONS.map(([k]) => k)], properties: { headline: item, ...Object.fromEntries(DAY_SECTIONS.map(([k]) => [k, { type: "array", items: item }])) } };
   let out: any = null;
   for (let attempt = 0; attempt < 2 && !out; attempt++) try { // the local model now and then answers nothing: once more
-    out = await whenIdle(() => llmJson(`You write today's brief for people in New York City, as of ${hhmm(now())}: mostly what's on. Use only the numbered facts (each says its section). 'headline': one sentence on the best of today, mostly events, with the weather if it matters. 'happening' (the main part): up to 6 bullets on today's big events (the facts list only those: major venues and citywide occasions), a mix of kinds, each naming the event, place and time; [] when there are none. 'weather': 1 or 2 bullets (now, and what to wear or carry). 'alerts', 'transit', 'news', 'incidents': up to 3 bullets each, only what matters to someone out in the city today; [] when their facts are empty or minor. Each bullet is one short plain sentence (under 25 words) and lists the ids of the facts it uses; copy numbers and times exactly as the facts write them; add nothing the facts don't say. Reply as JSON.`,
+    out = await whenIdle(() => llmJson(`You write today's brief for people in New York City, as of ${hhmm(now())}: mostly what's on. Use only the numbered facts (each says its section). 'headline': one sentence on today overall: the weather, how much is on, and what matters most; don't name specific events or games. 'happening' (the main part): up to 6 bullets on today's big events (the facts list only those: major venues and citywide occasions), a mix of kinds, each naming the event, place and time; [] when there are none. 'weather': 1 or 2 bullets (now, and what to wear or carry). 'alerts', 'transit', 'news', 'incidents': up to 3 bullets each, only what matters to someone out in the city today; [] when their facts are empty or minor. Each bullet is one short plain sentence (under 25 words) and lists the ids of the facts it uses; copy numbers and times exactly as the facts write them; add nothing the facts don't say. Reply as JSON.`,
       F.map((f) => `${f.id} [${f.sec}]: ${f.text}`).join("\n"), schema, 4000));
   } catch (e) { console.warn("city brief:", (e as Error).message); }
   const ok = (x: any) => x && typeof x.text === "string" && Array.isArray(x.facts) && faithful(x, byId);
@@ -915,7 +923,7 @@ export async function makeDayBrief() {
     if (kept.length) bullets.push(...kept.map((x: any) => ({ text: x.text, facts: x.facts, section: k })));
     else if (k !== "news" && k !== "incidents" || got.length) bullets.push(...F.filter((f) => f.sec === k).slice(0, k === "happening" ? 4 : 2).map((f) => ({ text: f.text, facts: [f.id], section: k, byCode: true }))); // the model's missing or wrong: its facts
   }
-  const b = { headline: ok(out?.headline) ? { text: out.headline.text, facts: out.headline.facts } : null, bullets, sections: DAY_SECTIONS, by: out ? LOCAL_MODEL : "code (the model didn't answer)", dropped };
+  const b = { headline: ok(out?.headline) ? { text: out.headline.text, facts: out.headline.facts } : null, bullets, sections: DAY_SECTIONS, by: out ? LOCAL_MODEL : "code (the model didn't answer)", dropped, events: eventsList, news: newsList };
   db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run("city", now(), JSON.stringify(b), JSON.stringify(F));
   return latestBrief("city");
 }

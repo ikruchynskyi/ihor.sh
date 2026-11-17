@@ -621,6 +621,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const b = latestBrief("city"), w: any = await weather().catch(() => null);
     return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120", "access-control-allow-origin": "*" }).end(JSON.stringify({ at: b?.at ?? null, headline: b?.headline?.text ?? null, sections: DAY_SECTIONS,
       bullets: (b?.bullets ?? []).map((x: any) => ({ text: x.text, section: x.section ?? "incidents", facts: x.facts })), facts: (b?.facts ?? []).map((f: any) => ({ id: f.id, text: f.text, url: f.url, lat: f.lat, lon: f.lon })),
+      events: b?.events ?? [], news: b?.news ?? [],
       weather: w && { tempF: w.tempF, sky: w.sky, windKmh: w.windKmh, humidity: w.humidity, station: w.station, at: w.at, forecast: (w.forecast ?? []).slice(0, 2) } }));
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
