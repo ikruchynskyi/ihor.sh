@@ -19,7 +19,9 @@ services:
       MESH_HOST: host.docker.internal:8076
       MEMEGEN_URL: http://memegen:5000
       EDGE_TTS_URL: http://tts:5056
+      FLI_MCP_URL: http://fli:8000/mcp
       TRUSTED_PROXY: 172.30.0.1,172.30.0.10,192.168.65.1
+    depends_on: ["fli"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -37,6 +39,25 @@ services:
         ipv4_address: 172.30.0.2
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  fli:
+    build:
+      context: .
+      target: fli
+    container_name: ihor-fli
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      ihor:
+        ipv4_address: 172.30.0.5
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3

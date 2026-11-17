@@ -1,5 +1,5 @@
 #!/bin/sh
-# Restart ihor.sh services: ./restart.sh [web|server] [tts] [memegen] [tunnel] [host] [sdr] [sdr-sat] [ollama]  (no arguments: all)
+# Restart ihor.sh services: ./restart.sh [web|server] [fli] [tts] [memegen] [tunnel] [host] [sdr] [sdr-sat] [ollama]  (no arguments: all)
 # Containerized services (web, tts, memegen, tunnel) run in Docker Compose; hardware/MLX services (host, sdr, sdr-sat, ollama)
 # run on the Mac host as LaunchDaemons (or login agents) and restart without sudo when their process exits.
 set -u
@@ -33,7 +33,7 @@ restart_launchd() {
   fi
 }
 
-for s in ${@:-web tts memegen tunnel host sdr sdr-sat ollama}; do
+for s in ${@:-web fli tts memegen tunnel host sdr sdr-sat ollama}; do
   case "$s" in
     server|web)
       ensure_docker
@@ -41,6 +41,14 @@ for s in ${@:-web tts memegen tunnel host sdr sdr-sat ollama}; do
         docker compose restart web && echo "restarted web (docker)"
       else
         docker compose up -d web && echo "started web (docker)"
+      fi
+      ;;
+    fli)
+      ensure_docker
+      if docker compose ps --status running --format '{{.Service}}' 2>/dev/null | grep -qx "fli"; then
+        docker compose restart fli && echo "restarted fli (docker)"
+      else
+        docker compose up -d fli && echo "started fli (docker)"
       fi
       ;;
     tts|edge_tts)
@@ -90,7 +98,7 @@ for s in ${@:-web tts memegen tunnel host sdr sdr-sat ollama}; do
       fi
       ;;
     *)
-      echo "Unknown service: $s (choose from: web, tts, memegen, tunnel, host, sdr, sdr-sat, ollama)" >&2
+      echo "Unknown service: $s (choose from: web, fli, tts, memegen, tunnel, host, sdr, sdr-sat, ollama)" >&2
       exit 1
       ;;
   esac

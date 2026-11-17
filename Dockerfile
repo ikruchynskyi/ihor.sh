@@ -1,3 +1,14 @@
+# Flight Search MCP server (https://github.com/punitarani/fli)
+FROM node:26-slim AS fli
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip python3-venv git ca-certificates \
+  && python3 -m venv /opt/fli \
+  && /opt/fli/bin/pip install --no-cache-dir "flights[mcp] @ git+https://github.com/punitarani/fli.git" \
+  && apt-get purge -y git python3-pip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/fli/bin:$PATH" PYTHONUNBUFFERED=1 HOST=0.0.0.0 PORT=8000 HOME=/tmp
+USER nobody
+EXPOSE 8000
+CMD ["fli-mcp-http"]
+
 # Edge TTS microservice (yomu/src/edge_tts_server.py)
 FROM python:3.12-slim AS tts
 WORKDIR /app

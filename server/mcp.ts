@@ -21,7 +21,7 @@ const authorized = (header: string | undefined) => {
 };
 
 type Rpc = { jsonrpc: "2.0"; id?: string | number | null; method: string; params?: any };
-const INSTRUCTIONS = "Live NYC data (subway, buses, ferries, Citi Bike, traffic, 311, events, restaurants, trips), the sky (weather, aircraft, ISS, hurricanes), radio (stations, callsigns, repeaters), web search, and meme generation (200+ templates). Call ask_blip for a composed answer.";
+const INSTRUCTIONS = "Live NYC data (subway, buses, ferries, Citi Bike, traffic, 311, events, restaurants, trips), the sky (weather, aircraft, ISS, hurricanes), live flight search (Google Flights via Fli), radio (stations, callsigns, repeaters), web search, and meme generation (200+ templates). Call ask_blip for a composed answer.";
 const ASK = { name: "ask_blip", description: "Ask Blip, ihor.sh's assistant, a question in plain words; it picks and chains its own tools (and web search) and answers in a few sentences with links.", inputSchema: { type: "object", properties: { question: { type: "string", description: "The question" } }, required: ["question"] } };
 
 // Without the token, /mcp still answers, with site_search only: searching the site is open to everyone.
@@ -70,6 +70,7 @@ export const agentCard = (site: string) => ({
     { id: "radio", name: "Radio", description: "Radio stations, ham callsigns, repeaters, HF propagation and what the site's receiver heard on air.", tags: ["radio", "ham", "sdr"], examples: ["Look up callsign W1AW"] },
     { id: "site-and-web", name: "ihor.sh and the web", description: "Finds pages on ihor.sh (radio, AI, electronics and Japanese courses, NYC tools) and searches the web.", tags: ["search"], examples: ["Which ihor.sh lesson explains attention?"] },
     { id: "memes", name: "Meme generator", description: "Generate custom meme images from 200+ templates with top/bottom text or semantic mood search.", tags: ["memes", "fun", "images"], examples: ["Make a dad joke meme with Captain America", "Generate an honest work meme about studying Japanese"] },
+    { id: "flights", name: "Flights", description: "Search live flights, cheapest travel dates, 'fly anywhere' deals, airports and booking links worldwide.", tags: ["flights", "travel"], examples: ["Cheapest nonstop flights from JFK to London next Friday", "Where can I fly cheap from NYC in December?"] },
   ],
 });
 

@@ -19,6 +19,7 @@ import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 import { generateMeme, searchTemplates } from "./memes.ts";
+import { callFli } from "./fli.ts";
 
 import { asker, OLLAMA, LOCAL_MODEL as MODEL, OWNER_MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? OWNER_MODEL; // DeepSeek on Ollama Cloud for everyone (user, 2026-11-16: no gemma)
@@ -28,7 +29,7 @@ const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America
 // "Wed 2026-10-28, Thu 2026-10-29, …": the model can't be trusted to work out which date "Sunday" is
 const week = () => Array.from({ length: 8 }, (_, i) => new Date(Date.now() + i * 864e5)).map((d) => `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" })} ${d.toLocaleDateString("en-CA", { timeZone: "America/New_York" })}`).join(", ");
 
-type Tool = { description: string; parameters: Record<string, { type: string; description: string; enum?: string[] }>; required?: string[]; run: (a: any) => Promise<unknown> | unknown };
+type Tool = { description: string; parameters: Record<string, { type: string; description: string; enum?: string[]; items?: { type: string } }>; required?: string[]; run: (a: any) => Promise<unknown> | unknown };
 const TOOLS: Record<string, Tool> = {
   site_search: {
     description: "Search this site (ihor.sh): every page, lesson, tool, Yomu story and grammar point, by topic or words. Use it for 'where is…', 'is there a page about…', 'which chapter covers…'. Returns titles, URLs and snippets.",
@@ -521,6 +522,85 @@ const TOOLS: Record<string, Tool> = {
         unusual: anomalies().slice(0, 8).map((u) => ({ text: u.text, mapLink: mapAt(u.lat, u.lon) })), map: "/nyc/#view=40.72,-73.95,11,incidents" };
     },
   },
+  find_airports: {
+    description: "Search for airports by city name, airport name, IATA code, or ICAO code (via Fli). Use before search_flights when you need airport IATA codes (e.g. 'New York' → JFK, LGA, EWR).",
+    parameters: {
+      query: { type: "string", description: "City, airport name, IATA or ICAO code" },
+      limit: { type: "number", description: "Max results (1-50, default 10)" },
+    },
+    required: ["query"],
+    run: ({ query, limit }) => callFli("find_airports", { query: String(query), limit: limit != null ? Number(limit) : undefined }),
+  },
+  search_flights: {
+    description: "Search live Google Flights options and prices for a route and date (one-way or round-trip, via Fli).",
+    parameters: {
+      origin: { type: "string", description: "Departure airport IATA code(s), comma-separated (e.g. 'JFK' or 'JFK,LGA,EWR')" },
+      destination: { type: "string", description: "Arrival airport IATA code(s), comma-separated (e.g. 'LHR' or 'CDG')" },
+      departure_date: { type: "string", description: "Departure date YYYY-MM-DD" },
+      return_date: { type: "string", description: "Return date YYYY-MM-DD (omit for one-way)" },
+      cabin_class: { type: "string", description: "Cabin class", enum: ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] },
+      max_stops: { type: "string", description: "Max stops", enum: ["ANY", "NON_STOP", "ONE_STOP", "TWO_PLUS_STOPS"] },
+      sort_by: { type: "string", description: "Sort order", enum: ["TOP_FLIGHTS", "BEST", "CHEAPEST", "DEPARTURE_TIME", "ARRIVAL_TIME", "DURATION"] },
+      departure_window: { type: "string", description: "Departure hour window 'HH-HH' (e.g. '6-20')" },
+      airlines: { type: "array", items: { type: "string" }, description: "Filter by airline IATA codes (e.g. ['BA', 'AA'])" },
+      passengers: { type: "number", description: "Adult passengers (default 1)" },
+      children: { type: "number", description: "Children ages 2-11" },
+      currency: { type: "string", description: "ISO 4217 currency code (e.g. USD, EUR)" },
+    },
+    required: ["origin", "destination", "departure_date"],
+    run: (a) => callFli("search_flights", a),
+  },
+  search_dates: {
+    description: "Find the cheapest flight dates across a flexible date range for a route (via Fli).",
+    parameters: {
+      origin: { type: "string", description: "Departure airport IATA code(s)" },
+      destination: { type: "string", description: "Arrival airport IATA code(s)" },
+      start_date: { type: "string", description: "Start of date range YYYY-MM-DD" },
+      end_date: { type: "string", description: "End of date range YYYY-MM-DD" },
+      trip_duration: { type: "number", description: "Trip length in days for round-trip" },
+      is_round_trip: { type: "boolean", description: "True for round-trip" },
+      cabin_class: { type: "string", description: "Cabin class", enum: ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] },
+      max_stops: { type: "string", description: "Max stops", enum: ["ANY", "NON_STOP", "ONE_STOP", "TWO_PLUS_STOPS"] },
+      sort_by_price: { type: "boolean", description: "Sort lowest price first" },
+      passengers: { type: "number", description: "Adult passengers" },
+      currency: { type: "string", description: "ISO 4217 currency code" },
+    },
+    required: ["origin", "destination", "start_date", "end_date"],
+    run: (a) => callFli("search_dates", a),
+  },
+  search_explore: {
+    description: "Discover cheap flight destinations from an origin ('fly anywhere' or to a region like EUROPE, ASIA, NORTH_AMERICA, via Fli).",
+    parameters: {
+      origin: { type: "string", description: "Origin airport IATA code (e.g. 'JFK')" },
+      destination: { type: "string", description: "ANYWHERE, EUROPE, SOUTHERN_EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, or OCEANIA" },
+      departure_date: { type: "string", description: "Departure date YYYY-MM-DD" },
+      round_trip: { type: "boolean", description: "True for round-trip prices" },
+      trip_min_nights: { type: "number", description: "Nights for round-trip (1-23, must equal trip_max_nights)" },
+      trip_max_nights: { type: "number", description: "Nights for round-trip (must equal trip_min_nights)" },
+      max_price: { type: "number", description: "Maximum fare" },
+      max_stops: { type: "string", description: "Max stops", enum: ["ANY", "NON_STOP", "ONE_STOP", "TWO_PLUS_STOPS"] },
+      max_flight_duration: { type: "number", description: "Max flight duration in minutes" },
+      currency: { type: "string", description: "ISO 4217 currency code" },
+      limit: { type: "number", description: "Max destinations to return" },
+    },
+    required: ["origin", "departure_date"],
+    run: (a) => callFli("search_explore", a),
+  },
+  get_booking_options: {
+    description: "Get airline and OTA booking options, fares and booking links for a specific flight itinerary from search_flights (via Fli).",
+    parameters: {
+      origin: { type: "string", description: "Departure airport IATA code(s)" },
+      destination: { type: "string", description: "Arrival airport IATA code(s)" },
+      departure_date: { type: "string", description: "Departure date YYYY-MM-DD" },
+      return_date: { type: "string", description: "Return date YYYY-MM-DD (omit for one-way)" },
+      flight_numbers: { type: "array", items: { type: "string" }, description: "Flight numbers in order (e.g. ['BA178'] or ['AA100', 'AA200'])" },
+      cabin_class: { type: "string", description: "Cabin class", enum: ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] },
+      passengers: { type: "number", description: "Adult passengers" },
+      currency: { type: "string", description: "ISO 4217 currency code" },
+    },
+    required: ["origin", "destination", "departure_date"],
+    run: (a) => callFli("get_booking_options", a),
+  },
 };
 /** A map link that opens the NYC map at a point with its "what's here" popup, titled with the place's name. */
 const mapAt = (lat: number, lon: number, name = "") => `/nyc/#at=${lat.toFixed(5)},${lon.toFixed(5)},17${name ? `|${encodeURIComponent(name)}` : ""}`;
@@ -597,6 +677,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Where: on a map page the page objects carry mapView (the area the visitor is looking at). A question that names no place ("what's flying here?", "is it raining?", "any webcams?") is about that area: pass its lat/lon to the tool. With no mapView (the home page, other pages), assume NYC.
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 - Memes & humor: generate_meme to craft witty, ironic, or dad-joke memes with iconic templates, or search_memes to find matching templates.
+- Flights (worldwide, live Google Flights via Fli): find_airports to resolve city/airport IATA codes (e.g. NYC → JFK, LGA, EWR), search_flights for specific dates, search_dates for the cheapest dates in a window, search_explore for "fly anywhere" or regional deals, and get_booking_options for booking fares/links on a chosen flight. Share prices, stops, times and booking/Google Flights links from the tool results.
 
 How to answer:
 - Be warm, playful and brief: usually 1-4 short sentences, like a game character. Go longer only when asked to explain.
