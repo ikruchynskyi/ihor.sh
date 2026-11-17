@@ -854,9 +854,12 @@ async function nearMe(at, label = "you") {
   seen.near = { center: at, radiusM: NEAR_M, counts: { incidents: n("incident"), closuresAndPermits: n("planned"), reports311LastWeek: r311, unusual: city?.unusual?.map((u) => u.text), areaWideAlerts: city?.areaWide?.map((e) => e.title), subway: n("subway"), stationsWithAlerts: withAlerts, busStops: n("bus"), citiBike: n("bike"), cameras: n("camera"), restrooms: n("restroom") }, items: items.slice(0, 40).map((i) => i.label.replace(/<[^>]+>/g, "")) };
   return $("nearBox");
 }
+const saveBlipLoc = (lat, lon, accuracy = 0) => {
+  try { sessionStorage.setItem("blip:loc", JSON.stringify({ lat: +Number(lat).toFixed(4), lon: +Number(lon).toFixed(4), accuracyMeters: Math.round(accuracy || 0), at: Date.now() })); } catch {}
+};
 function whereAmI() {
   if (meAt) return Promise.resolve(meAt);
-  return new Promise((resolve, reject) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }), (e) => reject(new Error(e.message)), { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }) : reject(new Error("no geolocation")));
+  return new Promise((resolve, reject) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => { saveBlipLoc(p.coords.latitude, p.coords.longitude, p.coords.accuracy); resolve({ lat: p.coords.latitude, lng: p.coords.longitude }); }, (e) => reject(new Error(e.message)), { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }) : reject(new Error("no geolocation")));
 }
 $("nearBtn").onclick = async () => { $("nearBox").hidden = false; $("nearBox").textContent = "Finding you…"; try { await nearMe(await whereAmI(), "you"); } catch (e) { $("nearBox").textContent = `Couldn't get your location (${e.message}). Allow location for this site, or use the map center.`; } };
 $("nearHere").onclick = () => nearMe(viewCenter(), "the map center");
@@ -2017,6 +2020,7 @@ map.on("dragstart", () => (mapTouched = true));
 map.on("locationfound", (e) => {
   const first = !meAt;
   meAt = e.latlng; meAccuracy = e.accuracy;
+  saveBlipLoc(e.latlng.lat, e.latlng.lng, e.accuracy);
   meLayer.clearLayers();
   L.circle(e.latlng, { radius: e.accuracy, color: "#1c7ed6", weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
   L.circleMarker(e.latlng, { radius: 8, color: "#fff", weight: 3, fillColor: "#1c7ed6", fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip(`You are here (±${Math.round(e.accuracy)} m)`).addTo(meLayer);
@@ -2030,6 +2034,10 @@ map.on("locationerror", (e) => {
   L.popup().setLatLng(viewCenter()).setContent(`Couldn't get your location: ${esc(e.message)}. Allow location for this site in the browser, or pick the start with 📍.`).openOn(map);
 });
 $("tHere").onclick = () => locateMe(true);
+addEventListener("blip:location", (ev) => {
+  const d = ev.detail;
+  if (!meAt && d && Number.isFinite(d.lat) && Number.isFinite(d.lon)) { meAt = L.latLng(d.lat, d.lon); meAccuracy = d.accuracyMeters ?? 0; }
+});
 const NYC = L.latLngBounds([40.49, -74.27], [40.92, -73.68]);
 locateMe(false, true); // show you on the map right away (no start set)
 // The map opens on the whole city, fitted into the part nothing floats over: the God's-eye view. A link chooses its own view.
@@ -2358,7 +2366,7 @@ window.blipContext = () => {
     tripForm: { from: $("tFrom").value || null, to: $("tTo").value || null, stops: stopIds().map((id) => $(id).value).filter(Boolean), mode: document.querySelector('input[name="tMode"]:checked')?.value, avoidFerries: $("tNoFerry").checked, stepFree: $("tAccess").checked, picking: picking || null },
     // ~11 m precision is plenty for "nearest bike"; it goes to the chat model with the question
     myPlaces: seen.zones ?? "none saved (the visitor can press ⭐ Watch this spot on a map click, or ⭐ Watch this route on a planned trip)",
-    visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
+    visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: call request_location if needed)",
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastBuildingReport: seen.building && { address: seen.building.address, building: seen.building.building, hpdOpenViolations: seen.building.hpdOpenViolations, tenantComplaintsLastYear: seen.building.tenantComplaintsLastYear, rats: seen.building.rats, whoOwnsWhat: seen.building.whoOwnsWhat }, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,

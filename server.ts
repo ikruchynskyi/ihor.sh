@@ -132,15 +132,22 @@ function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   return true;
 }
 // Blip in the site chat: one question per visitor session every 30 s (MCP and A2A have their own auth and no such limit).
-const ASK_EVERY_MS = 30_000, lastAsk = new Map<string, number>(); // session id → when its last question came in
-/** Seconds this session must still wait, or 0 (and the question counts). */
+const ASK_EVERY_MS = 30_000, lastAsk = new Map<string, number>(), awaitingLoc = new Set<string>(); // session id → when its last question came in
+/** Seconds this session must still wait, or 0 (and the question counts). A one-shot exemption applies right after Blip called request_location. */
 function askWait(id: string, now = Date.now()) {
+  if (awaitingLoc.delete(id)) { lastAsk.set(id, now); return 0; }
   const left = Math.ceil(((lastAsk.get(id) ?? -Infinity) + ASK_EVERY_MS - now) / 1000);
   if (left > 0) return left;
   if (lastAsk.size > 50_000) lastAsk.clear();
   lastAsk.set(id, now);
   return 0;
 }
+const noteLocRequest = (id: string, ans: any) => {
+  if (ans?.actions?.some((a: any) => a.name === "request_location")) {
+    if (awaitingLoc.size > 50_000) awaitingLoc.clear();
+    awaitingLoc.add(id);
+  }
+};
 const busyReply = (res: http.ServerResponse, e: unknown) => res.writeHead(503, { "content-type": "application/json", "retry-after": "60" }).end(JSON.stringify({ error: (e as Error).message }));
 
 function allowed(ip: string) {
@@ -822,7 +829,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const body = JSON.parse(raw), system = body?.persona === "mochi" ? MOCHI_SYSTEM : SYSTEM;
       let gone = false; res.on("close", () => { gone = true; }); // left while in line: their turn is skipped
       if (!body?.stream) {
-        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await turn(() => gone ? Promise.reject(new Error("left")) : ask(body, system)))); }
+        try { const ans = await turn(() => gone ? Promise.reject(new Error("left")) : ask(body, system)); noteLocRequest(session!.id, ans); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(ans)); }
         catch (e) { if (e instanceof LineFull) return busyReply(res, e); throw e; }
       }
       // Streamed: its place in line while it waits, then one JSON line per step as Blip thinks and calls tools (the chat
@@ -830,6 +837,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
       try {
         const answer = await turn(() => gone ? Promise.reject(new Error("left")) : ask(body, system, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
+        noteLocRequest(session!.id, answer);
         res.end(JSON.stringify(answer) + "\n");
       } catch (e) { if (!gone) res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
       return;

@@ -199,7 +199,7 @@ export async function searchPlaces({ what, lat, lon, km = 1, minRating = 0, maxP
     const list = (await restaurantsNear(lat, lon, r * 1000).catch(() => [])).filter((x: any) => !words.length || words.some((w) => `${x.cuisine} ${x.name}`.toLowerCase().includes(w)));
     if (list.length) return { source: "NYC restaurant inspections (grade A); Google's details aren't available right now", results: list.slice(0, 10).map((x: any) => ({ name: x.name, kind: x.cuisine, address: x.address, lat: x.lat, lon: x.lon, km: +(x.m / 1000).toFixed(2), grade: "A", googleMaps: maps(x.name, x.address) })) };
   }
-  const d = await json(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=25&lang=en&bbox=-74.26,40.49,-73.69,40.92`).catch(() => null);
+  const d = await json(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=25&lang=en${inNyc(lat, lon) ? "&bbox=-74.26,40.49,-73.69,40.92" : ""}`).catch(() => null);
   const list = ((d?.features ?? []) as any[]).map((f) => ({ name: f.properties.name, kind: String(f.properties.osm_value ?? "").replace(/_/g, " "), address: [f.properties.housenumber, f.properties.street].filter(Boolean).join(" "), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }))
     .filter((x) => x.name).map((x) => ({ ...x, km: dist(x.lat, x.lon), googleMaps: maps(x.name, x.address) })).filter((x) => x.km <= r * 1.3).sort((a, b) => a.km - b.km);
   return { source: "OpenStreetMap; Google's details aren't available right now", results: list.slice(0, 10) };

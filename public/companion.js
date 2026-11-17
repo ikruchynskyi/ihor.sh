@@ -135,8 +135,8 @@ button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b86b1e; }
 :host(.sleek) button { font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; background: linear-gradient(135deg, var(--accent, #5ee1ff), color-mix(in srgb, var(--accent, #5ee1ff) 62%, var(--accent2, #8b7bff))); box-shadow: 0 10px 24px -12px var(--accent, #5ee1ff); transition: transform .15s, box-shadow .15s; }
 :host(.sleek) button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -12px var(--accent, #5ee1ff); }
 :host(.sleek) button:active { transform: none; box-shadow: none; }
-:host(.sleek) .chips button, :host(.sleek) .x { background: color-mix(in srgb, var(--fg, #fff) 6%, transparent); border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent); box-shadow: none; text-transform: none; letter-spacing: 0; font-weight: 500; }
-:host(.sleek) .chips button:hover, :host(.sleek) .x:hover { border-color: var(--accent, #5ee1ff); box-shadow: 0 0 0 1px var(--glow, transparent); }
+:host(.sleek) .chips button, :host(.sleek) .x, :host(.sleek) .loc-btn { background: color-mix(in srgb, var(--fg, #fff) 6%, transparent); border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent); box-shadow: none; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fg, #e8edff); }
+:host(.sleek) .chips button:hover, :host(.sleek) .x:hover, :host(.sleek) .loc-btn:hover { border-color: var(--accent, #5ee1ff); box-shadow: 0 0 0 1px var(--glow, transparent); }
 :host(.sleek) .tab { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border-radius: 12px 12px 0 0; }
 :host(.sleek) .panel footer button, :host(.sleek) .panel footer a { background: none; box-shadow: none; border: 0; padding: 4px 0; font: inherit; letter-spacing: .1em; text-transform: uppercase; transform: none; }
 :host(.sleek) .panel footer button:hover, :host(.sleek) .panel footer a:hover { color: var(--accent, #5ee1ff); }
@@ -151,6 +151,10 @@ button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b86b1e; }
 @media (prefers-reduced-motion: reduce) { .mic.listening { animation: none; } }
 button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-offset: 2px; }
 .chips button { color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); text-align: left; line-height: 1.5; }
+.loc-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.loc-btn { color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); line-height: 1.4; }
+.loc-note { font-size: .82em; color: var(--muted, #7f8bc4); }
+.loc-ok { font-size: .85em; color: var(--ok, #5cff9d); }
 .panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
 .panel footer a, .panel footer button { color: var(--muted, #7f8bc4); background: none; box-shadow: none; padding: 4px 0; text-decoration: none; font: inherit; }
 .panel footer a:hover, .panel footer button:hover { color: var(--accent, #ffb347); }
@@ -804,6 +808,7 @@ function openDialog(q) {
   dialogOpen = true; dialog.hidden = false; hush(); askBtn.hidden = true;
   if (innerWidth > 700) walkTo(W - 70);
   renderLog(); input.focus();
+  refreshGrantedLoc();
   if (q) send(q);
 }
 function closeDialog() {
@@ -888,8 +893,50 @@ if (Recognition) {
   };
 }
 
+// Visitor location: cached in sessionStorage (30 min TTL) so it never rides along as a cookie, and shared across all pages.
+const LOC_TTL = 30 * 60_000;
+const readLoc = () => {
+  try {
+    const v = JSON.parse(session.get("blip:loc") || "null");
+    if (v && Number.isFinite(v.lat) && Number.isFinite(v.lon) && Date.now() - (v.at ?? 0) < LOC_TTL) return v;
+  } catch {}
+  return null;
+};
+const writeLoc = (lat, lon, accuracyMeters = 0) => {
+  const loc = { lat: +Number(lat).toFixed(4), lon: +Number(lon).toFixed(4), accuracyMeters: Math.round(accuracyMeters || 0), at: Date.now() };
+  session.set("blip:loc", JSON.stringify(loc));
+  dispatchEvent(new CustomEvent("blip:location", { detail: loc }));
+  return loc;
+};
+const requestBrowserLoc = () => new Promise((resolve, reject) => {
+  if (!navigator.geolocation) return reject(new Error("This browser doesn't support location."));
+  navigator.geolocation.getCurrentPosition(
+    (p) => resolve(writeLoc(p.coords.latitude, p.coords.longitude, p.coords.accuracy)),
+    (e) => reject(new Error(e.code === 1 ? "Location permission denied." : e.message || "Couldn't get your location.")),
+    { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+  );
+});
+async function refreshGrantedLoc() {
+  if (readLoc() || !navigator.permissions?.query || !navigator.geolocation) return null;
+  try {
+    const st = await navigator.permissions.query({ name: "geolocation" });
+    if (st.state === "granted") return await requestBrowserLoc();
+  } catch {}
+  return null;
+}
+
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
-const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
+const pageObjects = () => {
+  try {
+    const raw = typeof window.blipContext === "function" ? window.blipContext() : null;
+    const obj = raw && typeof raw === "object" ? { ...raw } : raw != null ? { page: raw } : {};
+    const loc = readLoc();
+    if (loc && (obj.visitorLocation == null || typeof obj.visitorLocation === "string")) {
+      obj.visitorLocation = { lat: loc.lat, lon: loc.lon, accuracyMeters: loc.accuracyMeters };
+    }
+    return Object.keys(obj).length ? JSON.stringify(obj).slice(0, 5000) : "";
+  } catch { return ""; }
+};
 // Each tool as "what Blip is doing" (shown live while it runs) and "what Blip did" (under the answer).
 const TOOL_DOING = { web_search: "searching the web", subway_status: "checking the subway", subway_arrivals: "checking train times", subway_near: "finding stations", citibike_near: "finding Citi Bikes", bus_arrivals: "checking bus times", ferry_arrivals: "checking the ferries", trip_plan: "planning the route",
   weather_now: "checking the weather", aircraft_over_nyc: "looking at the sky", iss_now: "finding the ISS", iss_passes: "computing ISS passes", tropical_storms: "checking the storms", evening_events: "looking at what's on", plan_outing: "planning the outing", evening_plan: "planning the evening", jobs_search: "searching jobs",
@@ -913,15 +960,56 @@ progress.pages ??= {}; progress.worlds ??= {};
   if (line) setTimeout(() => { if (!dialogOpen && !hidden) say(line, { ms: 4000 }); }, 2500);
 }
 
-// Pages can also offer actions Blip may perform on them: window.blipActions = { name: { description, parameters, run(args) } }.
-const allActions = () => ({ ...(mochi ? {} : wardrobe?.actions ?? {}), ...(window.blipActions ?? {}) }); // Blip's outfits aren't Mochi's
+// Built-in actions available on every page (plus Blip's wardrobe and the page's window.blipActions).
+const BUILTIN_ACTIONS = {
+  request_location: {
+    label: "asked for your location",
+    description: "Ask the visitor to share their browser location when a question needs where they are right now (e.g. 'nearest body shop', 'trains near me', 'weather here') and visitorLocation is missing from page_objects. Shows a 'Share my location' button in the chat and automatically continues once granted.",
+    parameters: { reason: { type: "string", description: "Short description of what you'll check once shared, e.g. 'Find nearest body shops'" } },
+    run: ({ reason }) => ({ _locationPrompt: String(reason ?? "").trim() }),
+  },
+};
+const allActions = () => ({ ...BUILTIN_ACTIONS, ...(mochi ? {} : wardrobe?.actions ?? {}), ...(window.blipActions ?? {}) }); // Blip's outfits aren't Mochi's
 const pageActions = () => Object.entries(allActions()).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
-async function perform(actions) {
+function mountLocationAsk(msgEl, reason) {
+  if (!msgEl || msgEl.querySelector(".loc-ask")) return;
+  const wrap = document.createElement("div");
+  wrap.className = "loc-ask";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "loc-btn";
+  btn.textContent = "📍 Share my location";
+  if (reason) btn.title = reason;
+  const note = document.createElement("span");
+  note.className = "loc-note";
+  wrap.append(btn, note);
+  msgEl.append(wrap);
+  log.scrollTop = log.scrollHeight;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = "📍 Finding you…";
+    note.textContent = "";
+    try {
+      await requestBrowserLoc();
+      wrap.innerHTML = `<span class="loc-ok">✓ Location shared</span>`;
+      if (!pending) send("I shared my location — please check now.");
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "📍 Share my location";
+      note.textContent = `${err.message} You can type a neighborhood or address instead.`;
+    }
+  };
+}
+async function perform(actions, msgEl) {
   for (const { name, args } of actions ?? []) {
     const a = allActions()[name];
     if (!a) continue;
     try {
       const result = await a.run(args ?? {});
+      if (result?._locationPrompt !== undefined) {
+        mountLocationAsk(msgEl, result._locationPrompt);
+        continue;
+      }
       hop(4); ping();
       // An action can return what it changed (an element or {x, y}); Blip goes and points at it.
       if (result instanceof Element || (result && Number.isFinite(result.x))) setTimeout(() => point(result), 300);
@@ -954,6 +1042,7 @@ async function send(q) {
   let doing = deep ? "thinking hard" : "thinking";
   const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ?  " · this one's taking a while, hang on" : ""}`; }, 500);
   try {
+    await refreshGrantedLoc();
     // Only what the server reads (blip.ts ask: the last 8 messages, 1500 characters each): a whole long chat, or a few
     // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.
     const messages = history.slice(-8).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));
@@ -993,7 +1082,7 @@ async function send(q) {
     await typeOut(out, data.reply);
     const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => allActions()[a.name]?.label ?? a.name.replace(/_/g, " "))])];
     if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
-    perform(data.actions);
+    perform(data.actions, out.closest(".msg"));
     dispatchEvent(new CustomEvent("blip:reply", { detail: { text: data.reply } })); // the map pins the places it links
     if (!mochi) setMood("happy", 1500); // hers came with the reply
   } catch (err) {

@@ -57,7 +57,7 @@ const TOOLS: Record<string, Tool> = {
     parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place instead of lat/lon" }, ebike: { type: "boolean", description: "Only stations with an e-bike available" } },
     run: async ({ lat, lon, place, ebike }) => {
       const at = await pointOf(lat, lon, place);
-      if (!at) return { error: "Need a location: the visitor's position (ask them to press ◎ on the map) or a place." };
+      if (!at) return { error: "Need a location: call request_location to ask the visitor to share theirs, or ask for a place." };
       return { from: at.label, stations: (await citiBikeNear(at.lat, at.lon, { ebike: !!ebike })).map((s) => ({ ...s, mapLink: `/nyc/#at=${s.lat},${s.lon}` })) };
     },
   },
@@ -66,7 +66,7 @@ const TOOLS: Record<string, Tool> = {
     parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place instead of lat/lon" } },
     run: async ({ lat, lon, place }) => {
       const at = await pointOf(lat, lon, place);
-      if (!at) return { error: "Need a location: the visitor's position (ask them to press ◎ on the map) or a place." };
+      if (!at) return { error: "Need a location: call request_location to ask the visitor to share theirs, or ask for a place." };
       return Promise.all((await stationsNear(at.lat, at.lon, 3)).map(async (s) => {
         const d = await stationArrivals(s.id, 3);
         const line = (x: any) => `${x.label}: ${x.trains.length ? x.trains.map((t: any) => `${t.route} in ${t.minutes} min`).join(", ") : "none listed"}`;
@@ -218,7 +218,7 @@ const TOOLS: Record<string, Tool> = {
     parameters: { place: { type: "string", description: "An NYC address, intersection or place, e.g. '1st Ave & E 14 St'" }, lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, route: { type: "string", description: "Optional route, e.g. M15 or B44" } },
     run: async ({ lat, lon, place, route }) => {
       const at = await pointOf(lat, lon, place);
-      if (!at) return { error: "Need a location: a place, an intersection, or the visitor's position." };
+      if (!at) return { error: "Need a location: call request_location to ask the visitor to share theirs, or pass a place or intersection." };
       const want = String(route ?? "").toUpperCase().replace(/\s+/g, "").replace(/-?SBS$/, "+");
       // the point's grid cell and its neighbors, so a stop just across a cell edge isn't missed
       const cells = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => [at.lat + a * BUS_GRID, at.lon + b * BUS_GRID]));
@@ -344,7 +344,7 @@ const TOOLS: Record<string, Tool> = {
     parameters: { what: { type: "string", description: "What to look for, in a few words" }, place: { type: "string", description: "Near this NYC place or address" }, lat: { type: "number", description: "Or a point: latitude (e.g. the visitor's location or the map's center)" }, lon: { type: "number", description: "Longitude" },
       km: { type: "number", description: "Radius in km (default 1, up to 5)" }, min_rating: { type: "number", description: "Minimum Google rating, e.g. 4.5" }, max_price: { type: "number", description: "1 cheap, 2 moderate, 3 expensive, 4 very expensive" }, open_now: { type: "boolean", description: "Only places open right now" } }, required: ["what"],
     run: async ({ what, place, lat, lon, km, min_rating, max_price, open_now }) => {
-      const at = (await pointOf(lat, lon, place)) ?? { lat: 40.7536, lon: -73.9832, label: "Midtown" };
+      const at = (await pointAnywhere(lat, lon, place)) ?? { lat: 40.7536, lon: -73.9832, label: "Midtown" };
       const r = await searchPlaces({ what: String(what), lat: at.lat, lon: at.lon, km: Number(km) || 1, minRating: Number(min_rating) || 0, maxPrice: Number(max_price) || 4, onlyOpen: !!open_now });
       const all = r.results.map(({ open, ...p }: any) => ({ ...p, price: p.price != null ? "$".repeat(Math.max(1, p.price)) : undefined, mapLink: mapAt(p.lat, p.lon, p.name), lat: undefined, lon: undefined, closed: open === false }));
       // closed ones apart, with when they open: a flag on each result was easy to skip (it sent people to closed doctors)
@@ -593,7 +593,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Finding places (dinner, drinks, shopping, a service) by kind, area, rating, price or open now: find_places (several searches with different words when the request has parts: dinner, then a bar after). Each result's status says whether it's open now and until when, or when it opens next: trust it over your own reading of the hours. For "now", "nearest", "tonight" or no time given, suggest places that are open, and if the closest ones are closed say so plainly with when they open ("closed now · opens tomorrow 9:00 AM"); never present a closed place as if you could go now. For a later time, judge by the hours then. Pick from its results, say why (rating and reviews, distance, price, open or when it opens, grade A), link each with its mapLink and website, and on the NYC map pin them with mark_places. To plan around them, chain plan_outing, trip_plan or evening_plan.
 - Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over), heard_on_air (what our receiver is captioning on a repeater right now, and the callsigns in it). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - What's going on in the city (the command post's live picture): whats_happening_here (everything around a place or the visitor now: incidents with how many sources agree, closures, alerts, 311, news, anything unusual), area_report (one area in depth: now, the last 24 h, 311's week against usual, news, cameras), explore_city_data (search and count everything stored: alerts, incidents, Waze, closures, flooding, 311 for 35 days, news; group by kind, hour, day, borough), local_news (today's stories from 15 NYC newsrooms, placed where they happen), city_brief (the situation brief and vital signs, citywide or a borough), public_safety_record (an area's official NYPD and FDNY record, weeks to months late), emergency_alerts (Notify NYC and weather alerts), flood_sensors (street flooding now, harbor surge), film_shoots, inspect_traffic_camera (the local vision model reads one camera's picture), watch_area_cameras (it looks at up to 5 cameras around a place at once and sums them up). On the NYC map, put what you found on the map with the page action mark_places (several labeled pins), and analyze_area opens the area panel. Numbers come from the tools, never estimate them; say what the sources are, how fresh they are, and when only one source reports something; link news stories to their outlet.
-- "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
+- "Near me", "nearest", "closest to me", "around here": check visitorLocation in page_objects first. If visitorLocation is an object with lat/lon, pass it to find_places, citibike_near, subway_near, bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St), restaurant_inspections, whats_happening_here, weather_now, iss_passes, satellite_passes, traffic_cameras, or street_photo. If visitorLocation is missing (or "unknown") and the visitor didn't name a place or neighborhood, do NOT guess Midtown or send them to the NYC map: call the page action request_location and invite them to tap the Share location button below (or name a neighborhood/address).
 - Where: on a map page the page objects carry mapView (the area the visitor is looking at). A question that names no place ("what's flying here?", "is it raining?", "any webcams?") is about that area: pass its lat/lon to the tool. With no mapView (the home page, other pages), assume NYC.
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 - Memes & humor: generate_meme to craft witty, ironic, or dad-joke memes with iconic templates, or search_memes to find matching templates.
