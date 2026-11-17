@@ -24,13 +24,13 @@ import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne,
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
-import { startEvening, events as eveningEvents, eventById, planEvening } from "./server/evening.ts";
-import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
+import { startEvening, events as eveningEvents, eventById, planEvening, weekConcerts } from "./server/evening.ts";
+import { aircraft, trace, iss, storms, weather, nowcast, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull, asker } from "./server/llm.ts";
 import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
-import { ADMIN, userFrom, sessionFor, listUsers, setCloud, getScreen, setScreen, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
+import { ADMIN, userFrom, sessionFor, listUsers, setCloud, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
 import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
@@ -616,26 +616,15 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(302, { location: done.next, "cache-control": "no-store", "set-cookie": withCookies(res, signedIn(req, done.id), "ihg=; Path=/auth; Max-Age=0") }).end();
     } catch (e) { return page((e as Error).message); }
   }
-  // the TV's short address, and its settings by the screen's code (set from a phone: nyc/today.html ?setup=CODE)
-  if (url.pathname === "/tv") { const code = String(url.searchParams.get("code") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-    return res.writeHead(302, { location: code ? `/nyc/today.html?setup=${code}` : "/nyc/today.html?kiosk=1", "cache-control": "no-store" }).end(); }
-  const scr = url.pathname.match(/^\/tv\/s\/([A-Z0-9]{4,8})$/);
-  if (scr) {
-    if (!spend(`tv:${clientIp(req)}`, 600, 3600_000)) return res.writeHead(429).end("Too many requests.");
-    const send = (v: unknown) => res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(v));
-    if (req.method !== "POST") return send(getScreen(scr[1]) ?? { hide: null });
-    let raw = ""; for await (const c of req) { raw += c; if (raw.length > 4000) return res.writeHead(413).end(); }
-    const hide = (JSON.parse(raw || "{}").hide ?? []) as unknown[];
-    if (!Array.isArray(hide)) return res.writeHead(400).end();
-    setScreen(scr[1], hide.map(String).filter((k) => /^[a-z0-9-]{1,24}$/.test(k)).slice(0, 60)); return send({ ok: true });
-  }
-  if (url.pathname === "/nyc/today.json") { // the city brief for the today display and for Home Assistant's REST sensors: no session (a framed page has no cookies), any origin
+  // the TV's short address
+  if (url.pathname === "/tv") return res.writeHead(302, { location: "/nyc/today.html?kiosk=1", "cache-control": "no-store" }).end();
+  if (url.pathname === "/nyc/today.json") { // the TV page (nyc/today.html) and Home Assistant's REST sensors: no session (a framed page has no cookies), any origin
     if (!spend(`today:${clientIp(req)}`, 240, 3600_000)) return res.writeHead(429).end("Too many requests.");
-    const b = latestBrief("city"), w: any = await weather().catch(() => null);
-    return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120", "access-control-allow-origin": "*" }).end(JSON.stringify({ at: b?.at ?? null, headline: b?.headline?.text ?? null, sections: DAY_SECTIONS,
-      bullets: (b?.bullets ?? []).map((x: any) => ({ text: x.text, section: x.section ?? "incidents", facts: x.facts })), facts: (b?.facts ?? []).map((f: any) => ({ id: f.id, text: f.text, url: f.url, lat: f.lat, lon: f.lon })),
-      events: b?.events ?? [], news: b?.news ?? [],
-      weather: w && { tempF: w.tempF, sky: w.sky, windKmh: w.windKmh, humidity: w.humidity, station: w.station, at: w.at, forecast: (w.forecast ?? []).slice(0, 2) } }));
+    const b = latestBrief("city"), [w, now] = await Promise.all([weather().catch(() => null) as Promise<any>, nowcast().catch(() => [])]);
+    const lines = (sec: string) => (b?.bullets ?? []).filter((x: any) => x.section === sec).map((x: any) => ({ text: x.text, facts: (x.facts as string[]).map((id) => b.facts.find((f: any) => f.id === id)?.text).filter(Boolean) }));
+    return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120", "access-control-allow-origin": "*" }).end(JSON.stringify({ at: b?.at ?? null, headline: b?.headline?.text ?? null,
+      weather: w && { tempF: w.tempF, sky: w.sky, windKmh: w.windKmh, station: w.station, at: w.at }, forecast: w?.periods ?? [], nowcast: now,
+      alerts: lines("alerts"), transit: lines("transit"), news: (b?.news ?? []).slice(0, 3), concerts: weekConcerts(8) }));
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;

@@ -258,6 +258,21 @@ export async function events(qy: EvQuery) {
   const facets = { category: Object.fromEntries((db.prepare(`select category k, count(*) n from ev where status = 'ok' and dup_of is null and substr(start, 1, 10) = ? group by category`).all(date) as any[]).map((r) => [r.k, r.n])) };
   return { date, from, to, total: out.length, events: out, facets, updated: (db.prepare("select max(at) t from runs").get() as any)?.t ?? 0 };
 }
+/** The week's top concerts (the TV page, user 2026-11-16): ticketed music, the biggest rooms first (arenas, then the big
+ *  halls, then the known clubs), each show once (its first night), 8 by default, in date order. */
+const TIERS = [/barclays|ubs arena|prudential center|yankee stadium|citi field|metlife|forest hills stadium|^madison square garden$|madison square garden(?!.*theat)/i,
+  /radio city|beacon theatre|kings theatre|brooklyn paramount|apollo|hammerstein|terminal 5|carnegie hall|lincoln center|david geffen|the town hall|infosys theater|united palace|palladium/i,
+  /irving plaza|brooklyn steel|bowery ballroom|webster hall|music hall of williamsburg|warsaw|racket|knitting factory/i];
+export function weekConcerts(n = 8) {
+  const today = nyDate(), now = new Date().toLocaleString("sv-SE", { timeZone: "America/New_York" }).replace(" ", "T").slice(0, 16), tier = (v: string) => { const i = TIERS.findIndex((re) => re.test(v ?? "")); return i < 0 ? TIERS.length : i; };
+  const rows = (db.prepare(`select title, start, venue, borough, price_min, url, source from ev where status in ('ok','postponed','rescheduled') and dup_of is null and category = 'music' and source = 'ticketmaster' and url is not null
+    and substr(start, 1, 10) >= ? and substr(start, 1, 10) < ? order by start`).all(today, addDays(today, 7)) as any[]).map((r) => ({ ...r, start: String(r.start).replace(" ", "T") })).filter((r) => r.start >= now); // stored "2026-11-17 19:00"
+  // a show once (its first night), and a series at one venue once ("Juilliard at The Apollo: Birth of the Cool", "…: Filles de Kilimanjaro")
+  const seen = new Set<string>(), key = (r: any) => `${r.title.split(/:\s/)[0]}|${r.venue}`.toLowerCase();
+  const shows = rows.map((r) => ({ ...r, title: String(r.title).replace(/\s*\?{2,}\s*/g, " – ").replace(/\s+/g, " ").trim() })).filter((r) => !seen.has(key(r)) && seen.add(key(r)));
+  return shows.sort((a, b) => tier(a.venue) - tier(b.venue) || a.start.localeCompare(b.start)).slice(0, n).sort((a, b) => a.start.localeCompare(b.start))
+    .map((r) => ({ title: r.title, venue: r.venue, borough: r.borough, start: r.start, priceMin: r.price_min, url: r.url }));
+}
 export const eventById = (id: string) => db.prepare("select * from ev where id = ?").get(id) ?? null;
 
 /** Daily: everything for two weeks. Hourly: today's again, so a cancellation shows within the hour. */

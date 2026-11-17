@@ -899,17 +899,11 @@ export async function dayFacts() {
   const topNews = todaysNews().sort((a, b) => b.outlets.length - a.outlets.length || b.starts - a.starts).slice(0, 24);
   for (const c of incidents().filter((c) => c.sev >= 2 && (c.probability ?? 0) >= 0.7).slice(0, 3))
     put("incidents", `${c.title}${c.lat != null ? ` (${[neighborhood(c.lat, c.lon), borough(c.lat, c.lon)].filter(Boolean).join(", ")})` : ""}: severity ${c.sev} of 3, ${c.events.length} report${c.events.length > 1 ? "s" : ""}, since ${hhmm(c.starts)}`, c);
-  // the display (nyc/today.html) lists these itself, filtered by what its viewer wants to see
-  const when = (e: any) => (e.all_day ? "All day" : hhmm(Date.parse(`${e.start}-05:00`) / 1000));
-  // big ones first, then the display's second tier: ticketed shows and the city's festivals, never tours, classes or permits (they fill a screen that hides some kinds)
-  const notable = list.filter((e) => !isBig(e) && !SMALL.test(e.title) && (e.times?.length ?? 1) <= 2 && (e.source === "ticketmaster" || (["music", "theater", "comedy", "arts", "community", "food"].includes(e.category) && e.source !== "eventbrite")));
-  const eventsList = [...bigOnes.sort((a, b) => a.start.localeCompare(b.start)).map((e) => ({ ...e, big: true })), ...notable.sort((a, b) => (PRIORITY[a.source] ?? 5) - (PRIORITY[b.source] ?? 5) || a.start.localeCompare(b.start)).map((e) => ({ ...e, big: false }))].slice(0, 50).map((e) => ({ big: e.big, title: e.title, venue: e.venue ?? null, borough: e.borough ?? null, start: e.start, time: when(e), allDay: !!e.all_day,
-    free: !!e.free, priceMin: e.price_min ?? null, category: e.category ?? "other", url: /^https?:\/\//.test(e.url ?? "") ? e.url : null }));
-  const newsList = topNews.map((n) => ({ title: n.title, outlets: n.outlets, topic: n.topic ?? "other", at: n.starts, url: n.url ?? null }));
-  return { F, events: eventsList, news: newsList };
+  const newsList = topNews.slice(0, 6).map((n) => ({ title: n.title, outlets: n.outlets, topic: n.topic ?? "other", at: n.starts, url: n.url ?? null })); // the TV page shows the top 3
+  return { F, news: newsList };
 }
 export async function makeDayBrief() {
-  const { F, events: eventsList, news: newsList } = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
+  const { F, news: newsList } = await dayFacts(), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
   const schema = { type: "object", required: ["headline", ...DAY_SECTIONS.map(([k]) => k)], properties: { headline: item, ...Object.fromEntries(DAY_SECTIONS.map(([k]) => [k, { type: "array", items: item }])) } };
   let out: any = null;
   for (let attempt = 0; attempt < 2 && !out; attempt++) try { // the local model now and then answers nothing: once more
@@ -923,7 +917,7 @@ export async function makeDayBrief() {
     if (kept.length) bullets.push(...kept.map((x: any) => ({ text: x.text, facts: x.facts, section: k })));
     else if (k !== "news" && k !== "incidents" || got.length) bullets.push(...F.filter((f) => f.sec === k).slice(0, k === "happening" ? 4 : 2).map((f) => ({ text: f.text, facts: [f.id], section: k, byCode: true }))); // the model's missing or wrong: its facts
   }
-  const b = { headline: ok(out?.headline) ? { text: out.headline.text, facts: out.headline.facts } : null, bullets, sections: DAY_SECTIONS, by: out ? LOCAL_MODEL : "code (the model didn't answer)", dropped, events: eventsList, news: newsList };
+  const b = { headline: ok(out?.headline) ? { text: out.headline.text, facts: out.headline.facts } : null, bullets, sections: DAY_SECTIONS, by: out ? LOCAL_MODEL : "code (the model didn't answer)", dropped, news: newsList };
   db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run("city", now(), JSON.stringify(b), JSON.stringify(F));
   return latestBrief("city");
 }

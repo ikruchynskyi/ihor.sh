@@ -120,8 +120,20 @@ export function weather(lat = NYC.lat, lon = NYC.lon) {
       station: st.name, at: o.timestamp, sky: o.textDescription, tempC, tempF: tempC === null ? null : Math.round(tempC * 1.8 + 32),
       windKmh: c(o.windSpeed), humidity: c(o.relativeHumidity),
       forecast: (fc?.properties?.periods ?? []).slice(0, 3).map((p: any) => `${p.name}: ${p.detailedForecast}`),
+      periods: (fc?.properties?.periods ?? []).slice(0, 3).map((p: any) => ({ name: p.name, temp: p.temperature, unit: p.temperatureUnit, short: p.shortForecast, rain: p.probabilityOfPrecipitation?.value ?? null })),
       alerts: (alerts.features as any[]).map((f) => ({ event: f.properties.event, headline: f.properties.headline, until: f.properties.ends ?? f.properties.expires })),
     };
+  });
+}
+
+/** The next 2 hours in New York, a point every 15 minutes (the TV page's chart): temperature, rain (mm), sky, and the
+ *  hour's chance of rain. Open-Meteo, kept 10 minutes. */
+export function nowcast() {
+  return cached("nowcast", 10 * 60_000, async () => {
+    const d = await json(`https://api.open-meteo.com/v1/forecast?latitude=${NYC.lat}&longitude=${NYC.lon}&minutely_15=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&forecast_minutely_15=9&forecast_hours=3&temperature_unit=fahrenheit&timezone=America%2FNew_York`);
+    const m = d.minutely_15, hours: string[] = d.hourly?.time ?? [];
+    return (m.time as string[]).map((t, i) => ({ t, tempF: Math.round(m.temperature_2m[i]), rainMm: m.precipitation[i] ?? 0, sky: wmo(m.weather_code[i]), code: m.weather_code[i],
+      chance: d.hourly?.precipitation_probability?.[Math.max(0, hours.indexOf(`${t.slice(0, 13)}:00`))] ?? null }));
   });
 }
 
