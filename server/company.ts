@@ -1,8 +1,8 @@
 // The company card (nyc/company.html, and a line on each job page): what the business does (Wikipedia), how it hires
-// here (this site's own record), what it pays (Levels.fyi, cited and linked back as it asks), its last two weeks of news
-// (Google News), and if it's public, two years of its stock (Nasdaq's quotes). An AI overview is worded from those as
-// numbered facts, every line checked against them (faithful). Made daily for the biggest employers (cron), on request
-// for any other.
+// here (this site's own record), what it pays (Levels.fyi, cited and linked back as it asks), known layoffs
+// (Layoffs.fyi, cited and linked back), its last two weeks of news (Google News), and if it's public, two years of
+// its stock (Nasdaq's quotes). An AI overview is worded from those as numbered facts, every line checked against them
+// (faithful). Made daily for the biggest employers (cron), on request for any other.
 import { llmJson, faithful, asker, OLLAMA, LOCAL_MODEL, OWNER_MODEL } from "./llm.ts";
 import { employer, saveCompanyInfo, getCompanyInfo, topEmployers, postingSignals } from "./jobs.ts";
 import { cited } from "./jobs-ai.ts";
@@ -105,6 +105,85 @@ export async function levelsMarket() {
 }
 export const LEVELS_MARKET = "levels.fyi market";
 
+// ---------- known layoffs: Layoffs.fyi (company directory + per-company history, free to use with attribution) ----------
+const LAYOFFS_API = "https://layoffs-fyi.onrender.com";
+const LAYOFFS_LIST = "layoffs.fyi list";
+const LAYOFFS_ALIAS: Record<string, string> = { alphabet: "Google", youtube: "Google", facebook: "Meta", instagram: "Meta", whatsapp: "Meta", aws: "Amazon", amazonwebservices: "Amazon", square: "Block" };
+type LayoffEntry = { name: string; slug: string };
+let layoffsListMem: { at: number; list: LayoffEntry[] } | null = null;
+async function layoffsList(): Promise<LayoffEntry[]> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (layoffsListMem && nowSec - layoffsListMem.at < 86400) return layoffsListMem.list;
+  const cached = getCompanyInfo(LAYOFFS_LIST);
+  if (cached?.list?.length && nowSec - (cached.at ?? 0) < 86400) {
+    layoffsListMem = cached;
+    return cached.list;
+  }
+  const raw = JSON.parse(await get(`${LAYOFFS_API}/api/companies-list`));
+  const list: LayoffEntry[] = (Array.isArray(raw) ? raw : []).filter((x: any) => x?.name && x?.slug).map((x: any) => ({ name: String(x.name), slug: String(x.slug) }));
+  if (list.length) {
+    layoffsListMem = { at: nowSec, list };
+    saveCompanyInfo(LAYOFFS_LIST, layoffsListMem);
+  }
+  return list;
+}
+/** Match an employer name to a Layoffs.fyi directory entry, preferring exact match before suffix-tolerant match. */
+export function matchLayoffs(name: string, list: LayoffEntry[]): LayoffEntry | null {
+  const cands = [...new Set([LAYOFFS_ALIAS[norm(name)], name, plain(name)].filter(Boolean))];
+  for (const c of cands) {
+    const w = norm(c), hit = list.find((x) => norm(x.name) === w);
+    if (hit) return hit;
+  }
+  for (const c of cands) {
+    const w = norm(c);
+    if (w.length < 3) continue;
+    const hit = list.find((x) => norm(x.name).length >= 3 && (named(w, norm(x.name)) || named(norm(x.name), w)));
+    if (hit) return hit;
+  }
+  return null;
+}
+/** Normalize a /api/company/:slug response into summary stats, yearly buckets (2020..now) and sorted events. */
+export function summarizeLayoffs(d: any, fallbackName = "", fallbackSlug = "") {
+  const rawEvents: any[] = Array.isArray(d?.events) ? d.events : [];
+  if (!rawEvents.length) return null;
+  const events = rawEvents
+    .map((e) => ({
+      date: typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : null,
+      count: Number.isFinite(Number(e.count)) && Number(e.count) > 0 ? Math.round(Number(e.count)) : null,
+      percent: Number.isFinite(Number(e.percent)) && Number(e.percent) > 0 ? Math.round(Number(e.percent) * 1000) / 10 : null,
+      source: typeof e.source === "string" && /^https?:\/\//.test(e.source) ? e.source : null,
+    }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const total = events.reduce((s, e) => s + (e.count ?? 0), 0);
+  const undisclosed = events.filter((e) => !e.count).length;
+  const slug = String(d?.slug ?? fallbackSlug);
+  const minYear = Math.min(2020, ...events.map((e) => Number(e.date?.slice(0, 4) || 9999)));
+  const maxYear = Math.max(new Date().getFullYear(), ...events.map((e) => Number(e.date?.slice(0, 4) || 0)));
+  const years: { year: number; count: number; events: number; undisclosed: number }[] = [];
+  for (let y = minYear; y <= maxYear; y++) {
+    const ys = String(y), evs = events.filter((e) => e.date?.startsWith(ys));
+    years.push({ year: y, count: evs.reduce((s, e) => s + (e.count ?? 0), 0), events: evs.length, undisclosed: evs.filter((e) => !e.count).length });
+  }
+  return {
+    company: String(d?.company ?? fallbackName),
+    slug,
+    url: `https://layoffs.fyi/company/${encodeURIComponent(slug)}/`,
+    industry: typeof rawEvents[0]?.industry === "string" ? rawEvents[0].industry : null,
+    total,
+    rounds: events.length,
+    undisclosed,
+    latest: events.find((e) => e.date) ?? events[0],
+    years,
+    events: events.slice(0, 20),
+  };
+}
+export async function layoffs(name: string) {
+  const hit = matchLayoffs(name, await layoffsList());
+  if (!hit) return null;
+  const d = JSON.parse(await get(`${LAYOFFS_API}/api/company/${encodeURIComponent(hit.slug)}`));
+  return summarizeLayoffs(d, hit.name, hit.slug);
+}
+
 // ---------- what employees say: Blind's company ratings (plain pages; its robots.txt lets crawlers read /company/) ----------
 let blNext = 0; const blPace = async () => { const wait = blNext - Date.now(); blNext = Math.max(Date.now(), blNext) + 3000; if (wait > 0) await new Promise((r) => setTimeout(r, wait)); };
 /** The overall rating (its schema.org data) and the five categories, from the company's page; the page must be about this
@@ -172,7 +251,7 @@ export async function research(name: string, about = "") {
 // ---------- the scorecard: each mark from one fact, with the fact shown ----------
 type Mark = { key: string; label: string; value: string; mark: "good" | "fair" | "watch" | "info"; basis: string; url?: string };
 const grade = (v: number, good: number, fair: number, higherIsBetter = true): Mark["mark"] => (higherIsBetter ? (v >= good ? "good" : v >= fair ? "fair" : "watch") : v <= good ? "good" : v <= fair ? "fair" : "watch");
-export function scorecard(e: any, st: any, lv: any, bl: any, sig: any): Mark[] {
+export function scorecard(e: any, st: any, lv: any, bl: any, sig: any, la: any = null): Mark[] {
   const M: Mark[] = [], wk = (e.weeks ?? []) as number[], last4 = wk.slice(-4).reduce((a, b) => a + b, 0), prev4 = wk.slice(-8, -4).reduce((a, b) => a + b, 0);
   if (bl) {
     M.push({ key: "rating", label: "Employees rate it", value: `${bl.overall}/5`, mark: grade(bl.overall, 4, 3.5), basis: `${bl.reviews.toLocaleString("en-US")} reviews on Blind`, url: bl.url });
@@ -186,18 +265,27 @@ export function scorecard(e: any, st: any, lv: any, bl: any, sig: any): Mark[] {
   if (wk.length >= 8 && last4 + prev4 >= 6) { const ch = prev4 ? Math.round(((last4 - prev4) / prev4) * 100) : 100; M.push({ key: "hiring", label: "Hiring", value: ch > 10 ? "growing" : ch < -10 ? "slowing" : "steady", mark: ch > 10 ? "good" : ch < -10 ? "watch" : "fair", basis: `${last4} new postings in the last 4 weeks, ${prev4} in the 4 before` }); }
   if (e.open >= 5) M.push({ key: "stale", label: "Jobs left open", value: `${e.stale}%`, mark: grade(e.stale, 20, 40, false), basis: "of its open jobs have been up over 60 days (possible evergreen listings)" });
   if (st) M.push({ key: "stock", label: "Stock, 1 year", value: `${st.change1y >= 0 ? "+" : ""}${st.change1y}%`, mark: grade(st.change1y, 10, -10), basis: `${st.ticker}, Nasdaq` });
+  if (la) {
+    const latestTs = la.latest?.date ? Date.parse(`${la.latest.date}T12:00:00Z`) : 0;
+    const daysAgo = latestTs ? (Date.now() - latestTs) / 86400_000 : 9999;
+    const mark: Mark["mark"] = daysAgo <= 365 ? "watch" : daysAgo <= 730 ? "fair" : "info";
+    const val = la.total ? `${la.total.toLocaleString("en-US")} total` : `${la.rounds} ${la.rounds === 1 ? "round" : "rounds"}`;
+    const latestText = la.latest?.date ? `latest ${fmtIsoDate(la.latest.date)}${la.latest.count ? ` (${la.latest.count.toLocaleString("en-US")})` : ""}` : "";
+    M.push({ key: "layoffs", label: "Layoffs (Layoffs.fyi)", value: val, mark, basis: `${la.rounds} ${la.rounds === 1 ? "round" : "rounds"}${latestText ? `, ${latestText}` : ""}`, url: la.url });
+  }
   if (sig && (sig.where.hybrid || sig.where.remote)) M.push({ key: "where", label: "Remote / hybrid", value: `${sig.where.remote}% / ${sig.where.hybrid}%`, mark: "info", basis: sig.officeDays?.quote ? `“${sig.officeDays.quote}”` : `of ${sig.n} postings say remote / hybrid` });
   return M;
 }
 
 // ---------- the card ----------
 const k$ = (v: number) => (v >= 1e6 ? `$${(v / 1e6).toFixed(2)}M` : `$${Math.round(v / 1000)}k`), day = (t: number) => new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+const fmtIsoDate = (iso: string) => { const t = Date.parse(`${iso}T12:00:00Z`); return Number.isFinite(t) ? day(t / 1000) : iso; };
 const FAMILY_NAME: Record<string, string> = { "software-engineer": "software engineers", "data-scientist": "data scientists", "data-analyst": "data analysts", "product-manager": "product managers", "financial-analyst": "financial analysts", "investment-banker": "investment bankers", "product-designer": "product designers" };
 /** Gathers the facts, has the model word an overview from them (each line checked), and stores the card (the page shows its date). */
 export async function companyCard(name: string) {
   const e = employer(name); if (!e) throw new Error("No open jobs from that employer here.");
   const before = getCompanyInfo(e.name); // what it does and its pay by level change slowly: kept when today's read fails
-  const nm = plain(e.name), [w, n, sym] = await Promise.all([wiki(nm).catch(() => before?.wiki ?? null), news(nm).catch(() => []), ticker(nm).catch(() => null)]);
+  const nm = plain(e.name), [w, n, sym, la] = await Promise.all([wiki(nm).catch(() => before?.wiki ?? null), news(nm).catch(() => []), ticker(nm).catch(() => null), layoffs(nm).catch(() => before?.layoffs ?? null)]);
   const [st, lv] = await Promise.all([sym ? stock(sym).catch(() => null) : null, levels(nm, e.fields as [string, number][]).catch(() => null).then((x) => x ?? before?.levels ?? null)]);
   const F: { id: string; text: string }[] = [], add = (text: string) => { F.push({ id: `F${F.length + 1}`, text }); };
   if (w) add(`About ${e.name} (Wikipedia): ${w.extract.split(/(?<=\.)\s+/).slice(0, 3).join(" ")}`);
@@ -207,17 +295,24 @@ export async function companyCard(name: string) {
   if (e.pay) add(`Stated pay on its open jobs here: median ${k$(e.pay.median)} a year, middle half ${k$(e.pay.p25)} to ${k$(e.pay.p75)}.`);
   if (st) add(`Its stock (${st.ticker}) closed at $${st.last.toFixed(2)} on ${day(st.asOf)}: ${st.change1y >= 0 ? "up" : "down"} ${Math.abs(st.change1y)}% in a year and ${st.change2y >= 0 ? "up" : "down"} ${Math.abs(st.change2y)}% in two; its 52-week range is $${st.low52.toFixed(2)} to $${st.high52.toFixed(2)}.`);
   for (const f of lv?.families ?? []) add(`Levels.fyi: ${FAMILY_NAME[f.family] ?? f.family} at ${e.name} report a median total pay of ${k$(f.median)} (US, all levels)${f.levels.length ? `, from ${k$(f.levels[0].pay)} at ${f.levels[0].level} to ${k$(f.levels.at(-1).pay)} at ${f.levels.at(-1).level}` : ""}${f.nycMarket ? `; the NYC median for the job, all companies, is ${k$(f.nycMarket)}` : ""}.`);
+  if (la) {
+    const head = `Layoffs.fyi records ${la.rounds} layoff ${la.rounds === 1 ? "event" : "events"} for ${la.company} ${la.total ? `totaling ${la.total.toLocaleString("en-US")} reported employees laid off` : "with headcounts undisclosed"}${la.undisclosed && la.total ? ` (${la.undisclosed} ${la.undisclosed === 1 ? "event" : "events"} had undisclosed headcounts)` : ""}`;
+    const tail = la.latest ? `; most recent on ${la.latest.date ? fmtIsoDate(la.latest.date) : "unknown date"} (${la.latest.count ? `${la.latest.count.toLocaleString("en-US")} employees` : "headcount undisclosed"}${la.latest.percent != null ? `, ${la.latest.percent}% of workforce` : ""})` : "";
+    add(`${head}${tail}.`);
+    const activeYears = la.years.filter((y) => y.events > 0);
+    if (activeYears.length > 1) add(`Layoffs.fyi annual layoffs at ${la.company}: ${activeYears.map((y) => `${y.year}: ${y.count ? y.count.toLocaleString("en-US") : "undisclosed"} (${y.events} ${y.events === 1 ? "round" : "rounds"})`).join("; ")}.`);
+  }
   for (const x of n.slice(0, 5)) add(`News (${x.source}, ${day(x.at)}): ${x.title}`);
   const [bl, rs] = await Promise.all([blind(nm).catch(() => before?.blind ?? null), research(nm, w?.extract).catch(() => null)]), sig = postingSignals(e.name);
   if (bl) add(`On Blind, employees rate ${e.name} ${bl.overall} out of 5 (${bl.reviews} reviews)${bl.categories.length ? `: ${bl.categories.map((c: any) => `${c.name} ${c.score}`).join(", ")}` : ""}.`);
   for (const r of rs?.findings ?? []) add(`From the web (${r.sources.map((x: any) => new URL(x.url).hostname.replace(/^www\./, "")).join(", ")}): ${r.text}`);
   if (sig) add(`In its ${sig.n} postings here: ${sig.where.remote}% say remote and ${sig.where.hybrid}% hybrid${sig.onCall ? `; ${sig.onCall.pct}% mention on-call` : ""}${sig.travel ? `; ${sig.travel.pct}% mention travel` : ""}${sig.unlimitedPto ? `; ${sig.unlimitedPto.pct}% offer flexible or unlimited time off` : ""}${sig.leave ? `; one offers ${sig.leave.weeks} weeks of parental leave` : ""}.`);
   const byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
-  const out = await llmJson(`You write a short, plain company profile for a job seeker in New York. Use only the numbered facts. 'business': one or two sentences on what the company does. 'hiring': one or two sentences on how it is hiring here now (numbers from this site). 'market': one or two sentences on its stock and recent news, if the facts have them, else "". 'people': one or two sentences on what working there is like now (employee ratings, layoffs, office policy, culture), if the facts have them, else "". 'tips': up to 3 short pieces of advice for someone applying there now (pay to expect, what's moving). Each item lists the ids of the facts it uses; copy every number exactly as its fact writes it (\"Third Quarter\" stays words, never \"Q3\"); add nothing the facts don't say. Reply as JSON.`,
-    F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["business", "hiring", "market", "people", "tips"], properties: { business: item, hiring: item, market: item, people: item, tips: { type: "array", items: item } } }, 1200).catch(() => null);
+  const out = await llmJson(`You write a short, plain company profile and evaluation for a job seeker in New York. Use only the numbered facts. 'business': one or two sentences on what the company does. 'hiring': one or two sentences on how it is hiring here now (numbers from this site). 'market': one or two sentences on its stock and recent news, if the facts have them, else "". 'layoffs': one or two sentences evaluating known layoff history (frequency, recency, scale, and how it weighs against current hiring), if the facts mention layoffs, else "". 'people': one or two sentences on what working there is like now (employee ratings, office policy, culture, layoffs context), if the facts have them, else "". 'tips': up to 3 short pieces of advice for someone applying there now (pay to expect, hiring momentum, and layoff/stability risk when relevant). Each item lists the ids of the facts it uses; copy every number (including commas) exactly as its fact writes it ("Third Quarter" stays words, never "Q3"); add nothing the facts don't say. Reply as JSON.`,
+    F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["business", "hiring", "market", "layoffs", "people", "tips"], properties: { business: item, hiring: item, market: item, layoffs: item, people: item, tips: { type: "array", items: item } } }, 1400).catch(() => null);
   const ok = (x: any) => { const c = cited(x); return c.text && faithful(c, byId) ? c : null; };
-  const card = { name: e.name, at: Math.floor(Date.now() / 1000), wiki: w, ticker: sym, stock: st, news: n, levels: lv, weeks: wk, blind: bl, research: rs, signals: sig, scorecard: scorecard(e, st, lv, bl, sig),
-    overview: out ? { business: w ? ok(out.business) : null /* no source, no "what it does" (the number check can't catch a made-up one) */, hiring: ok(out.hiring), market: ok(out.market), people: ok(out.people), tips: (Array.isArray(out.tips) ? out.tips : []).map(ok).filter(Boolean).slice(0, 3) } : null, facts: F };
+  const card = { name: e.name, at: Math.floor(Date.now() / 1000), wiki: w, ticker: sym, stock: st, news: n, levels: lv, layoffs: la, weeks: wk, blind: bl, research: rs, signals: sig, scorecard: scorecard(e, st, lv, bl, sig, la),
+    overview: out ? { business: w ? ok(out.business) : null /* no source, no "what it does" (the number check can't catch a made-up one) */, hiring: ok(out.hiring), market: ok(out.market), layoffs: ok(out.layoffs), people: ok(out.people), tips: (Array.isArray(out.tips) ? out.tips : []).map(ok).filter(Boolean).slice(0, 3) } : null, facts: F };
   saveCompanyInfo(e.name, card);
   return card;
 }
@@ -225,14 +320,15 @@ export async function companyCard(name: string) {
 const making = new Map<string, Promise<any>>(); // one card made at a time per company, however many visitors ask
 export const makeCard = (name: string) => { const k = name.toLowerCase(); if (!making.has(k)) making.set(k, companyCard(name).finally(() => making.delete(k))); return making.get(k)!; };
 /** The job page's line about its employer: the card without its long parts. */
-export const miniCard = (name: string) => { const c = getCompanyInfo(name); return c && { at: c.at, ticker: c.ticker, stock: c.stock && { ...c.stock, weekly: undefined }, business: c.overview?.business?.text ?? null, levels: c.levels, blind: c.blind && { overall: c.blind.overall, reviews: c.blind.reviews, url: c.blind.url } }; };
+export const miniCard = (name: string) => { const c = getCompanyInfo(name); return c && { at: c.at, ticker: c.ticker, stock: c.stock && { ...c.stock, weekly: undefined }, business: c.overview?.business?.text ?? null, levels: c.levels, blind: c.blind && { overall: c.blind.overall, reviews: c.blind.reviews, url: c.blind.url }, layoffs: c.layoffs && { total: c.layoffs.total, rounds: c.layoffs.rounds, latest: c.layoffs.latest, url: c.layoffs.url } }; };
 /** Each morning (cron): the cards of the employers with the most open jobs here, on the cloud model, done by 8. */
 export const refreshCards = (n = 80) => asker.run({ cloud: true }, () => cards(n));
 async function cards(n: number) {
   let made = 0; await levelsMarket().catch(() => {});
   for (const name of topEmployers(n)) {
     if (Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })) >= 8) break;
-    if (Date.now() / 1000 - (getCompanyInfo(name)?.at ?? 0) < 12 * 3600) continue; // made today already (a rerun, or a visitor asked)
+    const prev = getCompanyInfo(name);
+    if (prev && "layoffs" in prev && Date.now() / 1000 - (prev.at ?? 0) < 12 * 3600) continue; // made today already (and includes layoffs field)
     await makeCard(name).then(() => made++).catch(() => {});
   }
   return made;
@@ -244,6 +340,26 @@ if (import.meta.url === `file://${process.argv[1]}` && process.argv[2] === "test
     ["Sierra Leone Company", "Sierra", 0], ["Temporal paradox", "Temporal", 0], ["Bloomberg L.P.", "Bloomberg", 1], ["Citigroup", "Citi", 1], ["The New York Times Company", "The New York Times", 1], ["Charlie Baker", "Charlie Health", 0]] as const)
     assert.equal(named(norm(full), norm(want)), !!ok, full);
   assert.equal(plain("DoorDash USA"), "DoorDash"); assert.equal(plain("Acme, Inc."), "Acme"); assert.equal(plain("Goldman Sachs"), "Goldman Sachs"); assert.equal(plain("US Bank"), "US Bank");
+  const sampleList = [{ name: "Meta", slug: "meta" }, { name: "Desktop Metal", slug: "desktop-metal" }, { name: "Metaplex", slug: "metaplex" }, { name: "Google", slug: "google" }, { name: "DoorDash", slug: "doordash" }, { name: "Block", slug: "block" }];
+  assert.equal(matchLayoffs("Meta", sampleList)?.slug, "meta");
+  assert.equal(matchLayoffs("Meta Platforms, Inc.", sampleList)?.slug, "meta");
+  assert.equal(matchLayoffs("Instagram", sampleList)?.slug, "meta");
+  assert.equal(matchLayoffs("Alphabet", sampleList)?.slug, "google");
+  assert.equal(matchLayoffs("DoorDash USA", sampleList)?.slug, "doordash");
+  assert.equal(matchLayoffs("Datadog", sampleList), null);
+  const sum = summarizeLayoffs({
+    company: "Meta", slug: "meta", events: [
+      { date: "2026-05-20", count: 8000, percent: 0.1, industry: "Consumer", source: "https://www.cnbc.com/meta" },
+      { date: "2024-10-16", count: null, percent: null, industry: "Consumer", source: "https://www.theverge.com/meta" },
+      { date: "2022-11-09", count: 11000, percent: 0.13, industry: "Consumer", source: "https://www.cnbc.com/meta-2022" },
+    ],
+  });
+  assert.equal(sum?.total, 19000);
+  assert.equal(sum?.rounds, 3);
+  assert.equal(sum?.undisclosed, 1);
+  assert.equal(sum?.latest?.date, "2026-05-20");
+  assert.equal(sum?.latest?.percent, 10);
+  assert.equal(sum?.years.find((y) => y.year === 2024)?.undisclosed, 1);
   console.log("company ok"); process.exit(0);
 }
 if (import.meta.url === `file://${process.argv[1]}`) { // node server/company.ts <company> (JOBS_DB pointing at a copy)
