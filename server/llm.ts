@@ -2,17 +2,17 @@ import "./env.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 // The local model: what Blip and Jobs AI fall back to when Ollama Cloud fails or its free credits run out, and Yomu's
-// only model (its chat promises nothing leaves this machine). Default qwen3.8:27b-mlx; OLLAMA_MODEL in .env overrides it.
+// only model (its chat promises nothing leaves this machine). Default qwen3.6:35b-mlx; OLLAMA_MODEL in .env overrides it.
 export const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
-export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.8:27b-mlx";
+export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.6:35b-mlx";
 /** Ollama Cloud's model for the signed-in admin (as in Yomu's chat): every llmJson call made for them goes there first.
  *  Visitors get the local model only (user, 2026-11-16: no gemma, Qwen). */
 export const OWNER_MODEL = process.env.YOMU_CLOUD_MODEL ?? "deepseek-v4.1-flash";
 /** Who an AI call is for, per request (server.ts runs each request in it): { cloud: true } for the signed-in admin. */
 export const asker = new AsyncLocalStorage<{ cloud: boolean }>();
 
-/** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"). */
-export const supportsEffort = (model = LOCAL_MODEL) => model.startsWith("qwen");
+/** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"); qwen3.6 uses boolean thinking. */
+export const supportsEffort = (model = LOCAL_MODEL) => model.startsWith("qwen3.8");
 
 /** Thinking for the local model:
  *  - When a schema'd JSON answer is wanted (json = true): no thinking, so it doesn't consume the reply's token budget

@@ -13,7 +13,7 @@
 | `host` | Mac (`sh.ihor.server`) | `127.0.0.1:8075`, `:8076` | `host.ts`: starts Docker Desktop + Compose on boot; bridges `mlx_whisper` (`:8075/whisper`), `mflux` SeedVR2 upscaler (`:8075/upscale`), and Meshtastic USB serial (`:8076`) |
 | `sdr` | Mac (`sh.ihor.sdr`) | `127.0.0.1:8073` | `radio/server.ts` (`SDR_DEVICE=rtl`, Nooelec RTL-SDR) |
 | `sdr-sat` | Mac (`sh.ihor.sdr-sat`) | `127.0.0.1:8074` | `radio/server.ts` (`SDR_DEVICE=hackrf`, HackRF Pro for weather satellites) |
-| `ollama` | Mac (`Ollama.app`) | `127.0.0.1:11434` | Local LLM & embeddings (`qwen3.8:27b-mlx`, `nomic-embed-text`) |
+| `ollama` | Mac (`Ollama.app`) | `127.0.0.1:11434` | Local LLM & embeddings (`qwen3.6:35b-mlx`, `nomic-embed-text`) |
 
 ## Managing from the host
 
