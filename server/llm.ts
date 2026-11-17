@@ -30,25 +30,32 @@ export const localThink = (json: boolean, deep = false, model = LOCAL_MODEL) => 
 export const MAX_WAITING = 8;
 let busy = false;
 const line: (() => void)[] = [], later: (() => void)[] = [];
+const inQueue = new AsyncLocalStorage<boolean>();
 const next = () => { const go = line.shift() ?? later.shift(); if (go) go(); else busy = false; }; // hands the turn straight on: busy stays true
 export class LineFull extends Error {}
+export const llmStatus = () => ({ busy, waiting: line.length, idleWaiting: later.length });
 /** Runs fn when it's this request's turn. ahead(n) hears how many are before it, only when it has to wait. */
 export async function inLine<T>(fn: () => Promise<T>, ahead?: (n: number) => void): Promise<T> {
+  if (inQueue.getStore()) return fn();
   if (busy) {
     if (line.length >= MAX_WAITING) throw new LineFull(`Blip is answering ${line.length + 1} people already. Try again in a minute.`);
     await new Promise<void>((go) => { line.push(go); ahead?.(line.length); });
   }
   busy = true;
-  try { return await fn(); }
+  try { return await inQueue.run(true, fn); }
   finally { next(); }
 }
 /** Background work (the city's briefs, camera checks): runs only when no visitor is waiting, after all of them. */
 export async function whenIdle<T>(fn: () => Promise<T>): Promise<T> {
+  if (inQueue.getStore()) return fn();
   if (busy) await new Promise<void>((go) => later.push(go));
   busy = true;
-  try { return await fn(); }
+  try { return await inQueue.run(true, fn); }
   finally { next(); }
 }
+/** Runs fn inside the local queue when it will use the local model (skips the line when Ollama Cloud handles it). */
+export const localTurn = <T>(fn: () => Promise<T>, lane: "visitor" | "idle" = "visitor", alwaysLocal = false) =>
+  !alwaysLocal && asker.getStore()?.cloud && process.env.OLLAMA_CLOUD_KEY ? fn() : lane === "idle" ? whenIdle(fn) : inLine(fn);
 
 if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-check of the line
   const assert = (await import("node:assert/strict")).default;
@@ -67,6 +74,8 @@ if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-chec
   const v = job("v", 5), bg2 = whenIdle(async () => { order.push("bg2"); }), v2 = job("v2", 5);
   await Promise.all([bg, v, bg2, v2]);
   assert.deepEqual(order.filter((o) => !o.startsWith("end")), ["bg1", "start v", "start v2", "bg2"]); // visitors go before waiting background work
+  assert.equal(await whenIdle(() => inLine(async () => "nested-ok")), "nested-ok");
+  assert.deepEqual(llmStatus(), { busy: false, waiting: 0, idleWaiting: 0 });
   console.log("llm.ts: line OK");
 }
 
@@ -86,10 +95,12 @@ export async function llmJson(system: string, user: string, schema: object, maxT
       if (r.ok) { const out = parse((await r.json()).message.content); if (fits(out, schema)) return { ...out, _model: OWNER_MODEL }; }
     } catch {}
   }
-  // num_ctx: Ollama's default (4,096) would cut a résumé, a posting and the answer short
-  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(300_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2, num_ctx: 16384 }, messages: [{ role: "system", content: system }, { role: "user", content: user }] }) });
-  if (!r.ok) throw new Error(`model ${r.status}`);
-  return { ...parse((await r.json()).message.content), _model: LOCAL_MODEL };
+  // num_ctx: Ollama's default (4,096) would cut a résumé, a posting and the answer short; queue if not already inside inLine/whenIdle
+  return inLine(async () => {
+    const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(300_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2, num_ctx: 16384 }, messages: [{ role: "system", content: system }, { role: "user", content: user }] }) });
+    if (!r.ok) throw new Error(`model ${r.status}`);
+    return { ...parse((await r.json()).message.content), _model: LOCAL_MODEL };
+  });
 }
 
 const nums = (s: string) => (s.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);

@@ -36,11 +36,16 @@
   <nav class="tabs" role="tablist">
     <button type="button" role="tab" data-tab="users" aria-selected="true">👤 Users &amp; rights</button>
     <button type="button" role="tab" data-tab="activity" aria-selected="false">📈 Activity</button>
+    <button type="button" role="tab" data-tab="jobs" aria-selected="false">⚙ Jobs &amp; queues</button>
   </nav>
   <section id="t-users"><p class="hint">Loading…</p></section>
   <section id="t-activity" hidden>
     <p><label>Last <select id="days"><option value="1">day</option><option value="7" selected>7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label> <span class="hint" id="actStep"></span></p>
     <div id="act"></div>
+  </section>
+  <section id="t-jobs" hidden>
+    <p><button type="button" id="jobsRefresh">Refresh</button> <span class="hint" id="jobsStep"></span></p>
+    <div id="jobsOut"></div>
   </section>
 </main>
 <script type="module">
@@ -96,10 +101,37 @@ async function loadActivity() {
     <div id="actLog"><h2>Latest, everyone</h2>${eventsTable(recent.slice(0, 120))}</div>`;
   $("actStep").textContent = "";
 }
+async function loadJobsHealth() {
+  $("jobsStep").textContent = "Loading…";
+  const d = await get("/api/admin/jobs-health"), j = d.jobs, q = j.queues, c = j.counts, l = d.llm, bj = d.briefJobs, br = d.bridge;
+  const tile = (v, lbl, sub = "") => `<div class="kpi card"><b>${esc(String(v))}</b><span>${lbl}${sub ? `<br>${sub}` : ""}</span></div>`;
+  $("jobsOut").innerHTML = `<div class="kpis">${tile(c.open.toLocaleString(), "open jobs", `${c.openDup.toLocaleString()} duplicates`)}${tile(c.closed.toLocaleString(), "closed (≤ 1 yr)", `${j.db.sizeMb} MB DB, ${j.db.freelistMb} MB free`)}
+    ${tile(q.needEmbedding, "need embeddings", `${j.orphaned.embClosedOrDup} orphaned`)}${tile(q.backfillPending, "need full text", br ? (br.crawlBusy ? `browser busy (+${br.crawlQueued})` : "browser idle") : "bridge off")}
+    ${tile(q.freshForChecksPending, "checks queued (24h)")}${tile(`${l.waiting} / ${l.idleWaiting}`, "AI queue", `${l.busy ? "busy" : "idle"} · ${bj.active} active briefs`)}</div>
+    <h2>Scheduled tasks</h2><div class="scrollx"><table><thead><tr><th>Task</th><th>Cron</th><th>Status</th><th class="n">Last run</th><th class="n">Duration</th><th>Error</th><th></th></tr></thead><tbody>
+    ${d.schedule.map((t) => `<tr><td><b>${esc(t.name)}</b><br><span class="hint">${esc(t.note)}</span></td><td><code>${esc(t.cron)}</code></td>
+      <td>${t.running ? `<span class="chip">running ${t.runningSeconds ?? 0}s / ${t.maxSeconds}s</span>` : "idle"}</td>
+      <td class="n">${when(t.last)}</td><td class="n">${t.seconds != null ? `${t.seconds}s` : "—"}</td>
+      <td class="${t.error ? "bad" : ""}">${esc(t.error ?? "")}</td>
+      <td><button type="button" data-run="${esc(t.name)}" ${t.running ? "disabled" : ""}>Run</button></td></tr>`).join("")}</tbody></table></div>
+    ${j.restingLanes.length ? `<h2>Resting rate-limited lanes</h2><p class="hint">${j.restingLanes.map((r) => `${esc(r.lane)} until ${when(r.until)}`).join(" · ")}</p>` : ""}
+    ${j.boards.failingCount ? `<h2>Boards with errors (${j.boards.failingCount})</h2><div class="scrollx"><table><thead><tr><th>ATS</th><th>Board</th><th class="n">Open</th><th class="n">Last OK</th><th>Error</th></tr></thead><tbody>
+      ${j.boards.failing.map((b) => `<tr><td>${esc(b.ats)}</td><td>${esc(b.name || b.slug)}</td><td class="n">${b.open ?? 0}</td><td class="n">${when(b.last_ok)}</td><td class="bad">${esc(b.last_err)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="hint">All ${j.boards.total} boards clean.</p>`}
+    ${j.boards.staleBoards.length ? `<h2>Open jobs unseen &gt; 7 days</h2><div class="scrollx"><table><thead><tr><th>Source</th><th>Board</th><th class="n">Count</th><th class="n">Oldest seen</th></tr></thead><tbody>
+      ${j.boards.staleBoards.map((s) => `<tr><td>${esc(s.source)}</td><td>${esc(s.board)}</td><td class="n">${s.open}</td><td class="n">${when(s.oldestSeen)}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
+  $("jobsStep").textContent = "";
+}
+$("jobsRefresh").onclick = () => loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message));
+$("jobsOut").addEventListener("click", async (e) => {
+  const name = e.target.dataset?.run; if (!name) return;
+  e.target.disabled = true;
+  try { await get(`/api/jobs/schedule?run=${encodeURIComponent(name)}`, { method: "POST" }); await loadJobsHealth(); } catch (err) { $("jobsStep").textContent = err.message; e.target.disabled = false; }
+});
 $("days").onchange = () => loadActivity().catch((e) => ($("actStep").textContent = e.message));
 for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
   for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
   if (b.dataset.tab === "activity" && !loadActivity.done) { loadActivity.done = true; loadActivity().catch((e) => ($("actStep").textContent = e.message)); }
+  if (b.dataset.tab === "jobs" && !loadJobsHealth.done) { loadJobsHealth.done = true; loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); }
 };
 loadUsers().catch((e) => ($("t-users").innerHTML = `<p>${esc(e.message)}</p>`));
 </script>

@@ -20,7 +20,7 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, type Query as JobQuery } from "./server/jobs.ts";
+import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, type Query as JobQuery } from "./server/jobs.ts";
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
@@ -28,7 +28,7 @@ import { startEvening, events as eveningEvents, eventById, planEvening, weekConc
 import { aircraft, trace, iss, storms, weather, nowcast, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
 import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
-import { inLine, LineFull, asker } from "./server/llm.ts";
+import { inLine, LineFull, asker, llmStatus } from "./server/llm.ts";
 import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
 import { ADMIN, userFrom, sessionFor, listUsers, setCloud, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
 import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
@@ -514,17 +514,29 @@ let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
 const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/jobs/tailor", "/api/jobs/brief", "/api/jobs/check", "/api/jobs/bullet", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
-type BriefJob = { at: number; step: string; result?: unknown; error?: string; once?: boolean };
+type BriefJob = { at: number; step: string; result?: unknown; error?: string; once?: boolean; who?: string };
 const briefJobs = new Map<string, BriefJob>();
+const BRIEF_MAX_MS = 6 * 60_000;
+const briefJobsStatus = () => {
+  const nowMs = Date.now(), pending = [...briefJobs.values()].filter((j) => !j.result && !j.error);
+  return { active: pending.length, total: briefJobs.size, oldestActiveSeconds: pending.length ? Math.round((nowMs - Math.min(...pending.map((j) => j.at))) / 1000) : null };
+};
 /** A slow AI answer as a job the page polls at /api/nyc/brief-job?id= (Cloudflare drops a reply that takes over 100 s).
  *  once: the result holds a visitor's text (a résumé), so it's forgotten as soon as it's read. */
-function startJob(res: http.ServerResponse, run: (step: (s: string) => void) => Promise<unknown>, first = "Waiting for the AI…", once = false) {
+function startJob(res: http.ServerResponse, run: (step: (s: string) => void) => Promise<unknown>, first = "Waiting for the AI…", once = false, who?: string) {
   for (const [k, j] of briefJobs) if (j.at < Date.now() - 15 * 60_000) briefJobs.delete(k);
-  if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return json403(res, "The AI is writing a few answers already. Try again in a minute.", 429);
-  const id = randomUUID(), job: BriefJob = { at: Date.now(), step: first, once };
+  const pending = [...briefJobs.values()].filter((j) => !j.result && !j.error);
+  if (pending.length >= 4 || (who && pending.filter((j) => j.who === who).length >= 2))
+    return json403(res, "The AI is writing a few answers already. Try again in a minute.", 429);
+  const id = randomUUID(), job: BriefJob = { at: Date.now(), step: first, once, who };
   briefJobs.set(id, job);
-  run((s) => (job.step = s)).then((r: any) => { if (r?.error) job.error = r.error; else job.result = r; })
-    .catch((e) => (job.error = e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : (e as Error).message));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("Taking too long right now. Try again in a minute.")), BRIEF_MAX_MS); });
+  const work = Promise.resolve().then(() => run((s) => (job.step = s)));
+  work.catch(() => {});
+  Promise.race([work, timeout]).then((r: any) => { if (r?.error) job.error = r.error; else job.result = r; })
+    .catch((e) => (job.error = e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : (e as Error).message))
+    .finally(() => clearTimeout(timer));
   return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ id }));
 }
 /** The morning alerts (cron): for each browser that asked, the signed-in user's saved searches' new jobs since the last
@@ -1126,7 +1138,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
       const b = boxOf((() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })());
       if (!b) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first." }));
-      return startJob(res, (step) => areaBrief(b, step), "Waiting for the local AI…");
+      return startJob(res, (step) => areaBrief(b, step), "Waiting for the local AI…", false, canCloud(req) ? undefined : session?.id);
     }
     // 📰 Research this, in an incident's drawer: a job like the area brief (web search, pages, the model: about a minute)
     if (url.pathname === "/api/nyc/incident-brief" && req.method === "POST") {
@@ -1134,7 +1146,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
       const iid = String((() => { try { return JSON.parse(raw || "{}").id; } catch { return ""; } })() ?? "").slice(0, 300);
       if (!iid) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Which incident?" }));
-      return startJob(res, (step) => researchIncident(iid, step), "Starting…");
+      return startJob(res, (step) => researchIncident(iid, step), "Starting…", false, canCloud(req) ? undefined : session?.id);
     }
     if (url.pathname === "/api/nyc/timeline") { const h = url.searchParams.get("hours") === "72" ? 72 : 24; return cityJson({ hours: h, events: timeline(h) }, 120); }
     if (url.pathname === "/api/nyc/security") return cityJson({ incidents: securityIncidents().slice(0, 300).map(incidentView) }, 60);
@@ -1184,11 +1196,11 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     }
     if (url.pathname === "/api/jobs/search" && url.searchParams.get("semantic") === "1" && url.searchParams.get("q")) { // by meaning (embeddings)
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await semanticSearch(jobQuery(url.searchParams)))); }
-      catch { return json403(res, "Search by meaning is unavailable right now; try plain search.", 503); }
+      catch (e) { return json403(res, e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : "Search by meaning is unavailable right now; try plain search.", e instanceof LineFull ? 429 : 503); }
     }
     if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
     if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name) } : { error: "No open jobs from that employer here." })); }
-    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock, pay, layoffs and reviews, searching the web, then writing the overview (up to three minutes)…"), makeCard(c)), "Waiting for the AI…"); }
+    if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock, pay, layoffs and reviews, searching the web, then writing the overview (up to three minutes)…"), makeCard(c)), "Waiting for the AI…", false, canCloud(req) ? undefined : session?.id); }
     if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
       const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
       if (req.method !== "POST") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(getData(u.id)));
@@ -1226,8 +1238,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     }
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
     if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify({ ...jobMarket(jobQuery(url.searchParams)), levelsFyi: getCompanyInfo(LEVELS_MARKET) }));
-    if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…"); }
-    if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined })); }
+    if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…", false, canCloud(req) ? undefined : session?.id); }
+    if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined }), "Waiting for the AI…", false, canCloud(req) ? undefined : session?.id); }
     if (url.pathname === "/api/jobs/text") { try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ description: await readJobText(String(url.searchParams.get("id") ?? "").slice(0, 300)) })); } catch { return json403(res, "Couldn't read the posting right now.", 502); } }
     if (url.pathname.startsWith("/api/admin/")) { // admin.html: accounts and their rights, and what everyone does on the site
       if (!isAdmin(req)) return json403(res, "Not found.", 404);
@@ -1236,6 +1248,10 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       if (url.pathname === "/api/admin/users") return send(listUsers());
       if (url.pathname === "/api/admin/stats") return send(activityStats(Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 7))));
       if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
+      if (url.pathname === "/api/admin/jobs-health") {
+        const bridge = process.env.HOST_BRIDGE ? await fetch(`${process.env.HOST_BRIDGE}/health`, { signal: AbortSignal.timeout(1500) }).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
+        return send({ schedule: cronStatus(), jobs: jobsHealth(), llm: llmStatus(), briefJobs: briefJobsStatus(), bridge });
+      }
       return json403(res, "Not found.", 404);
     }
     if (url.pathname === "/api/jobs/job") { const j0 = jobOne(String(url.searchParams.get("id") ?? "")), j = j0 && { ...j0, card: miniCard(j0.company) }; return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
@@ -1244,18 +1260,18 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
       let b: any; try { b = JSON.parse(raw || "{}"); } catch { return res.writeHead(400).end(); }
-      const resume = String(b.resume ?? "").slice(0, 20_000);
+      const resume = String(b.resume ?? "").slice(0, 20_000), who = canCloud(req) ? undefined : session?.id;
       // the long answers as polled jobs (the local model can take over Cloudflare's 100 s); the quick match (meaning only) stays a request
-      if (url.pathname === "/api/jobs/suggest") return startJob(res, () => jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Reading your résumé…", true);
-      if (url.pathname === "/api/jobs/match" && b.rank !== false) return startJob(res, () => jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, true), "Scoring the closest jobs against your résumé…", true);
-      if (url.pathname === "/api/jobs/bullet") return startJob(res, () => noteToBullet(resume, String(b.notes ?? "").slice(0, 2000), String(b.role ?? "").slice(0, 200), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Writing a bullet from your notes…", true);
-      if (url.pathname === "/api/jobs/tailor") return startJob(res, () => jobTailor(resume, b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Rebuilding your résumé for this job (up to two minutes)…", true);
+      if (url.pathname === "/api/jobs/suggest") return startJob(res, () => jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Reading your résumé…", true, who);
+      if (url.pathname === "/api/jobs/match" && b.rank !== false) return startJob(res, () => jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, true), "Scoring the closest jobs against your résumé…", true, who);
+      if (url.pathname === "/api/jobs/bullet") return startJob(res, () => noteToBullet(resume, String(b.notes ?? "").slice(0, 2000), String(b.role ?? "").slice(0, 200), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Writing a bullet from your notes…", true, who);
+      if (url.pathname === "/api/jobs/tailor") return startJob(res, () => jobTailor(resume, b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined), "Rebuilding your résumé for this job (up to two minutes)…", true, who);
       try {
         const d: any = url.pathname === "/api/jobs/match"
           ? await jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, b.rank !== false)
           : await jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined);
         return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
-      } catch (e) { console.log(`${url.pathname}: ${(e as Error).message}`); return res.writeHead(503, { "content-type": "application/json" }).end(JSON.stringify({ error: "The AI helper is busy or offline right now. Try again in a minute." })); }
+      } catch (e) { console.log(`${url.pathname}: ${(e as Error).message}`); return res.writeHead(e instanceof LineFull ? 429 : 503, { "content-type": "application/json" }).end(JSON.stringify({ error: "The AI helper is busy or offline right now. Try again in a minute." })); }
     }
     if (url.pathname === "/api/evening/events") { const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 80) || undefined;
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(await eveningEvents({ date: g("date"), from: g("from"), to: g("to"), budget: g("budget"), cat: g("cat"), near: g("near"), km: Number(p.get("km")) || undefined, source: g("source"), q: g("q") }))); }
@@ -1327,13 +1343,13 @@ if (IN_HOST_SUPERVISOR) {
   startMeteorRecorder();
   startEvents();
   // the jobs radar's background work, as crons inside this container (server/cron.ts; New York time)
-  for (const [name, cron, note, run] of jobsTasks()) schedule(name, cron, note, run);
-  schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", () => embedJobs());
-  schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", () => refreshGuidance());
-  schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", () => precomputeChecks());
-  schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", () => refreshCards());
-  schedule("nyc-today", "2 * * * *", "the city brief: today in New York (big events, weather, alerts, subway, top news, critical incidents), for the map and /nyc/today.html", () => makeDayBrief());
-  schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts());
+  for (const [name, cron, note, run, maxMs] of jobsTasks()) schedule(name, cron, note, run, maxMs);
+  schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", (s) => embedJobs(2000, s), 25 * 60_000);
+  schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", (s) => refreshGuidance(s), 15 * 60_000);
+  schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", (s) => precomputeChecks(s), 210 * 60_000);
+  schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", (s) => refreshCards(80, s), 150 * 60_000);
+  schedule("nyc-today", "2 * * * *", "the city brief: today in New York (big events, weather, alerts, subway, top news, critical incidents), for the map and /nyc/today.html", () => makeDayBrief(), 15 * 60_000);
+  schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts(), 15 * 60_000);
   startCron();
   startEvening();
   startMesh();
