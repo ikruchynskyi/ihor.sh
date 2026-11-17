@@ -20,6 +20,7 @@ import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 import { generateMeme, searchTemplates } from "./memes.ts";
 import { callFli } from "./fli.ts";
+import { callStays } from "./stays.ts";
 
 import { asker, OLLAMA, LOCAL_MODEL as MODEL, OWNER_MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? OWNER_MODEL; // DeepSeek on Ollama Cloud for everyone (user, 2026-11-16: no gemma)
@@ -551,12 +552,12 @@ const TOOLS: Record<string, Tool> = {
     run: (a) => callFli("search_flights", a),
   },
   search_dates: {
-    description: "Find the cheapest flight dates across a flexible date range for a route (via Fli).",
+    description: "Find the cheapest flight dates across a flexible date range for a route (via Fli). Each day in the window fetches one page, so keep parallel calls to <=21 days each.",
     parameters: {
       origin: { type: "string", description: "Departure airport IATA code(s)" },
       destination: { type: "string", description: "Arrival airport IATA code(s)" },
       start_date: { type: "string", description: "Start of date range YYYY-MM-DD" },
-      end_date: { type: "string", description: "End of date range YYYY-MM-DD" },
+      end_date: { type: "string", description: "End of date range YYYY-MM-DD (keep <= 21 days from start_date when calling multiple destinations in parallel)" },
       trip_duration: { type: "number", description: "Trip length in days for round-trip" },
       is_round_trip: { type: "boolean", description: "True for round-trip" },
       cabin_class: { type: "string", description: "Cabin class", enum: ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] },
@@ -568,38 +569,57 @@ const TOOLS: Record<string, Tool> = {
     required: ["origin", "destination", "start_date", "end_date"],
     run: (a) => callFli("search_dates", a),
   },
-  search_explore: {
-    description: "Discover cheap flight destinations from an origin ('fly anywhere' or to a region like EUROPE, ASIA, NORTH_AMERICA, via Fli).",
+  search_hotels: {
+    description: "Search live hotels or vacation rentals (Google Hotels via Stays). Returns names, prices, ratings, star class, amenities, and entity_key (pass entity_key to get_hotel_details for rooms and booking deeplink_url).",
     parameters: {
-      origin: { type: "string", description: "Origin airport IATA code (e.g. 'JFK')" },
-      destination: { type: "string", description: "ANYWHERE, EUROPE, SOUTHERN_EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, or OCEANIA" },
-      departure_date: { type: "string", description: "Departure date YYYY-MM-DD" },
-      round_trip: { type: "boolean", description: "True for round-trip prices" },
-      trip_min_nights: { type: "number", description: "Nights for round-trip (1-23, must equal trip_max_nights)" },
-      trip_max_nights: { type: "number", description: "Nights for round-trip (must equal trip_min_nights)" },
-      max_price: { type: "number", description: "Maximum fare" },
-      max_stops: { type: "string", description: "Max stops", enum: ["ANY", "NON_STOP", "ONE_STOP", "TWO_PLUS_STOPS"] },
-      max_flight_duration: { type: "number", description: "Max flight duration in minutes" },
-      currency: { type: "string", description: "ISO 4217 currency code" },
-      limit: { type: "number", description: "Max destinations to return" },
+      query: { type: "string", description: "City, neighborhood, mountain/landmark, or hotel query (e.g. 'Hunter Mountain, NY', 'San Juan, Puerto Rico')" },
+      check_in: { type: "string", description: "Check-in date YYYY-MM-DD (omit for flexible dates)" },
+      check_out: { type: "string", description: "Check-out date YYYY-MM-DD (required when check_in is set)" },
+      adults: { type: "number", description: "Adult guests (default 2)" },
+      children: { type: "number", description: "Child guests (0-8)" },
+      child_ages: { type: "array", items: { type: "number" }, description: "Required when children > 0: age 0-17 per child" },
+      sort_by: { type: "string", description: "Sort order", enum: ["RELEVANCE", "LOWEST_PRICE", "HIGHEST_RATING", "MOST_REVIEWED"] },
+      hotel_class: { type: "array", items: { type: "number" }, description: "Star ratings to keep (e.g. [3, 4, 5])" },
+      amenities: { type: "array", items: { type: "string" }, description: "Filter amenities e.g. POOL, FREE_WIFI, PET_FRIENDLY, KID_FRIENDLY, PARKING, SPA" },
+      min_guest_rating: { type: "number", description: "Minimum rating: 3.5, 4.0, or 4.5" },
+      free_cancellation: { type: "boolean", description: "True for free cancellation / refundable stays only" },
+      price_min: { type: "number", description: "Min nightly rate" },
+      price_max: { type: "number", description: "Max nightly rate" },
+      property_type: { type: "string", description: "HOTELS (default) or VACATION_RENTALS", enum: ["HOTELS", "VACATION_RENTALS"] },
+      currency: { type: "string", description: "ISO 4217 currency code (e.g. USD)" },
+      max_results: { type: "number", description: "Cap returned properties (1-25)" },
     },
-    required: ["origin", "departure_date"],
-    run: (a) => callFli("search_explore", a),
+    required: ["query"],
+    run: (a) => callStays("search_hotels", a),
   },
-  get_booking_options: {
-    description: "Get airline and OTA booking options, fares and booking links for a specific flight itinerary from search_flights (via Fli).",
+  get_hotel_details: {
+    description: "Get rooms, cancellation policies, and per-OTA prices + booking deeplink_url for one hotel (requires entity_key from search_hotels).",
     parameters: {
-      origin: { type: "string", description: "Departure airport IATA code(s)" },
-      destination: { type: "string", description: "Arrival airport IATA code(s)" },
-      departure_date: { type: "string", description: "Departure date YYYY-MM-DD" },
-      return_date: { type: "string", description: "Return date YYYY-MM-DD (omit for one-way)" },
-      flight_numbers: { type: "array", items: { type: "string" }, description: "Flight numbers in order (e.g. ['BA178'] or ['AA100', 'AA200'])" },
-      cabin_class: { type: "string", description: "Cabin class", enum: ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] },
-      passengers: { type: "number", description: "Adult passengers" },
-      currency: { type: "string", description: "ISO 4217 currency code" },
+      entity_key: { type: "string", description: "entity_key from search_hotels" },
+      check_in: { type: "string", description: "Check-in date YYYY-MM-DD" },
+      check_out: { type: "string", description: "Check-out date YYYY-MM-DD" },
+      currency: { type: "string", description: "ISO 4217 currency code (e.g. USD)" },
     },
-    required: ["origin", "destination", "departure_date"],
-    run: (a) => callFli("get_booking_options", a),
+    required: ["entity_key", "check_in", "check_out"],
+    run: (a) => callStays("get_hotel_details", a),
+  },
+  search_hotels_with_details: {
+    description: "Search top 1-3 hotels or rentals AND enrich them with room types, cancellation rules, and OTA booking deeplink_url in one call (via Stays). Use for at most ONE destination per turn (never call multiple destinations in parallel; use search_hotels for comparing cities).",
+    parameters: {
+      query: { type: "string", description: "City, neighborhood, mountain/landmark, or hotel query" },
+      check_in: { type: "string", description: "Check-in date YYYY-MM-DD" },
+      check_out: { type: "string", description: "Check-out date YYYY-MM-DD" },
+      max_hotels: { type: "number", description: "Top N hotels to fetch full room/booking rates for (1-5, keep 2-4 for speed)" },
+      adults: { type: "number", description: "Adult guests (default 2)" },
+      sort_by: { type: "string", description: "Sort order", enum: ["RELEVANCE", "LOWEST_PRICE", "HIGHEST_RATING", "MOST_REVIEWED"] },
+      free_cancellation: { type: "boolean", description: "True for refundable rates only" },
+      price_min: { type: "number", description: "Min nightly rate" },
+      price_max: { type: "number", description: "Max nightly rate" },
+      property_type: { type: "string", description: "HOTELS (default) or VACATION_RENTALS", enum: ["HOTELS", "VACATION_RENTALS"] },
+      currency: { type: "string", description: "ISO 4217 currency code (e.g. USD)" },
+    },
+    required: ["query", "check_in", "check_out"],
+    run: (a) => callStays("search_hotels_with_details", a),
   },
 };
 /** A map link that opens the NYC map at a point with its "what's here" popup, titled with the place's name. */
@@ -652,7 +672,7 @@ Visitors talk to you through a little game-style dialog box. You see the page th
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works (22 chapters, up to analog TV and weather-satellite pictures decoded in the browser), a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. A Meshtastic LoRa mesh map and public chat, heard by a node on USB, is at /radio/mesh/ (visitors read only). There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (opens with the last 24 hours of security incidents pinned: crime, fires and police or fire alerts; an incident's 📰 Research this button searches the web and summarizes it with sources; its 👁 Watch chip lists where to watch, the neighborhoods where security news and alerts gathered over 72 hours; its ⭐ My places chip: the visitor's watch zones (spots and commute routes saved in their browser; page objects carry myPlaces with what happened in each in 24 hours: summarize those when asked about "my places", "my commute", "home"); its 📍 Around me chip shows everything within 600 m of the visitor: subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms; layers for every station with live next trains, stations with MTA alerts → nearest Citi Bike, buses, ferries, ships, aircraft, broken elevators, traffic cameras, free events, restaurant inspections, public restrooms; click anywhere for the address and businesses there; the page action show_near draws the 600 m circle). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), [a route](/nyc/#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops in between; all separated by |). [an aircraft](/nyc/#aircraft=<hex>), [a ship](/nyc/#ship=<MMSI>). Ham radio lives on the repeaters page, not the NYC map: [a repeater](/radio/repeaters/?rpt=<id>@<lat>,<lon>) and [a ham satellite](/radio/repeaters/?sat=<id>) open there (its popups have 🎧 Listen with captions and Spectrum Lab); a spectrumLab link like /radio/?listen=146.94 opens Spectrum Lab preset to that frequency (the visitor then presses 'Listen to server SDR'), and any view with layers on: [rain radar](/nyc/#view=40.73,-73.95,9,radar) (#view=lat,lon,zoom,layer+layer; layers: radar, lightning, clouds, windy, storms, iss, aircraft, ships, ferry, trains, citibike, cameras, speeds, c311, city, popups, sales, restrooms, pops, outages, emergency, films, floods, incidents, closures, news, fdny). Tool results carry mapLink / maps fields with these links ready-made (places, cameras, routes, stations, bikes, buses, aircraft, ships, events, restaurants, weather, storms, the ISS, repeaters, satellites, emergency, film shoots, flood sensors): link each thing you mention with its mapLink, so a click opens the map showing it. For "over / near <a place>", get the place's coordinates with find_place, then pass them as lat/lon, Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
-- Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
+- Bonus world ORNA (the GPS RPG): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: one path from zero to junior ML engineer, in stages (0 start here, 1 the math of learning, 2 how a network learns, 3 classic ML and judging models, 4 the engineer's toolkit: Python, pandas, scikit-learn, PyTorch, 5 seeing and reading, 6 LLM engineering, 7 production, plus electives), each lesson with draggable visuals, worked math, runnable code and questions, and a "next on the path" link at the bottom; total beginners start at /ai/s1-what-is-ml.html (a model as a function with knobs, training a line by hand and by gradient descent, kinds of learning, what an ML engineer does) then /ai/s2-just-enough-code.html (just enough JavaScript to read every code box, with the Python equivalents) then /ai/s3-math-warm-up.html (functions and graphs, powers and scientific notation, logs and log-probabilities, Σ as a loop, Greek letters, reading ML formulas out loud). Live lessons: (matrices, gradients, a neuron, backprop, probability and loss, convolutions, attention, agents with a live tool-choice and faithfulness eval, vision, a tiny transformer trained in the browser on NYC subway station names at /ai/10-tiny-transformer.html, overfitting with train/validation/test splits, regularization and cross-validation at /ai/11-overfitting.html, and measuring a model (confusion matrix, precision/recall and the base-rate trap, ROC/PR curves and AUC, cost-based thresholds, calibration) at /ai/12-measuring-a-model.html, and logistic regression, decision trees (Gini) and gradient boosting with early stopping at /ai/13-trees-and-boosting.html; plus linear algebra 1 (equations as lines, row and column pictures of Ax = b, rank, Gaussian elimination step by step, inverses and ill-conditioning, least squares via the normal equations) at /ai/l1-systems-and-inverses.html, probability 1 (dice counting, complement/sum rules, independence, birthday problem and Monty Hall simulated, conditional probability, Bayes on 1000 people, naive Bayes spam filter, binomial PMF/CDF, inverse-CDF sampling) at /ai/p1-probability-and-bayes.html, probability 2 (describing 340 real subway elevator/escalator outages: mean vs median, standard deviation, z-scores, box/violin plots, histogram vs KDE, skew and logs, QQ plots, joint/marginal/conditional tables, correlation fooled by extreme points, the 2D normal and covariance ellipses) at /ai/p2-describing-data.html, linear algebra 2 (bases, eigenvectors you drag into line, characteristic polynomial, power iteration, PageRank over this site's 169 pages, projection, PCA on the outage data, Hessian eigenvalues and the condition number) at /ai/l2-eigenvectors-and-pca.html, probability 3 (n − 1, law of large numbers, central limit theorem, maximum likelihood for a coin/Gaussian/regression, where MSE and cross-entropy come from, Beta prior updating with a mystery coin, MAP, L2 regularization as a Gaussian prior) at /ai/p3-mle-and-map.html, deep networks layer by layer (notation and shapes, batches as matrices, vectorized backprop, zero vs random vs He/Xavier init, a spiral trained live, why depth: tent maps doubling, parameters vs hyperparameters) at /ai/deep-networks.html, probability 4 (confidence intervals simulated, t-distribution, p-values, paired McNemar vs unpaired tests for two models, type I/II errors and power, sample size, peeking, A/B testing in production) at /ai/p4-confidence-and-tests.html, and four Foundations calculus lessons: derivatives, rules, log-probabilities, activation slopes and gradient checking at /ai/c1-derivatives.html, partials, gradients, Jacobians and backprop as vector-Jacobian products at /ai/c2-many-variables.html, Taylor series, the learning-rate limit 2/k, Hessian, condition number, Newton and saddles at /ai/c3-taylor-and-curvature.html, and integrals, densities, expectations and Monte Carlo minibatch noise at /ai/c4-integrals.html; the index at /ai/ lists every lesson in path order; planned: features, clustering and anomalies, ML strategy, Python/NumPy, pandas/scikit-learn, PyTorch, optimizers, training deep nets, GPUs, deep CNNs and transfer learning, detectors, RNNs, word vectors, embeddings and RAG, fine-tuning, LLM evals, serving, MLOps, a capstone, and electives (reinforcement learning, recommenders, speech, seq2seq, faces and style)).
 - World 4, Yomu at /yomu/: Japanese from zero (87 dialogue stories across JLPT N5–N1, 274 grammar points across N5–N1, kanji and words across N5–N1). Word practice for all 8,131 JLPT words at /yomu/practice.html (typed recall, Japanese→English or English→Japanese or mixed, spaced repetition shared with Review, leeches flagged); a kanji dictionary at /yomu/kanji.html?k=<kanji> (readings, radical and parts, stroke order, JLPT words using it, Jisho sentences; search any word including multi-kanji words, ?q=). Graded stories (N5 to N1) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; complete N5–N1 grammar compendium /yomu/grammar.html; kanji and word decks all the way to N1 /yomu/deck.html; handwriting practice /yomu/draw.html; Talk /yomu/talk.html (spoken role-play scenes: konbini, asking the way, a restaurant, introductions, a train platform, a hotel); free conversation with Mochi (an animated catgirl who reacts as she talks) from N5 to N1 /yomu/chat.html?level=N5 (tap any word for its meaning); spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
 - World 5, Ride at /ride/: a bikepacking route notebook (bike routing, days, water/food/camps along the route with opening hours checked against when you pass, GPX), bike + train escapes from NYC at /ride/escapes.html (whether a full-size bike may ride a given Metro-North, LIRR or NJ Transit train, seven checked overnight trips, and a builder that finds campgrounds near any station and saves your own trips).
@@ -677,7 +697,8 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Where: on a map page the page objects carry mapView (the area the visitor is looking at). A question that names no place ("what's flying here?", "is it raining?", "any webcams?") is about that area: pass its lat/lon to the tool. With no mapView (the home page, other pages), assume NYC.
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 - Memes & humor: generate_meme to craft witty, ironic, or dad-joke memes with iconic templates, or search_memes to find matching templates.
-- Flights (worldwide, live Google Flights via Fli): find_airports to resolve city/airport IATA codes (e.g. NYC → JFK, LGA, EWR), search_flights for specific dates, search_dates for the cheapest dates in a window, search_explore for "fly anywhere" or regional deals, and get_booking_options for booking fares/links on a chosen flight. Share prices, stops, times and booking/Google Flights links from the tool results.
+- Flights (worldwide, live Google Flights via Fli): find_airports to resolve city/airport IATA codes (NYC → JFK,LGA,EWR), search_dates for cheapest dates in a window, and search_flights for actual nonstop/connecting itineraries and direct booking_url links. Note: every day in a search_dates window fetches its own page (capped at 10 req/s shared across parallel calls). For open-ended "cheapest destinations from NYC" queries: (1) pair web_search (e.g. sea/weather or deal picks) with 3–4 parallel search_dates calls on fitting hubs (keeping each parallel window to 14–18 days so they finish fast; pass max_stops="NON_STOP" when the visitor wants direct flights), then (2) follow up with parallel search_flights calls on the top 2–3 cheapest date winners so you can cite exact airlines, flight numbers, departure airport (JFK vs EWR vs LGA), times, and copy each itinerary's exact booking_url from search_flights (/travel/flights/booking?tfs=…) rather than search_dates's broader link. State which sample window was checked and offer to check other dates or destinations next. For one named route, search_dates handles up to 30–45 days.
+- Hotels & vacation rentals (worldwide, live Google Hotels via Stays): use search_hotels first when the visitor asks for hotels, lodges, cabins, or stays around any city or landmark (including e.g. 'Mt Hunter' → query 'Hunter Mountain, NY', or beach destinations; set property_type="VACATION_RENTALS" when rentals/cabins fit, sort_by="LOWEST_PRICE" for cheapest, free_cancellation=true for refundable). Always call search_hotels instead of relying on web_search alone, and pick the single exact holiday weekend dates (e.g. Thanksgiving 2026 Fri–Sun = check_in 2026-11-27, check_out 2026-11-29) rather than testing extra weeks. Keep Stays calls light to avoid rate limits: use search_hotels (1 call) to list options, then get_hotel_details on 1–2 top entity_keys (or ONE search_hotels_with_details call with max_hotels=3) when rooms, cancellation terms, or [Book via <provider>](<deeplink_url>) booking links are helpful. Never invent deeplink_url links, and combine Stays with Fli when the visitor asks for flights + hotels.
 
 How to answer:
 - Be warm, playful and brief: usually 1-4 short sentences, like a game character. Go longer only when asked to explain.
@@ -717,7 +738,7 @@ function pageTools(page: any) {
  *  deep (the chat's "think hard" box): high reasoning effort, room for it in the token budget, and longer timeouts. */
 async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [], deep = false) {
   const tools = withTools ? { tools: [...toolSpecs, ...extraTools] } : {};
-  const budget = { options: { num_predict: deep ? 8000 : 1500 } };
+  const budget = { options: { num_predict: deep ? 8000 : 4000 } };
   const key = process.env.BLIP_LOCAL || !asker.getStore()?.cloud ? undefined : process.env.OLLAMA_CLOUD_KEY; // the cloud only for the admin and users it let (user, 2026-11-16)
   if (key) {
     try {

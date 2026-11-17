@@ -20,8 +20,9 @@ services:
       MEMEGEN_URL: http://memegen:5000
       EDGE_TTS_URL: http://tts:5056
       FLI_MCP_URL: http://fli:8000/mcp
+      STAYS_MCP_URL: http://stays:8000/mcp
       TRUSTED_PROXY: 172.30.0.1,172.30.0.10,192.168.65.1
-    depends_on: ["fli"]
+    depends_on: ["fli", "stays"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -56,6 +57,28 @@ services:
     networks:
       ihor:
         ipv4_address: 172.30.0.5
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  stays:
+    build:
+      context: .
+      target: stays
+    container_name: ihor-stays
+    restart: unless-stopped
+    environment:
+      STAYS_RPS: "2"
+      STAYS_MCP_DEFAULT_MAX_HOTELS_WITH_DETAILS: "3"
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      ihor:
+        ipv4_address: 172.30.0.6
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 30s

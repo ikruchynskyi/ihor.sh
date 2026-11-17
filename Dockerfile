@@ -9,6 +9,17 @@ USER nobody
 EXPOSE 8000
 CMD ["fli-mcp-http"]
 
+# Hotel Search MCP server (https://github.com/him229/stays)
+FROM node:26-slim AS stays
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip python3-venv git ca-certificates \
+  && python3 -m venv /opt/stays \
+  && /opt/stays/bin/pip install --no-cache-dir "git+https://github.com/him229/stays.git" \
+  && apt-get purge -y git python3-pip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/stays/bin:$PATH" PYTHONUNBUFFERED=1 HOST=0.0.0.0 PORT=8000 HOME=/tmp
+USER nobody
+EXPOSE 8000
+CMD ["python3", "-c", "from stays.mcp.server import mcp, run_http\nfrom starlette.responses import JSONResponse\nasync def _h(_r): return JSONResponse({'status':'ok'})\nmcp.custom_route('/health', methods=['GET'])(_h)\nrun_http()"]
+
 # Edge TTS microservice (yomu/src/edge_tts_server.py)
 FROM python:3.12-slim AS tts
 WORKDIR /app

@@ -88,7 +88,7 @@ async function ensureDockerAndContainers() {
     // Check if web container is running; if not, run `docker compose up -d`
     const { stdout: psOut } = await execFileAsync("docker", ["compose", "ps", "--status", "running", "--format", "{{.Service}}"], { cwd: ROOT, timeout: 10_000 }).catch(() => ({ stdout: "" }));
     const running = new Set(psOut.trim().split(/\r?\n/).filter(Boolean));
-    if (!running.has("web") || !running.has("fli") || !running.has("tts") || !running.has("memegen")) {
+    if (!running.has("web") || !running.has("fli") || !running.has("stays") || !running.has("tts") || !running.has("memegen")) {
       console.log("host: bringing up docker compose services...");
       await execFileAsync("docker", ["compose", "up", "-d"], { cwd: ROOT, timeout: 300_000 });
       console.log("host: docker compose services are up");

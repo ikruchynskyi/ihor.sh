@@ -1,7 +1,7 @@
 #!/bin/sh
 # Manage the containerized ihor.sh stack and its macOS host services from the host machine:
 #   ./manage.sh status              show Docker containers and host services (sdr, sdr-sat, host bridge, ollama)
-#   ./manage.sh rebuild [service]   build radio/dist and rebuild/restart Docker containers (default: web fli tts)
+#   ./manage.sh rebuild [service]   build radio/dist and rebuild/restart Docker containers (default: web fli stays tts)
 #   ./manage.sh deploy              rebuild containers, restart sdr daemons, and run `npm run check`
 #   ./manage.sh restart [service]   restart one or all services (delegates to ./restart.sh)
 #   ./manage.sh test [file...]      run unit tests (inside the web container when running, else on host)
@@ -80,7 +80,7 @@ case "$cmd" in
     fi
     pkill -f "yomu/src/edge_tts_server.py" 2>/dev/null || true
     echo "Rebuilding and starting Docker containers..."
-    docker compose up -d --build ${@:-web fli tts memegen tunnel}
+    docker compose up -d --build ${@:-web fli stays tts memegen tunnel}
     wait_web
     echo "Containerized site ready on http://localhost:8080"
     ;;

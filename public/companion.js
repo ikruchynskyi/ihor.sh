@@ -942,7 +942,7 @@ const TOOL_DOING = { web_search: "searching the web", subway_status: "checking t
   weather_now: "checking the weather", aircraft_over_nyc: "looking at the sky", iss_now: "finding the ISS", iss_passes: "computing ISS passes", tropical_storms: "checking the storms", evening_events: "looking at what's on", plan_outing: "planning the outing", evening_plan: "planning the evening", jobs_search: "searching jobs",
   free_events: "checking free events", city_events: "checking the city calendar", restaurant_inspections: "checking health inspections", address_info: "looking up the address", street_photo: "finding street photos", deals: "checking deals",
   callsign_lookup: "looking up the callsign", repeaters_near: "finding repeaters", radio_stations: "checking the stations", orna_shops: "checking the guild shops",
-  find_airports: "finding airports", search_flights: "searching flights", search_dates: "checking flight dates", search_explore: "exploring flight deals", get_booking_options: "checking booking options" };
+  find_airports: "finding airports", search_flights: "searching flights", search_dates: "checking flight dates", search_hotels: "searching hotels", get_hotel_details: "checking hotel rates", search_hotels_with_details: "checking hotel details" };
 const TOOL_LABEL = Object.fromEntries(Object.entries(TOOL_DOING).map(([k, v]) => [k, v.replace(/^(\w+)ing\b/, (_, w) => ({ check: "checked", search: "searched", find: "found", plann: "planned", look: "looked", comput: "computed" })[w] ?? w + "ed")]));
 // Blip remembers where you've been (this browser only) and greets you per world.
 const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", yomu: "Yomu", ride: "Ride", learn: "Learn & build", orna: "ORNA" };
