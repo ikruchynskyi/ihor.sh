@@ -30,7 +30,7 @@ import { shipsNow } from "./server/ships.ts";
 import { yomuChat, isLevel, CLOUD_CHAT_MODEL } from "./server/yomu-chat.ts";
 import { inLine, LineFull, asker } from "./server/llm.ts";
 import { schedule, startCron, cronStatus, runTask } from "./server/cron.ts";
-import { ADMIN, userFrom, sessionFor, listUsers, setCloud, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
+import { ADMIN, userFrom, sessionFor, listUsers, setCloud, getScreen, setScreen, signOutEverywhere, googleReady, googleStart, googleFinish, DATA_KEYS, getData, putData, vapidKey, savePush, dropPush, pushSubs, pushed } from "./server/auth.ts";
 import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
@@ -615,6 +615,19 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const done = await googleFinish(SESSION_SECRET, back, String(url.searchParams.get("code") ?? ""), String(url.searchParams.get("state") ?? ""), cookie(req.headers.cookie, "ihg"));
       return res.writeHead(302, { location: done.next, "cache-control": "no-store", "set-cookie": withCookies(res, signedIn(req, done.id), "ihg=; Path=/auth; Max-Age=0") }).end();
     } catch (e) { return page((e as Error).message); }
+  }
+  // the TV's short address, and its settings by the screen's code (set from a phone: nyc/today.html ?setup=CODE)
+  if (url.pathname === "/tv") { const code = String(url.searchParams.get("code") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    return res.writeHead(302, { location: code ? `/nyc/today.html?setup=${code}` : "/nyc/today.html?kiosk=1", "cache-control": "no-store" }).end(); }
+  const scr = url.pathname.match(/^\/tv\/s\/([A-Z0-9]{4,8})$/);
+  if (scr) {
+    if (!spend(`tv:${clientIp(req)}`, 600, 3600_000)) return res.writeHead(429).end("Too many requests.");
+    const send = (v: unknown) => res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(v));
+    if (req.method !== "POST") return send(getScreen(scr[1]) ?? { hide: null });
+    let raw = ""; for await (const c of req) { raw += c; if (raw.length > 4000) return res.writeHead(413).end(); }
+    const hide = (JSON.parse(raw || "{}").hide ?? []) as unknown[];
+    if (!Array.isArray(hide)) return res.writeHead(400).end();
+    setScreen(scr[1], hide.map(String).filter((k) => /^[a-z0-9-]{1,24}$/.test(k)).slice(0, 60)); return send({ ok: true });
   }
   if (url.pathname === "/nyc/today.json") { // the city brief for the today display and for Home Assistant's REST sensors: no session (a framed page has no cookies), any origin
     if (!spend(`today:${clientIp(req)}`, 240, 3600_000)) return res.writeHead(429).end("Too many requests.");

@@ -39,6 +39,10 @@ export function userFrom(secret: string, token?: string): User | null {
   const u = db.prepare("select id, email, name, picture, provider, role, gen, cloud from users where id = ?").get(unb64(m[1])) as any;
   return u && String(u.gen) === m[2] ? { id: u.id, email: u.email, name: u.name, picture: u.picture, provider: u.provider, role: u.role, cloud: u.role === "admin" || !!u.cloud } : null;
 }
+// A wall screen's choice of what to show (nyc/today.html), set from a phone by the screen's code (user, 2026-11-16: a TV remote can't type settings)
+db.exec("create table if not exists screens (id text primary key, hide text not null, at int)");
+export const getScreen = (id: string) => { const r = db.prepare("select hide, at from screens where id = ?").get(id) as any; return r ? { hide: JSON.parse(r.hide) as string[], at: r.at as number } : null; };
+export const setScreen = (id: string, hide: string[]) => db.prepare("insert or replace into screens values (?, ?, ?)").run(id, JSON.stringify(hide), now());
 /** Every account, newest first (admin.html). */
 export const listUsers = () => db.prepare("select id, email, name, picture, provider, role, cloud, created, seen from users order by created desc").all() as any[];
 export const setCloud = (id: string, on: boolean) => db.prepare("update users set cloud = ? where id = ? and role != 'admin'").run(on ? 1 : 0, id).changes;

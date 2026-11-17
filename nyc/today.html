@@ -15,7 +15,11 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--bg); color: var(--fg); font: clamp(15px, 1.05vw + 4px, 24px)/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
     .page { min-height: 100%; display: flex; flex-direction: column; gap: 1.1em; padding: clamp(14px, 2vw, 40px); max-width: 2200px; margin: 0 auto; }
-    .kiosk body { cursor: none; } .kiosk .back { display: none; }
+    .kiosk .back { display: none; } .idle body, .idle * { cursor: none !important; }
+    .fgear { position: fixed; right: 1.2em; bottom: 1.2em; z-index: 5; font-size: 1.4em; padding: .35em .55em; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; opacity: 0; transition: opacity .3s; }
+    .fgear.on, .fgear:focus-visible { opacity: 1; } .fgear:focus-visible, .opts :focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .pair { display: flex; gap: 1em; align-items: center; background: var(--bg); border-radius: 10px; padding: .7em .9em; margin-bottom: .9em; } .pair .code { font: 700 1.6em ui-monospace, monospace; letter-spacing: .15em; color: var(--accent); }
+    .pair input { font: 700 1.3em ui-monospace, monospace; letter-spacing: .12em; width: 6.5em; text-transform: uppercase; padding: .2em .4em; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
     header { display: flex; align-items: flex-end; gap: 1.2em; flex-wrap: wrap; }
     .title { flex: 1 1 auto; min-width: 0; } .title h1 { margin: 0; font-size: 1.05em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
     .title .date { font-size: 1.6em; font-weight: 650; line-height: 1.1; }
@@ -76,6 +80,7 @@
   <footer><span id="updated">Loading…</span><span>Sources: NYC alerts and open data, the National Weather Service, the MTA, local news and event listings · written by AI · tap a line for details · <button class="gear" id="gear" title="Choose what this screen shows" aria-label="Settings">⚙ Settings</button></span></footer>
 </main>
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<button class="fgear" id="fgear" aria-label="Settings" title="Settings">⚙</button>
 <script>
 // ?kiosk=1 for a wall (no cursor, no links away, dark unless ?theme=light); ?theme=light|dark
 const q = new URLSearchParams(location.search), kiosk = q.has("kiosk");
@@ -92,6 +97,16 @@ const TOPICS = { politics: "Politics", business: "Business", culture: "Culture",
 const KEY = "today-hide", fromUrl = new URLSearchParams(location.search).get("hide");
 const loadHide = () => { if (fromUrl != null) return new Set(fromUrl.split(",").filter(Boolean)); try { return new Set(JSON.parse(localStorage.getItem(KEY) ?? "[]")); } catch { return new Set(); } };
 let hide = loadHide(), data = null, failedSince = 0;
+// This screen's code: settings set from a phone (?setup=CODE there) come to it from the server; a TV remote can't type them
+const ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", setupCode = (new URLSearchParams(location.search).get("setup") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+const screenId = (() => { try { let id = localStorage.getItem("today-screen"); if (!/^[A-Z0-9]{6}$/.test(id ?? "")) { id = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ABC[b % ABC.length]).join(""); localStorage.setItem("today-screen", id); } return id; } catch { return Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ABC[b % ABC.length]).join(""); } })();
+const sendScreen = (id, set) => fetch(`/tv/s/${id}`, { method: "POST", body: JSON.stringify({ hide: [...set] }) });
+let screenAt = 0;
+async function pullScreen() { // the choice sent from a phone wins over this screen's own (a ?hide= address wins over both)
+  if (fromUrl != null || setupCode) return;
+  const r = await fetch(`/tv/s/${screenId}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+  if (r?.hide && r.at !== screenAt) { screenAt = r.at; hide = new Set(r.hide); try { localStorage.setItem(KEY, JSON.stringify(r.hide)); } catch {} render(); }
+}
 const kiosk = document.documentElement.classList.contains("kiosk");
 function tick() {
   const d = new Date();
@@ -152,23 +167,51 @@ document.addEventListener("click", (e) => {
   const b = data.bullets[+t.dataset.b]; show(b.text, b.facts.map((id) => data.facts.find((f) => f.id === id)).filter(Boolean));
 });
 $("dlg").addEventListener("click", (e) => { if (e.target === $("dlg") || e.target.closest(".close")) $("dlg").close(); });
-// ⚙: what this screen shows, kept in this browser; and the address that carries it to another screen (a Home Assistant card)
-function settings() {
-  const box = (group, key, label) => `<label><input type="checkbox" data-k="${key}" ${hide.has(key) ? "" : "checked"}> ${esc(label)}</label>`;
-  $("dlgBody").innerHTML = `<button class="close" aria-label="Close">✕</button><h3>What this screen shows</h3><div class="opts">
-    <fieldset><legend>Sections</legend>${Object.entries(SECTION).map(([k, l]) => box("s", k, l)).join("")}</fieldset>
-    <fieldset><legend>Events</legend>${Object.entries(CATS).map(([k, l]) => box("c", k, l)).join("")}</fieldset>
-    <fieldset><legend>News</legend>${Object.entries(TOPICS).map(([k, l]) => box("t", `n-${k}`, l)).join("")}</fieldset>
-    <p><button class="btn" id="optSave">Save</button><button class="btn ghost" id="optAll">Show everything</button></p>
-    <p class="hint">Saved on this screen. To use the same choice on another screen or in Home Assistant, open this address there:</p><p class="url" id="optUrl"></p></div>`;
+// ⚙: what a screen shows. On the TV: kept there and on the server, with a code and QR so a phone can set it.
+// On a phone (?setup=CODE, or a code typed here): the form sends the choice to that TV.
+function settings(target = setupCode) {
+  const remote = !!target, id = target || screenId, setupUrl = `${location.origin}/tv?code=${id}`;
+  const box = (key, label, on) => `<label><input type="checkbox" data-k="${key}" ${on ? "checked" : ""}> ${esc(label)}</label>`;
+  const form = (cur) => `<fieldset><legend>Sections</legend>${Object.entries(SECTION).map(([k, l]) => box(k, l, !cur.has(k))).join("")}</fieldset>
+    <fieldset><legend>Events</legend>${Object.entries(CATS).map(([k, l]) => box(k, l, !cur.has(k))).join("")}</fieldset>
+    <fieldset><legend>News</legend>${Object.entries(TOPICS).map(([k, l]) => box(`n-${k}`, l, !cur.has(`n-${k}`))).join("")}</fieldset>`;
+  const head = remote ? `<h3>Settings for the screen ${esc(id)}</h3><p class="hint">Tick what that screen should show and press Save: it changes within half a minute.</p>`
+    : `<h3>What this screen shows</h3><div class="pair"><div class="qr" id="pairQr"></div><div><b>Set it up from your phone</b><br>Scan the code, or open <b>${esc(location.host)}/tv</b> on your phone, press ⚙ and enter the code<br><span class="code">${esc(id)}</span></div></div>`;
+  $("dlgBody").innerHTML = `<button class="close" aria-label="Close">✕</button>${head}<div class="opts"><div id="optForm">${form(remote ? new Set() : hide)}</div>
+    <p><button class="btn" id="optSave">Save</button><button class="btn ghost" id="optAll">Show everything</button></p><p class="hint" id="optMsg" aria-live="polite"></p>
+    ${remote ? "" : `<p class="pair"><label>Set up another screen: its code <input id="optCode" maxlength="8" autocomplete="off" spellcheck="false"></label> <button class="btn ghost" id="optGo">Open</button></p>`}</div>`;
   const pick = () => new Set([...$("dlgBody").querySelectorAll("input[data-k]")].filter((i) => !i.checked).map((i) => i.dataset.k));
-  const url = () => { const h = [...pick()], u = new URL(location.href); u.search = ""; if (kiosk) u.searchParams.set("kiosk", "1"); if (h.length) u.searchParams.set("hide", h.join(",")); $("optUrl").textContent = decodeURIComponent(u.href); };
-  $("dlgBody").addEventListener("change", url); url();
-  $("optAll").onclick = () => { $("dlgBody").querySelectorAll("input[data-k]").forEach((i) => (i.checked = true)); url(); };
-  $("optSave").onclick = () => { hide = pick(); try { localStorage.setItem(KEY, JSON.stringify([...hide])); } catch {} if (fromUrl != null) { const u = new URL(location.href); u.searchParams.delete("hide"); history.replaceState(null, "", u); } $("dlg").close(); render(); };
-  clearTimeout(closeTimer); $("dlg").showModal();
+  if (remote) fetch(`/tv/s/${id}`, { cache: "no-store" }).then((r) => r.json()).then((r) => { if (r?.hide) $("optForm").innerHTML = form(new Set(r.hide)); }).catch(() => {});
+  $("optAll").onclick = () => $("dlgBody").querySelectorAll("input[data-k]").forEach((i) => (i.checked = true));
+  $("optSave").onclick = async () => {
+    const h = pick();
+    if (remote) { const ok = await sendScreen(id, h).then((r) => r.ok).catch(() => false); $("optMsg").textContent = ok ? `Sent to ${id} ✓ It changes within half a minute.` : "Couldn't send it. Try again."; return; }
+    hide = h; try { localStorage.setItem(KEY, JSON.stringify([...h])); } catch {} sendScreen(screenId, h).catch(() => {});
+    if (fromUrl != null) { const u = new URL(location.href); u.searchParams.delete("hide"); history.replaceState(null, "", u); }
+    $("dlg").close(); render();
+  };
+  if (!remote) {
+    $("optGo").onclick = () => { const c = $("optCode").value.toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length >= 4) settings(c); };
+    loadQr().then(() => window.QRCode && new QRCode($("pairQr"), { text: setupUrl, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M })).catch(() => {});
+  }
+  clearTimeout(closeTimer); if (!$("dlg").open) $("dlg").showModal();
+  $("dlgBody").querySelector("input, button.btn")?.focus();
 }
-$("gear").onclick = settings;
+$("gear").onclick = () => settings(); $("fgear").onclick = () => settings();
+// a TV remote: the pointer hides when still, any key or move shows ⚙; the arrows move between the settings' boxes, OK ticks one
+let idleT = 0; const wake = () => { document.documentElement.classList.remove("idle"); $("fgear").classList.add("on"); clearTimeout(idleT); idleT = setTimeout(() => { document.documentElement.classList.add("idle"); $("fgear").classList.remove("on"); }, 4000); };
+addEventListener("mousemove", wake); addEventListener("touchstart", wake);
+addEventListener("keydown", (e) => {
+  wake();
+  if (!$("dlg").open) { if (["Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && document.activeElement === document.body) { e.preventDefault(); $("fgear").focus(); } return; }
+  const all = [...$("dlg").querySelectorAll("input, button, a[href]")].filter((x) => !x.disabled && x.offsetParent), at = all.indexOf(document.activeElement);
+  if (["ArrowDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); all[(at + 1) % all.length]?.focus(); }
+  if (["ArrowUp", "ArrowLeft"].includes(e.key)) { e.preventDefault(); all[(at - 1 + all.length) % all.length]?.focus(); }
+  if (e.key === "Enter" && document.activeElement?.type === "checkbox") { e.preventDefault(); document.activeElement.click(); }
+});
+if (kiosk) wake();
+if (setupCode) settings(setupCode); // opened from the TV's QR code: this phone sets that screen
+pullScreen(); setInterval(pullScreen, 30_000);
 tick(); setInterval(tick, 1000);
 load(); setInterval(load, 5 * 60_000); // the weather, the brief and the lists, every 5 minutes: no reload needed
 </script>
