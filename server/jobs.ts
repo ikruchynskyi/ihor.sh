@@ -151,6 +151,9 @@ export const seniority = (t: string) => /\bintern(ship)?\b|co-?op\b/i.test(t) ? 
   : /\b(vp|vice president|chief|head of|cto|cfo|ceo|coo|svp|evp)\b/i.test(t) ? "executive" : /\bdirector\b/i.test(t) ? "director"
   : /\b(manager|lead|supervisor)\b/i.test(t) ? "manager" : /\b(staff|principal|distinguished|architect)\b/i.test(t) ? "staff"
   : /\b(senior|sr\.?|iii|iv)\b/i.test(t) ? "senior" : /\b(associate|entry)\b/i.test(t) ? "junior" : "mid";
+/** The level from the title, or, when the title has no level word (most of "mid"), from the years of experience the posting asks for. */
+export const levelOf = (title: string, desc = "") => { const s = seniority(title); if (s !== "mid" || /\b(mid|ii|2)\b/i.test(title)) return s;
+  const y = yearsAsked(desc); return y == null ? s : y <= 1 ? "junior" : y <= 4 ? "mid" : y <= 7 ? "senior" : "staff"; };
 const FUNCS: [string, RegExp][] = [["engineering", /engineer|developer|devops|sre\b|software|platform|infrastructure|security|qa\b|test automation|firmware|mobile|ios|android/i],
   ["data", /data|analytics|analyst|machine learning|\bml\b|\bai\b|scientist|quant/i], ["design", /design|ux|ui\b|creative|art director/i], ["product", /product manager|product owner|\bpm\b|program manager/i],
   ["sales", /sales|account executive|business development|\bbdr\b|\bsdr\b|account manager/i], ["marketing", /marketing|growth|brand|content|seo|communications|\bpr\b|social media/i],
@@ -248,6 +251,12 @@ if (!db.prepare("select 1 from runs where what = 'migrate-flags-2'").get()) batc
 db.prepare("delete from companies where ats = 'workday' and slug = 'pwc|3|Global_Experienced_Careers'").run(); // PwC's global site: 3 New York jobs; its US one has them
 // 2026-11-16, once: Bloomberg's jobs were all stored as New York (its search ignores the place): read each page again
 if (!db.prepare("select 1 from runs where what = 'migrate-bloomberg-place'").get()) { db.prepare("update jobs set description = '' where id like 'cu:bloomberg:%' and closed is null").run(); db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-bloomberg-place", 1, 0, ""); }
+// 2026-11-20, once: a "mid" job by default (no level word in its title) takes its level from the years it asks for
+if (!db.prepare("select 1 from runs where what = 'migrate-levels-years'").get()) batch(() => {
+  const lv = db.prepare("update jobs set seniority = ? where id = ?");
+  for (const r of db.prepare("select id, title, description from jobs where closed is null and seniority = 'mid'").all() as any[]) { const s = levelOf(r.title, r.description ?? ""); if (s !== "mid") lv.run(s, r.id); }
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "migrate-levels-years", 1, 0, "");
+});
 // 2026-11-16: amazon.jobs names each job's legal entity ("Amazon.com Services LLC", "Amazon Web Services, Inc."…), which split Amazon into a dozen employers here
 db.exec("update jobs set company = 'Amazon', ckey = 'amazon' where source = 'amazon' and company != 'Amazon'; update companies set name = 'Amazon' where ats = 'amazon'");
 function save(j: In) {
@@ -259,7 +268,7 @@ function save(j: In) {
   const posted = j.posted ? Math.floor(j.posted / 1000) : null;
   const row = { company: j.company, title: j.title, description: desc, region: reg, salary_min: sal?.min ?? null, salary_max: sal?.max ?? null, posted, url: j.url, source: j.source, first_seen: t, reposts: reposts(ckey(j.company), j.title, reg, j.id) };
   upsert.run(j.id, j.source, j.company, ckey(j.company), j.title.trim(), j.location.slice(0, 200), reg, remoteType(j.location, desc, j.remoteHint ?? (j.isRemote ? "remote" : "")),
-    sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, j.salaryEst ? 1 : 0, posted, j.url, j.department ?? "", j.employment ?? "", seniority(j.title), func(j.title, j.department), desc, t, t, fp, JSON.stringify(flagsFor(row)));
+    sal?.min ?? null, sal?.max ?? null, sal?.period ?? null, j.salaryEst ? 1 : 0, posted, j.url, j.department ?? "", j.employment ?? "", levelOf(j.title, desc), func(j.title, j.department), desc, t, t, fp, JSON.stringify(flagsFor(row)));
   ftsDel.run(j.id); ftsAdd.run(j.id, j.title, j.company, desc.slice(0, 8000));
   return true;
 }
@@ -703,6 +712,19 @@ function filters(qy: Query, open = true) {
   if (qy.hideFlagged) where.push("(j.flags is null or j.flags = '[]')");
   return { from, w: where.join(" and "), args, fts };
 }
+/** What stated jobs of a field, level and place pay (middle half and median, 15 or more salaries), for jobs that state none: an estimate, marked so. */
+let payTable: { at: number; m: Map<string, { p25: number; median: number; p75: number; n: number }> } | null = null;
+export function payEstimate(f: string, lvl: string, reg: string) {
+  if (!payTable || Date.now() - payTable.at > 3600_000) {
+    const groups = new Map<string, number[]>();
+    for (const r of db.prepare("select func, seniority, region, (salary_min + coalesce(salary_max, salary_min)) / 2.0 * (case when salary_period = 'hour' then 2080 else 1 end) pay from jobs where closed is null and dup_of is null and salary_min is not null and coalesce(salary_est, 0) = 0").all() as any[])
+      for (const k of [`${r.func}|${r.seniority}|${r.region}`, `${r.func}|${r.seniority}|*`]) (groups.get(k) ?? groups.set(k, []).get(k)!).push(r.pay);
+    const m = new Map<string, any>();
+    for (const [k, l] of groups) if (l.length >= 15) { l.sort((a, b) => a - b); m.set(k, { p25: pct(l, 0.25), median: pct(l, 0.5), p75: pct(l, 0.75), n: l.length }); }
+    payTable = { at: Date.now(), m };
+  }
+  return payTable.m.get(`${f}|${lvl}|${reg}`) ?? payTable.m.get(`${f}|${lvl}|*`) ?? null;
+}
 export function search(qy: Query) {
   const { from, w, args, fts } = filters(qy);
   // with words, best match first (title words count 10×, the company 3×, the description 1×), else newest first
@@ -719,14 +741,15 @@ export function search(qy: Query) {
     rows = top.map((r, i) => [r, score(r, i)] as const).sort((a, b) => b[1] - a[1]).map(([r]) => r).slice(page * 30, page * 30 + 30);
   } else rows = db.prepare(`select ${cols} from ${from} where ${w} order by ${order} limit 30 offset ?`).all(...args, page * 30);
   const facet = (col: string) => Object.fromEntries((db.prepare(`select ${col} k, count(*) n from ${from} where ${w} group by ${col}`).all(...args) as any[]).map((r) => [r.k, r.n]));
-  return { total, page, rows: rows.map((r: any) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), also: r.also ? r.also.split(",") : [] })), facets: { region: facet("j.region"), remote: facet("j.remote"), seniority: facet("j.seniority"), func: facet("j.func"), source: facet("j.source") } };
+  return { total, page, rows: rows.map((r: any) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), also: r.also ? r.also.split(",") : [], est: r.salary_min == null && r.func !== "other" ? payEstimate(r.func, r.seniority, r.region) : null })), facets: { region: facet("j.region"), remote: facet("j.remote"), seniority: facet("j.seniority"), func: facet("j.func"), source: facet("j.source") } };
 }
 export function job(id: string) {
   const r: any = db.prepare("select * from jobs where id = ?").get(id);
   if (!r) return null;
   const co = db.prepare("select count(*) open, sum(case when flags like '%open % days%' then 1 else 0 end) old, sum(case when salary_min is null then 1 else 0 end) nosal from jobs where ckey = ? and closed is null and dup_of is null").get(r.ckey) as any;
   const closed30 = (db.prepare("select count(*) n from jobs where ckey = ? and closed > ?").get(r.ckey, now() - 30 * 86400) as any).n;
-  return { ...r, fp: undefined, flags: JSON.parse(r.flags ?? "[]"), also: r.also ? r.also.split(",") : [], employer: { open: co.open, openOver60Days: co.old, withoutSalary: co.nosal, closedLast30Days: closed30 } };
+  return { ...r, fp: undefined, flags: JSON.parse(r.flags ?? "[]"), also: r.also ? r.also.split(",") : [], employer: { open: co.open, openOver60Days: co.old, withoutSalary: co.nosal, closedLast30Days: closed30 },
+    est: r.salary_min == null && r.func !== "other" ? payEstimate(r.func, r.seniority, r.region) : null };
 }
 export function stats() {
   const by = db.prepare("select source, count(*) n from jobs where closed is null and dup_of is null group by source").all();
@@ -755,7 +778,8 @@ function marketNow(qy: Query) {
   const late = (db.prepare("select ats, slug from companies where added > ?").all(start + D) as any[]).map((c) => `${PREFIX[c.ats]}:${c.slug}:`);
   const { from, w, args } = filters({ ...qy, days: undefined }, false);
   const T0 = "coalesce(j.posted, j.first_seen)", PAY = "(j.salary_min + coalesce(j.salary_max, j.salary_min)) / 2.0 * (case when j.salary_period = 'hour' then 2080 else 1 end)";
-  const STEADY = `substr(j.id, 1, 3 + instr(substr(j.id, 4), ':')) not in (${late.map(() => "?").join(",")})`; // "gh:slug:"; "az:", "nyc:" are never late
+  // trends count employers' own systems and the government's, not aggregators: Adzuna's and the remote boards' volume follows how much of them we read (2026-11-20: +79% that wasn't hiring)
+  const STEADY = `substr(j.id, 1, 3 + instr(substr(j.id, 4), ':')) not in (${late.map(() => "?").join(",")}) and j.source not in ('adzuna', 'himalayas', 'remotive')`; // "gh:slug:"; "nyc:" is never late
   const GONE = "j.closed - j.first_seen >= 86400"; // closed the day it was seen = a repost we hid, not a job taken down
   const rows = (db.prepare(`select j.id, j.company, j.ckey, j.title, j.func, j.seniority, ${T0} t0, j.closed, j.closed is not null and ${GONE} gone, ${STEADY} steady,
     case when j.salary_min is not null and j.salary_est = 0 then ${PAY} end pay from ${from} where ${w} and (j.closed is null or j.closed >= ? or ${T0} >= ?)`).all(...late, ...args, t - 30 * D, t - 30 * D) as any[])
@@ -807,6 +831,28 @@ export function prune() {
 export const BIG = ["smartrecruiters", "workday", "oracle", "amazon", "eightfold"];
 const afterIngest = (alsoPrune = false) => { dedupe(); if (alsoPrune) prune(); marketCache.clear(); };
 /** The jobs radar's crons (server/cron.ts, New York time): every source at least 4 times a day, each within its limits. */
+/** Hourly (cron): open jobs that no read has seen for 2 days, checked at their own page (user, 2026-11-20: are they still
+ *  open?). An Adzuna ad's page answers 404 "no longer available" once it's gone; a job board's (Ashby, Lever, Greenhouse,
+ *  Workable, SmartRecruiters) 404 or 410 too, or Greenhouse's "?error=true" redirect. Gone: closed. There: seen now, so it's
+ *  checked again in 2 days. One page every 1.5 s, oldest first; a refusal (403, 429) ends the run until the next hour. */
+const LIVE_SOURCES = ["adzuna", "ashby", "lever", "greenhouse", "workable", "smartrecruiters"];
+export async function checkLiveness(budget = 600, signal?: AbortSignal) {
+  const rows = db.prepare(`select id, url, source from jobs where closed is null and dup_of is null and last_seen < ? and source in (${LIVE_SOURCES.map(() => "?").join(",")}) and url like 'https://%' order by last_seen limit ?`).all(now() - 2 * 86400, ...LIVE_SOURCES, budget) as any[];
+  const gone = db.prepare("update jobs set closed = ? where id = ? and closed is null"), there = db.prepare("update jobs set last_seen = ? where id = ?");
+  let closed = 0, open = 0;
+  for (const r of rows) {
+    if (signal?.aborted) break;
+    await new Promise((ok) => setTimeout(ok, 1500));
+    const res = await fetch(r.url, { redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
+    if (!res) continue;
+    res.body?.cancel().catch(() => {}); // the status says it: no need for the page
+    if (res.status === 403 || res.status === 429) break;
+    if (res.status === 404 || res.status === 410 || /[?&]error=true/.test(res.url)) { gone.run(now(), r.id); closed++; }
+    else if (res.ok) { there.run(now(), r.id); open++; }
+  }
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "liveness", 1, closed, `${rows.length} checked: ${closed} gone, ${open} still open`);
+  return closed;
+}
 export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => Promise<unknown>, number][] => [
   ["jobs-boards", "5 * * * *", "Greenhouse, Lever, Ashby and Workable boards and NYC's jobs (liveness); then dedupe and prune", async (s) => { await refreshBoards(undefined, "boards", 6, s); if (!s.aborted) await refreshNycJobs(); afterIngest(true); }, 30 * 60_000],
   ["jobs-adzuna-nyc", "20 */4 * * *", "Adzuna around NYC (40% IT, 30% finance, 30% everything), within its monthly calls", async () => { const r = await refreshAdzuna("nyc"); afterIngest(); return r; }, 15 * 60_000],
@@ -817,8 +863,12 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-custom", "15 4,9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async (s) => { await refreshBoards(["custom"], "boards-custom", 6, s); afterIngest(); }, 20 * 60_000],
   ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", (s) => backfillTexts(60, s), 5 * 60_000],
   ["jobs-discover", "0 5 * * *", "new employer boards, from Adzuna's employers", (s) => discover(100, s), 25 * 60_000],
+  ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(600, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
 
+/** Every employer board with how its last read went (admin.html's job sources): failing, partial or empty first. */
+export const jobSources = () => (db.prepare(`select ats, slug, coalesce(name, slug) name, open, last_ok, last_err, added from companies order by (coalesce(last_err, '') = '') , coalesce(open, 0) > 0, coalesce(open, 0) desc`).all() as any[])
+  .map((c) => ({ ...c, stale: (db.prepare("select count(*) n from jobs where id like ? and closed is null and last_seen < ?").get(`${PREFIX[c.ats] ?? c.ats}:${c.slug}:%`, now() - 2 * 86400) as any).n }));
 /** A saved search as RSS: the 30 newest matches. */
 export function rss(qy: Query, selfUrl: string, title: string) {
   const r = search(qy), x = (t: string) => t.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);

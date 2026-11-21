@@ -50,10 +50,10 @@ const kept = () => { try { return localStorage.getItem("resume-text"); } catch {
 function head() {
   const j = job, e = j.employer, t = tracked()[j.id];
   document.title = `${j.title} at ${j.company}`; $("crumb").textContent = $("jt").textContent = j.title;
-  $("head").innerHTML = `<div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
+  $("head").innerHTML = `<div class="meta"><b>${companyLink(j.company)}</b><span>${esc(j.location)}</span><span>${esc(LABEL.remote[j.remote] ?? "")}</span>${pay(j) ? `<span class="pay">${pay(j)}</span>` : j.est ? `<span class="pay" title="Not stated: what ${j.est.n} similar jobs here state (middle half)">~${k$(j.est.p25)}–${k$(j.est.p75)} est.</span>` : ""}<span>posted ${age(j.posted ?? j.first_seen)}</span>
       ${verified(j.source) ? `<span class="chip ok" title="From the employer's own listings">✓ at the employer</span>` : `<span class="chip">via ${esc(LABEL.source[j.source] ?? j.source)}</span>`}${j.closed ? `<span class="chip flag">closed ${new Date(j.closed * 1000).toLocaleDateString()}</span>` : ""}</div>
     ${j.flags.length ? `<div class="meta" style="margin-top:4px">${j.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
-    <p class="meta" style="margin-top:10px"><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source] ?? j.source)} ↗</a>
+    <p class="meta" style="margin-top:10px"><a class="button" data-apply="${esc(j.id)}" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source] ?? j.source)} ↗</a>
       <label>📋 <select id="stage" aria-label="Track this job"><option value="">not tracked</option>${STAGES.map((s) => `<option ${t?.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
       <button type="button" id="share">🔗 Copy link</button> <span class="hint" id="shareMsg"></span></p>
     <p class="hint">${esc(j.company)} here: ${e.open} open job${e.open === 1 ? "" : "s"}${e.openOver60Days ? `, ${e.openOver60Days} open over 60 days` : ""}${e.closedLast30Days ? `, ${e.closedLast30Days} closed in the last 30 days` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</p>${about(j)}`;

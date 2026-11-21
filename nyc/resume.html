@@ -54,6 +54,7 @@
   <div class="drop card" id="drop">
     <p><b>Drop your résumé here</b> (PDF, Word .docx or .txt), or <label style="text-decoration:underline;cursor:pointer">choose a file<input type="file" id="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden></label></p>
     <details><summary class="hint">or paste the text</summary><textarea id="paste" placeholder="Paste your résumé's text"></textarea><button id="usePaste" type="button">Check this text</button></details>
+    <p class="hint">No résumé at hand? <button type="button" id="sample" class="linkish">See it work on a sample résumé</button> (a made-up analyst's, with the usual weak spots).</p>
     <label class="hint"><input type="checkbox" id="keep"> keep it in this browser (to match it against jobs later)</label>
     <label class="hint" id="keepAcctBox" hidden><input type="checkbox" id="keepAcct"> keep it in my account too (to use it on my other devices)</label>
   </div>
@@ -158,14 +159,41 @@ async function readFile(f) {
   try {
     current = /\.pdf$/i.test(f.name) || f.type === "application/pdf" ? await readPdf(buf) : /\.docx$/i.test(f.name) ? await readDocx(buf) : /\.doc$/i.test(f.name) ? null : { text: new TextDecoder().decode(buf), layout: { kind: "txt" } };
     if (!current) { $("status").textContent = "Old .doc files can't be read here: save it as .docx or PDF and try again."; return; }
-    $("status").textContent = `${f.name}: read.`; show();
+    $("status").textContent = `${f.name}: read.`; used("file"); show();
   } catch (e) { $("status").textContent = `Couldn't read that file (${e.message}). Try saving it as a PDF or .docx again.`; }
 }
 $("file").onchange = () => $("file").files[0] && readFile($("file").files[0]);
 const d = $("drop");
 d.addEventListener("dragover", (e) => { e.preventDefault(); d.classList.add("over"); }); d.addEventListener("dragleave", () => d.classList.remove("over"));
 d.addEventListener("drop", (e) => { e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
-$("usePaste").onclick = () => { const t = $("paste").value.trim(); if (t) { current = { text: t, layout: { kind: "txt" } }; $("status").textContent = "Checking the pasted text (layout checks need the file itself)."; show(); } };
+$("usePaste").onclick = () => { const t = $("paste").value.trim(); if (t) { current = { text: t, layout: { kind: "txt" } }; $("status").textContent = "Checking the pasted text (layout checks need the file itself)."; used("paste"); show(); } };
+// how résumés get here, counted (never their text): a file, pasted text, or the sample
+const used = (how) => navigator.sendBeacon?.(`/api/jobs/resume-used?how=${how}`);
+// a made-up résumé with the usual weak spots (duties instead of results, clichés, few numbers), to show what the checks find
+const SAMPLE = `Jordan Rivera
+Brooklyn, NY · jordan.rivera@example.com · linkedin.com/in/jordan-rivera-example
+
+SUMMARY
+Results-driven, detail-oriented data analyst and team player with a passion for data. Hard-working self-starter who thinks outside the box.
+
+EXPERIENCE
+Data Analyst, Hudson Retail Group, New York, NY · 2022 – present
+- Responsible for creating weekly sales reports in Excel and Tableau
+- Worked on a customer churn analysis with the marketing team
+- Helped migrate dashboards from Excel to Tableau, cutting report prep from 6 hours to 1 hour a week
+- Duties included writing SQL queries against the sales database
+
+Junior Analyst, Bright Path Nonprofit, Jersey City, NJ · 2020 – 2022
+- Assisted with donor data cleanup
+- Built a Python script that matched 12,000 donor records and found 1,400 duplicates
+- Various other tasks as needed
+
+EDUCATION
+B.A. Economics, City College of New York, 2020
+
+SKILLS
+SQL, Excel, Tableau, Python (pandas), PowerPoint, communication, teamwork`;
+$("sample").onclick = () => { current = { text: SAMPLE, layout: { kind: "txt" } }; $("status").textContent = "A sample résumé (made up): load your own above any time."; used("sample"); show(); };
 
 // ---------- showing ----------
 const NAMES = { parsing: "Will it parse?", contact: "Can they reach you?", content: "Do the bullets sell?" };

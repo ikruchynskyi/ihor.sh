@@ -20,7 +20,7 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, type Query as JobQuery } from "./server/jobs.ts";
+import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, jobSources, type Query as JobQuery } from "./server/jobs.ts";
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
@@ -1210,13 +1210,18 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       putData(u.id, b.key, b.value); return res.writeHead(200, { "content-type": "application/json" }).end("{}");
     }
     if (url.pathname === "/api/push/key") return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ key: vapidPublic(vapidKey(newVapid)) }));
-    if (url.pathname === "/api/push/subscribe" && req.method === "POST") { // alerts for the signed-in user's saved searches and follow-ups
-      const u = currentUser(req); if (!u) return json403(res, "Sign in to get alerts.", 401);
-      let raw = ""; for await (const c of req) { raw += c; if (raw.length > 5000) return res.writeHead(413).end(); }
-      const sub = (() => { try { return JSON.parse(raw).sub; } catch { return null; } })();
-      if (!/^https:\/\//.test(String(sub?.endpoint ?? "")) || !sub?.keys?.p256dh || !sub?.keys?.auth) return res.writeHead(400).end();
-      savePush(u.id, sub); return res.writeHead(200, { "content-type": "application/json" }).end("{}");
+    if ((url.pathname === "/api/push/subscribe" || url.pathname === "/api/push/data") && req.method === "POST") {
+      // alerts for saved searches and follow-ups: a signed-in user's from their account; without an account (user, 2026-11-20)
+      // this browser's own, sent with the subscription and again when they change, kept under a key made from its endpoint
+      let raw = ""; for await (const c of req) { raw += c; if (raw.length > 200_000) return res.writeHead(413).end(); }
+      const b = (() => { try { return JSON.parse(raw); } catch { return null; } })(), u = currentUser(req), sub = b?.sub, endpoint = String(sub?.endpoint ?? b?.endpoint ?? "");
+      if (!/^https:\/\//.test(endpoint) || (url.pathname === "/api/push/subscribe" && (!sub?.keys?.p256dh || !sub?.keys?.auth))) return res.writeHead(400).end();
+      const owner = u?.id ?? `b:${createHash("sha256").update(endpoint).digest("base64url").slice(0, 20)}`;
+      if (url.pathname === "/api/push/subscribe") savePush(owner, sub);
+      if (!u) for (const k of ["saved", "tracker"]) if (b?.[k] != null) putData(owner, k, JSON.stringify(b[k]).slice(0, 150_000));
+      return res.writeHead(200, { "content-type": "application/json" }).end("{}");
     }
+    if ((url.pathname === "/api/jobs/apply" || url.pathname === "/api/jobs/resume-used") && req.method === "POST") return res.writeHead(204).end(); // counted by the activity log: an Apply click, a résumé loaded (no content)
     if (url.pathname === "/api/push/unsubscribe" && req.method === "POST") { let raw = ""; for await (const c of req) { raw += c; if (raw.length > 5000) return res.writeHead(413).end(); }
       const ep = (() => { try { return String(JSON.parse(raw).endpoint ?? ""); } catch { return ""; } })(); if (ep) dropPush(ep); return res.writeHead(200, { "content-type": "application/json" }).end("{}"); }
     if (url.pathname === "/api/jobs/search") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch(jobQuery(url.searchParams))));
@@ -1246,6 +1251,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const send = (v: unknown) => res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(v));
       if (url.pathname === "/api/admin/users" && req.method === "POST") return send({ changed: setCloud(String(url.searchParams.get("id") ?? ""), url.searchParams.get("cloud") === "1") });
       if (url.pathname === "/api/admin/users") return send(listUsers());
+      if (url.pathname === "/api/admin/sources") return send(jobSources());
       if (url.pathname === "/api/admin/stats") return send(activityStats(Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 7))));
       if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
       if (url.pathname === "/api/admin/jobs-health") {

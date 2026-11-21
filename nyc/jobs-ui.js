@@ -50,8 +50,14 @@ export const me = () => (meP ??= getJSON("/api/auth/me").then((d) => d.user).cat
 const timers = {};
 function sync(key, value) {
   clearTimeout(timers[key]);
-  timers[key] = setTimeout(() => me().then((u) => u && post("/api/me/data", { key, value: JSON.stringify(value) }).catch(() => {})), 800);
+  timers[key] = setTimeout(() => me().then((u) => {
+    if (u) return post("/api/me/data", { key, value: JSON.stringify(value) }).catch(() => {});
+    let endpoint = null; try { endpoint = localStorage.getItem("jobs-push"); } catch {} // alerts without an account: the server keeps a copy for the morning note
+    if (endpoint && (key === "saved" || key === "tracker")) post("/api/push/data", { endpoint, [key]: value }).catch(() => {});
+  }), 800);
 }
+// an Apply click, counted (which jobs people go after; no more than the job's id)
+document.addEventListener("click", (e) => { const a = e.target.closest?.("a[data-apply]"); if (a) navigator.sendBeacon?.(`/api/jobs/apply?id=${encodeURIComponent(a.dataset.apply)}`); });
 /** Signed in: merges this browser's tracker and saved searches with your account's (newest entry wins, removals kept),
  *  stores the result in both, and returns true. Signed out: false, and nothing leaves the browser. */
 export async function pullAccount() {

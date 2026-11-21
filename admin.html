@@ -46,6 +46,7 @@
   <section id="t-jobs" hidden>
     <p><button type="button" id="jobsRefresh">Refresh</button> <span class="hint" id="jobsStep"></span></p>
     <div id="jobsOut"></div>
+    <div id="sourcesOut"></div>
   </section>
 </main>
 <script type="module">
@@ -121,17 +122,27 @@ async function loadJobsHealth() {
       ${j.boards.staleBoards.map((s) => `<tr><td>${esc(s.source)}</td><td>${esc(s.board)}</td><td class="n">${s.open}</td><td class="n">${when(s.oldestSeen)}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
   $("jobsStep").textContent = "";
 }
-$("jobsRefresh").onclick = () => loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message));
+$("jobsRefresh").onclick = () => { loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch(() => {}); };
 $("jobsOut").addEventListener("click", async (e) => {
   const name = e.target.dataset?.run; if (!name) return;
   e.target.disabled = true;
   try { await get(`/api/jobs/schedule?run=${encodeURIComponent(name)}`, { method: "POST" }); await loadJobsHealth(); } catch (err) { $("jobsStep").textContent = err.message; e.target.disabled = false; }
 });
 $("days").onchange = () => loadActivity().catch((e) => ($("actStep").textContent = e.message));
+/** Every employer board: the ones with nothing open, or with jobs no read has seen for 2 days (the liveness check takes those), and who isn't read at all. */
+const NOT_READ = [["KPMG", "its careers site is a script-only app with no feed found"], ["Microsoft", "read in part: its job site throttles after a few requests"]];
+async function loadSources() {
+  const l = await get("/api/admin/sources"), empty = l.filter((c) => !c.open), stale = l.filter((c) => c.stale > 0);
+  const table = (rows) => `<div class="scrollx"><table><thead><tr><th>Board</th><th>System</th><th class="n">Open</th><th class="n">Unseen 2 days</th><th class="n">Last read</th><th>Last note</th></tr></thead><tbody>${rows.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.ats)}</td><td class="n">${c.open ?? 0}</td><td class="n">${c.stale || ""}</td><td class="n">${when(c.last_ok)}</td><td class="${c.last_err ? "bad" : ""}">${esc(c.last_err ?? "")}</td></tr>`).join("")}</tbody></table></div>`;
+  $("sourcesOut").innerHTML = `<h2>Job sources (${l.length} boards)</h2>
+    ${stale.length ? `<h3>Jobs not seen for 2 days (${stale.length} boards)</h3><p class="hint">Checked at their own page each hour (Adzuna and the job boards); the big employers' come back with their next full read.</p>${table(stale)}` : ""}
+    ${empty.length ? `<h3>Boards with nothing open (${empty.length})</h3>${table(empty)}` : ""}
+    <h3>Not read</h3><ul>${NOT_READ.map(([n, why]) => `<li><b>${esc(n)}</b>: ${esc(why)}</li>`).join("")}</ul>`;
+}
 for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
   for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
   if (b.dataset.tab === "activity" && !loadActivity.done) { loadActivity.done = true; loadActivity().catch((e) => ($("actStep").textContent = e.message)); }
-  if (b.dataset.tab === "jobs" && !loadJobsHealth.done) { loadJobsHealth.done = true; loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); }
+  if (b.dataset.tab === "jobs" && !loadJobsHealth.done) { loadJobsHealth.done = true; loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch((e) => ($("sourcesOut").textContent = e.message)); }
 };
 loadUsers().catch((e) => ($("t-users").innerHTML = `<p>${esc(e.message)}</p>`));
 </script>

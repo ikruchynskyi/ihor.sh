@@ -208,7 +208,7 @@ async function run(keepPage = false) {
   $("list").innerHTML = rows.map((r, i) => `<article class="job card" data-i="${i}" tabindex="0">
     <h3>${jobLink(r)}</h3>
     <div class="meta"><b>${companyLink(r.company)}</b><span>${esc(LABEL.region[r.region])}${r.region !== "remote" ? ` · ${esc(LABEL.remote[r.remote])}` : ""}</span>
-      ${r.salary_min ? `<span class="pay">${money(r.salary_min, r.salary_period)}${r.salary_max && r.salary_max !== r.salary_min ? `–${money(r.salary_max, r.salary_period)}` : ""}${r.salary_est ? " est." : ""}</span>` : ""}
+      ${r.salary_min ? `<span class="pay">${money(r.salary_min, r.salary_period)}${r.salary_max && r.salary_max !== r.salary_min ? `–${money(r.salary_max, r.salary_period)}` : ""}${r.salary_est ? " est." : ""}</span>` : r.est ? `<span class="pay est" title="Not stated: what ${r.est.n} similar jobs here state (middle half)">~${money(r.est.p25)}–${money(r.est.p75)} est.</span>` : ""}
       <span>${age(r.posted ?? r.first_seen)}</span>
       ${verified(r.source) ? `<span class="chip ok" title="From the employer's own listings">✓ at the employer</span>` : `<span class="chip" title="An aggregator listing">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}
       ${r.also.length ? `<span class="chip" title="The same job, also listed there">also on ${[...new Set(r.also.map((s) => LABEL.source[s] ?? s))].map(esc).join(", ")}</span>` : ""}
@@ -229,7 +229,7 @@ $("list").addEventListener("click", async (e) => {
   box.hidden = false; card.classList.add("open"); box.textContent = "Loading…";
   try {
     const j = await getJSON(`/api/jobs/job?id=${encodeURIComponent(r.id)}`), e2 = j.employer;
-    box.innerHTML = `<p><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source])} ↗</a>
+    box.innerHTML = `<p><a class="button" data-apply="${esc(j.id)}" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source])} ↗</a>
       <span class="hint">${esc(j.location)}${j.employment ? ` · ${esc(j.employment)}` : ""}${j.department ? ` · ${esc(j.department)}` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</span></p>
       <p class="hint"><a href="/nyc/job.html?id=${encodeURIComponent(j.id)}">The job's page ↗</a> · <a href="/nyc/resume.html?job=${encodeURIComponent(j.id)}">📄 Check my résumé against this job</a> · <button type="button" data-check="${esc(j.id)}">🔍 Check this job for red flags</button> <span data-check-step aria-live="polite"></span></p><div data-check-out></div>
       <p class="report">${esc(j.company)} here: ${e2.open} open job${e2.open === 1 ? "" : "s"}${e2.openOver60Days ? `, ${e2.openOver60Days} open over 60 days` : ""}${e2.withoutSalary ? `, ${e2.withoutSalary} without a salary` : ""}${e2.closedLast30Days ? `, ${e2.closedLast30Days} closed in the last 30 days` : ""}.</p>
@@ -238,7 +238,7 @@ $("list").addEventListener("click", async (e) => {
 });
 $("list").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList.contains("job")) e.target.click(); });
 $("form").onsubmit = (e) => { e.preventDefault(); run(); };
-let t; $("q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 350); });
+let t; $("q").addEventListener("input", () => { clearTimeout(t); if ($("q").value.trim().length === 1) return; t = setTimeout(run, 600); }); // a pause in typing, not every letter
 $("rail").addEventListener("change", () => run());
 for (const id of ["title", "sort", "sem"]) $(id).addEventListener("change", () => run());
 for (const id of ["company", "exclude"]) $(id).addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 500); });
@@ -354,7 +354,7 @@ function renderMarket(m) {
   $("v-market").innerHTML = !m.open ? `<p>No open jobs match these filters. Loosen one on the left.</p>` : `
     <div class="kpis">
       <div class="kpi card"><b>${m.open.toLocaleString()}</b><span>open jobs</span></div>
-      <div class="kpi card"><b>${m.new7.toLocaleString()}</b><span>new in the last 7 days ${vsTxt(m.change)}<br>vs. the weekly average of the 3 weeks before</span></div>
+      <div class="kpi card"><b>${m.new7.toLocaleString()}</b><span>new in the last 7 days ${vsTxt(m.change)}<br>the change: employers' own sites vs. their weekly average of the 3 weeks before</span></div>
       <div class="kpi card"><b>${k$(m.pay)}</b><span>median stated pay a year<br>middle half ${k$(m.p25)}–${k$(m.p75)}</span></div>
       <div class="kpi card"><b>${m.open ? Math.round((m.fromEmployers / m.open) * 100) : 0}%</b><span>read from employers' own systems<br>the rest via Adzuna</span></div>
       <div class="kpi card"><b>${m.open ? Math.round((m.withPay / m.open) * 100) : 0}%</b><span>state their pay (${m.withPay.toLocaleString()})</span></div>
@@ -474,13 +474,15 @@ pullAccount().then((ok) => { if (ok) { renderTrack(); renderSaved(); } });
 // 🔔 alerts: this browser subscribes (web push); the server sends one note in the morning (server.ts sendAlerts)
 $("alerts").onclick = async () => {
   const say = (t) => ($("restoreMsg").textContent = t);
-  if (!(await me())) return say("Sign in first (Aa READER → Account): alerts follow your account's saved searches and follow-ups.");
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return say("This browser can't receive web notifications.");
   try {
     if ((await Notification.requestPermission()) !== "granted") return say("Notifications are blocked for this site in your browser.");
     const reg = await navigator.serviceWorker.register("/sw.js"), { key } = await getJSON("/api/push/key");
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) });
-    await post("/api/push/subscribe", { sub: sub.toJSON() }); say("🔔 On: a note each morning when your saved searches have new jobs or a follow-up is due.");
+    const signed = await me(); // without an account, this browser's saved searches and follow-ups go with the subscription
+    await post("/api/push/subscribe", { sub: sub.toJSON(), ...(signed ? {} : { saved: savedSearches(), tracker: { entries: tracked() } }) });
+    try { localStorage.setItem("jobs-push", sub.endpoint); } catch {}
+    say(`🔔 On: a note each morning when your saved searches have new jobs or a follow-up is due.${savedSearches().length ? "" : " Save a search (☆ above) to get its new jobs."}`);
   } catch (e) { say(`Couldn't turn alerts on: ${e.message}`); }
 };
 window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags; a Market tab with trends and pay; My applications)", tab, search: Object.fromEntries(state()),

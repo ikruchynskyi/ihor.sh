@@ -25,7 +25,7 @@ const ACTIONS: [RegExp, string, string?][] = [
   [/^\/api\/memes\/search$/, "Meme search", "q"], [/^\/api\/memegen\//, "Meme made"], [/^\/api\/yomu\/chat$/, "Yomu chat"], [/^\/api\/yomu\/(search|kanji)$/, "Yomu lookup", "q"],
   [/^\/api\/radio\/(callsign|repeaters)$/, "Radio lookup", "q"], [/^\/api\/ride\/route$/, "Ride route"], [/^\/api\/orna\/plan$/, "Orna plan"],
   [/^(\/api\/auth\/token|\/auth\/google\/callback)$/, "Sign in"], [/^\/api\/auth\/logout$/, "Sign out"], [/^\/api\/push\/subscribe$/, "Alerts on"], [/^\/api\/me\/data$/, "Account sync"],
-  [/^\/api\/admin\//, "Admin"],
+  [/^\/api\/admin\//, "Admin"], [/^\/api\/jobs\/apply$/, "Apply clicked", "id"], [/^\/api\/jobs\/resume-used$/, "Résumé loaded", "how"], [/^\/api\/push\/data$/, "Alerts' saved searches"],
 ];
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|python|curl|wget|httpclient|go-http|java\/|scrapy|axios|node-fetch/i;
 export type Hit = { method: string; path: string; query: URLSearchParams; status: number; html: boolean; ms: number; userId?: string; session?: string; ip: string; ua: string };
