@@ -319,8 +319,8 @@ export async function companyCard(name: string, lane: "visitor" | "idle" = "visi
   return card;
 }
 
-export const CARD_TTL = 7 * 86400;
-const isFreshCard = (c: any) => !!c && "layoffs" in c && Date.now() / 1000 - (c.at ?? 0) < CARD_TTL;
+export const CARD_TTL = 86400; // a day: news and stock prices are worth reading again daily, not weekly (user, 2026-11-20)
+const isFreshCard = (c: any, ttl = CARD_TTL) => !!c && "layoffs" in c && Date.now() / 1000 - (c.at ?? 0) < ttl;
 const making = new Map<string, Promise<any>>(); // one card made at a time per company, however many visitors ask
 export const makeCard = (name: string, force = false, lane: "visitor" | "idle" = "visitor") => {
   if (!force) { const prev = getCompanyInfo(name); if (isFreshCard(prev)) return Promise.resolve(prev); }
@@ -335,7 +335,7 @@ async function cards(n: number, signal?: AbortSignal) {
   for (const name of topEmployers(n)) {
     const hr = Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })) % 24;
     if (signal?.aborted || hr >= 8) break;
-    if (isFreshCard(getCompanyInfo(name))) continue; // cached for 7 days (and includes layoffs field)
+    if (isFreshCard(getCompanyInfo(name), 20 * 3600)) continue; // made since yesterday's run: a card a day, every morning
     await makeCard(name, false, "idle").then(() => made++).catch(() => {});
   }
   return made;

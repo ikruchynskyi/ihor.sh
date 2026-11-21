@@ -178,11 +178,11 @@ export function marketFacts(qy: Query) {
 }
 const briefs = new Map<string, { at: number; p: Promise<any> }>();
 /** An overview, findings and advice for one slice, worded by the model from marketFacts; any line that names a number its
- *  cited facts don't have is dropped (faithful, as in the city's briefs). One per slice an hour; a second visitor waits on the first. */
+ *  cited facts don't have is dropped (faithful, as in the city's briefs). One per slice a day; a second visitor waits on the first. */
 export function marketBrief(qy: Query) {
   const key = JSON.stringify(qy), hit = briefs.get(key);
-  if (hit && Date.now() - hit.at < 3600_000) return hit.p;
-  for (const [k, b] of briefs) if (Date.now() - b.at > 3600_000) briefs.delete(k);
+  if (hit && Date.now() - hit.at < 86400_000) return hit.p; // a day: the market moves slowly (user, 2026-11-20)
+  for (const [k, b] of briefs) if (Date.now() - b.at > 86400_000) briefs.delete(k);
   if (briefs.size > 200) briefs.clear();
   const scope = [qy.q && `jobs matching "${qy.q}"`, qy.func && `field ${qy.func}`, qy.seniority && `level ${qy.seniority}`, qy.region && `region ${qy.region}`, qy.remote && `work ${qy.remote}`, qy.company && `company ${qy.company}`].filter(Boolean).join(", ") || "all jobs in New York City, New Jersey, the metro and remote in the US";
   const p = (async () => {
