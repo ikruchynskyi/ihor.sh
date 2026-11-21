@@ -836,12 +836,13 @@ const afterIngest = (alsoPrune = false) => { dedupe(); if (alsoPrune) prune(); m
  *  Workable, SmartRecruiters) 404 or 410 too, or Greenhouse's "?error=true" redirect. Gone: closed. There: seen now, so it's
  *  checked again in 2 days. One page every 1.5 s, oldest first; a refusal (403, 429) ends the run until the next hour. */
 const LIVE_SOURCES = ["adzuna", "ashby", "lever", "greenhouse", "workable", "smartrecruiters"];
-export async function checkLiveness(budget = 600, signal?: AbortSignal) {
+export async function checkLiveness(budget = 800, signal?: AbortSignal, minutes = 15) { // a quarter hour of checking a run (a page takes ~2 s with the pause)
+  const until = Date.now() + minutes * 60_000;
   const rows = db.prepare(`select id, url, source from jobs where closed is null and dup_of is null and last_seen < ? and source in (${LIVE_SOURCES.map(() => "?").join(",")}) and url like 'https://%' order by last_seen limit ?`).all(now() - 2 * 86400, ...LIVE_SOURCES, budget) as any[];
   const gone = db.prepare("update jobs set closed = ? where id = ? and closed is null"), there = db.prepare("update jobs set last_seen = ? where id = ?");
   let closed = 0, open = 0;
   for (const r of rows) {
-    if (signal?.aborted) break;
+    if (signal?.aborted || Date.now() > until) break;
     await new Promise((ok) => setTimeout(ok, 1500));
     const res = await fetch(r.url, { redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
     if (!res) continue;
@@ -850,7 +851,7 @@ export async function checkLiveness(budget = 600, signal?: AbortSignal) {
     if (res.status === 404 || res.status === 410 || /[?&]error=true/.test(res.url)) { gone.run(now(), r.id); closed++; }
     else if (res.ok) { there.run(now(), r.id); open++; }
   }
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "liveness", 1, closed, `${rows.length} checked: ${closed} gone, ${open} still open`);
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "liveness", 1, closed, `${closed + open} checked: ${closed} gone, ${open} still open`);
   return closed;
 }
 export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => Promise<unknown>, number][] => [
@@ -863,7 +864,7 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-custom", "15 4,9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async (s) => { await refreshBoards(["custom"], "boards-custom", 6, s); afterIngest(); }, 20 * 60_000],
   ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", (s) => backfillTexts(60, s), 5 * 60_000],
   ["jobs-discover", "0 5 * * *", "new employer boards, from Adzuna's employers", (s) => discover(100, s), 25 * 60_000],
-  ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(600, s); if (n) afterIngest(); return n; }, 20 * 60_000],
+  ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
 
 /** Every employer board with how its last read went (admin.html's job sources): failing, partial or empty first. */
