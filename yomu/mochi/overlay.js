@@ -66,8 +66,6 @@ const EMOTES = {
 	doya:     { params: { ParamEyeLSmile: 0.9, ParamEyeRSmile: 0.9, ParamMouthForm: 1, ParamAngleZ: 12, ParamAngleY: 10 }, zoom: 1.9, ms: 4000,
 	            deco: [{ s: "ドヤァ", x: -1.5, y: -0.6, size: 1.0, a: "slam", cls: "doya" }, { s: "ドヤァ", x: 1.5, y: 0.2, size: 0.8, a: "slam late", cls: "doya" }] },
 	hop:      { energy: 1.6, hops: 3, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1, ParamMouthOpenY: 0.6, ParamCheek: 0.5 }, zoom: 1.15, ms: 2200, deco: [] },
-	nya:      { params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1, ParamMouthOpenY: 0.5, ParamCheek: 0.8, ParamAngleZ: -12 }, zoom: 1.7, ms: 3500, hops: 2,
-	            deco: [{ s: "にゃ〜", x: 1.5, y: -0.4, size: 0.9, a: "slam", cls: "nya" }, { s: "🐾", x: -1.3, y: -0.8, size: 0.7, a: "pop late" }] },
 	paw:      { params: { ParamEyeLSmile: 0.8, ParamEyeRSmile: 0.8, ParamMouthForm: 1, ParamCheek: 0.5 }, zoom: 1.3, ms: 3500,
 	            deco: [{ s: "🐾", x: 1.0, y: -0.6, size: 0.8, a: "rise" }, { s: "🐾", x: -1.0, y: -0.2, size: 0.6, a: "rise late" }] },
 	purr:     { params: { ParamEyeLOpen: -0.7, ParamEyeROpen: -0.7, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1, ParamCheek: 1, ParamAngleZ: 10 }, blink: false, zoom: 1.6, ms: 4000,
@@ -75,16 +73,10 @@ const EMOTES = {
 	dots:     { params: { ParamEyeBallX: -0.5, ParamMouthForm: -0.2 }, zoom: 1.4, ms: 4500,
 	            deco: [{ s: "", x: 1.25, y: -1.0, size: 1, a: "fade", cls: "dots" }] },
 };
-// Catgirl theme: a bell drawn over the model, following the head.
-const EAR = (flip) => `<svg viewBox="0 0 100 110" style="transform:scaleX(${flip ? -1 : 1})"><path d="M8 104 C10 60 22 22 52 4 C70 30 86 62 94 104 Z" fill="#f2c879" stroke="#7a4b22" stroke-width="5" stroke-linejoin="round"/><path d="M26 100 C30 68 38 44 52 26 C62 46 72 70 78 100 Z" fill="#fff6ea"/><path d="M34 98 C38 76 44 60 52 48 C58 62 64 78 68 98 Z" fill="#ffd9e3"/></svg>`;
-const BOW = `<svg viewBox="0 0 120 70"><path d="M60 35 L8 6 C2 30 2 42 8 64 Z" fill="#2453c9" stroke="#0f2a6e" stroke-width="5" stroke-linejoin="round"/><path d="M60 35 L112 6 C118 30 118 42 112 64 Z" fill="#2453c9" stroke="#0f2a6e" stroke-width="5" stroke-linejoin="round"/><path d="M20 20 L44 33 M100 20 L76 33" stroke="#9fc0ff" stroke-width="4" stroke-linecap="round"/><rect x="48" y="24" width="24" height="22" rx="7" fill="#3a6df0" stroke="#0f2a6e" stroke-width="5"/></svg>`;
-const BELL = `<svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="#f6c443" stroke="#8a5a12" stroke-width="5"/><path d="M8 26 H52" stroke="#8a5a12" stroke-width="4"/><circle cx="30" cy="38" r="5" fill="#8a5a12"/><path d="M30 38 V52" stroke="#8a5a12" stroke-width="4"/><ellipse cx="22" cy="18" rx="7" ry="4" fill="#fff3c4"/></svg>`;
-const ACCESSORIES = {
-	catgirl: [
-		{ html: BELL, x: 0, y: 1.55, w: 0.32, rot: 0, swing: true },
-	],
-};
-const ANTICS = ["sparkle", "doya", "love", "confused", "hop", "nya", "paw", "purr"];
+// Accessories drawn over the model, following the head: none now (a bell on her collar slid about as she moved, 2026-11-21)
+const ACCESSORIES = {};
+// her random antics when nobody talks (no にゃ: she is a catgirl, not a cat)
+const ANTICS = ["sparkle", "doya", "love", "confused", "hop", "paw", "purr"];
 const MOTIONS = ["haoqi", "keshui", "linghun", "qizi", "yaotou", "zhentou"];
 const EXPRESSIONS = ["angry", "baozhen", "cry", "qizi1", "qizi2", "white eyes"];
 

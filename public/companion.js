@@ -248,7 +248,7 @@ addEventListener("message", (e) => {
 // Blip's moods as Mochi's (her moods hold a few seconds, then she falls back to her bouncy self)
 const MOCHI_MOOD = { happy: { mood: "happy", hold: 6 }, surprised: { mood: "shocked", hold: 4 }, sleep: { mood: "sleepy", hold: 0 },
   dizzy: { emote: "sweat", mood: "idle", hold: 4 }, think: { mood: "curious", hold: 60 }, annoyed: { mood: "no", hold: 4 } };
-const MOCHI_EMOTES = new Set(["sparkle", "love", "blush", "nya", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"]);
+const MOCHI_EMOTES = new Set(["sparkle", "love", "blush", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"]);
 const NAME = () => (mochi ? "MOCHI" : "BLIP");
 hat.toggleAttribute("hidden", new Date().getMonth() !== 9); // a pumpkin on the head all October (SVG: attributes, not .hidden)
 
