@@ -87,7 +87,10 @@ const accLayer = document.getElementById("acc");
 const stage = document.getElementById("stage");
 let model, core;
 // ?companion: the site companion in a page's corner (public/companion.js): always full body, no face close-ups
-const cfg = { model: "huohuo.model3.json", theme: "catgirl", companion: new URLSearchParams(location.search).has("companion") };
+const q = new URLSearchParams(location.search);
+// ?room: her room behind her (room.js; ?room=1–5 picks one, else the visitor's time of day picks)
+const cfg = { model: "huohuo.model3.json", theme: "catgirl", companion: q.has("companion"), room: q.has("room") && !q.has("companion") };
+if (cfg.room) MochiRoom.start(q.get("room"));
 document.body.classList.toggle("companion", cfg.companion);
 // reduced motion: a calm resting mood and no random antics
 const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -184,11 +187,14 @@ function headPose() {
 	         y: (L[1] + R[1]) / 2 + head.restDx * s + head.restDy * c, a };
 }
 
+// In her room she's framed like a person in it, from about the knees up with her face under the bubble band (her whole
+// body, small, stood on the desk or the bench like a doll); elsewhere her whole body stands on the frame's bottom.
+const ROOM_SHOT = 1.75, ROOM_FACE_Y = 0.44;
 function fit() {
 	const w = model.internalModel.width, h = model.internalModel.height;
-	cam.baseScale = Math.min(innerWidth / w, innerHeight * (1 - BAND) / h) * (cfg.zoom || 1);
+	cam.baseScale = Math.min(innerWidth / w, innerHeight * (1 - BAND) / h) * (cfg.room ? ROOM_SHOT : cfg.zoom || 1);
 	cam.baseX = (innerWidth - w * cam.baseScale) / 2;
-	cam.baseY = innerHeight - h * cam.baseScale + (cfg.y || 0);
+	cam.baseY = cfg.room ? innerHeight * ROOM_FACE_Y - h * FACE.y * cam.baseScale : innerHeight - h * cam.baseScale + (cfg.y || 0);
 }
 
 // The face camera: eases the zoom toward its target and keeps the face framed while zoomed.
@@ -196,6 +202,7 @@ function camera() {
 	const w = model.internalModel.width, h = model.internalModel.height;
 	const talking = performance.now() < talkingUntil;
 	cam.tz = cfg.companion ? 1 : emote && emote.def.zoom ? emote.def.zoom : (talking ? 1.6 : 1);
+	if (cfg.room) cam.tz = 1 + (cam.tz - 1) * .45; // she's close already: a gentler push in
 	cam.z += (cam.tz - cam.z) * (emote && emote.def.snap ? 0.3 : cam.speed);
 	const s = cam.baseScale * cam.z;
 	const t = Math.min(1, Math.max(0, (cam.z - 1) / 0.8));
@@ -217,6 +224,7 @@ function camera() {
 	model.scale.set(s);
 	model.x = faceX - w * FACE.x * s + sx;
 	model.y = faceY - h * FACE.y * s + sy;
+	if (cfg.room) MochiRoom.camera(cam.z, faceX, faceY);
 	// manga symbols and accessories ride along with the face
 	const r = w * FACE_R * s;
 	const pose = headPose();

@@ -30,7 +30,7 @@
     main { max-width: 1140px; }
     .room { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
     .mochi { position: sticky; top: 64px; height: min(600px, calc(100vh - 90px)); overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
-      background: var(--room, none) center / cover, radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); }
+      background: radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); } /* until her room loads (overlay.html?room) */
     .mochi { order: 1; } /* the right column; first in the markup so phones show her above the chat */
     /* color-scheme as overlay.html declares it: a mismatch (the site's dark theme) makes browsers paint the iframe opaque white */
     .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; color-scheme: normal; }
@@ -55,7 +55,7 @@
   <div class="levels" id="levels"></div>
   <div class="topics" id="topics"></div>
   <div class="room">
-    <div class="mochi"><button type="button" class="mini" id="full" title="Full screen: just Mochi and the chat box">⛶ Full screen</button><iframe id="mochi" src="/yomu/mochi/overlay.html" title="Mochi, your conversation partner" aria-hidden="true" tabindex="-1"></iframe></div>
+    <div class="mochi"><button type="button" class="mini" id="full" title="Full screen: just Mochi and the chat box">⛶ Full screen</button><iframe id="mochi" src="/yomu/mochi/overlay.html?room" title="Mochi, your conversation partner" aria-hidden="true" tabindex="-1"></iframe></div>
     <div>
       <div class="log" id="log"></div>
       <form class="ask" id="ask"><input id="q" lang="ja" placeholder="日本語で書いてください（or in English）" autocomplete="off" maxlength="300"><button type="submit" id="send">Send</button><button type="button" id="mic" hidden>🎤 Speak</button></form>
@@ -90,8 +90,7 @@ if (canListen()) $("mic").hidden = false;
 
 // Mochi (yomu/mochi/overlay.js) in the iframe: her mood, emote and line come with each reply; her mouth moves while
 // the voice speaks (lib.js sends blip:key when any speech starts and stops). Her lines use the browser's own voice.
-// one of five cozy rooms behind her, a new one each visit (yomu/mochi/bg/, made with Qwen-Image on this machine)
-$("mochi").parentElement.style.setProperty("--room", `url(/yomu/mochi/bg/${1 + Math.floor(Math.random() * 5)}.webp)`);
+// her room is part of her frame (overlay.html?room, room.js): it fits the visitor's time of day and moves with her camera
 const mochi = (cmd) => $("mochi").contentWindow?.postMessage({ mochi: cmd }, location.origin);
 addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
 // Her voice: a girl's Japanese voice where the browser has one, pitched up and a little quick, for an anime sound.

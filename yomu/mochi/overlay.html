@@ -93,8 +93,19 @@
 	@keyframes zz { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 40% { opacity: 1; } to { transform: translate(10%, -160%) scale(1.1); opacity: 0; } }
 	.slam { animation: slam .4s cubic-bezier(.2, 1.8, .4, 1) both; }
 	@keyframes slam { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.5); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
-	body[data-tint="gloom"] canvas { filter: brightness(.7) saturate(.6) hue-rotate(200deg); transition: filter .6s; }
-	canvas { transition: filter .6s; }
+	/* her room (room.js, ?room): behind her, moved with the camera, softer when the camera is on her face; its light
+	   and a vignette over everything, and its colours on her (--grade) so she stands in it rather than on it */
+	#room { position: absolute; inset: 0; overflow: hidden; filter: blur(.6px); transition: filter .8s; will-change: transform; }
+	#room.near { filter: blur(3px) brightness(.96); }
+	#room .pic, #room canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+	#room .pic { background: center / cover no-repeat; }
+	#light, #vignette, #fxFront { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+	#light { mix-blend-mode: soft-light; opacity: .75; }
+	#vignette { background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(10, 6, 20, .38)); }
+	#fxFront { filter: blur(2px); }
+	body:not(.roomed) #room, body:not(.roomed) #light, body:not(.roomed) #vignette, body:not(.roomed) #fxFront { display: none; }
+	#stage { filter: var(--grade, none); transition: filter .6s; }
+	body[data-tint="gloom"] #stage { filter: var(--grade, ) brightness(.7) saturate(.6) hue-rotate(200deg); }
 	/* Her own lines: loud, bouncy, sticker-like. */
 	#bubble.hype {
 		background: linear-gradient(160deg, #fff36b, #ffb347); color: #2a1600; border: 3px solid #2a1600;
@@ -119,11 +130,16 @@
 <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
 </head>
 <body>
+<div id="room"><div class="pic"></div><canvas id="fx"></canvas></div>
 <canvas id="stage"></canvas>
+<canvas id="fxFront"></canvas>
+<div id="light"></div>
+<div id="vignette"></div>
 <div id="acc"></div>
 <div id="deco"></div>
 <div id="bubble"></div>
 <div id="tag"></div>
+<script src="room.js"></script>
 <script src="overlay.js"></script>
 </body>
 </html>
