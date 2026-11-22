@@ -803,10 +803,11 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (url.pathname === "/api/yomu/voice" && req.method === "POST") { // Mochi says her reply: Irodori-TTS on the Mac (voice.ts), not saved
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
-      const text = String((() => { try { return JSON.parse(raw || "{}").text; } catch { return ""; } })() ?? "").trim().slice(0, 300);
+      const body = (() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })();
+      const text = String(body.text ?? "").trim().slice(0, 300);
       if (!text) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "text is required" }));
       if (!spend(`voice:${clientIp(req)}`, 60, 10 * 60_000)) return json403(res, "Mochi needs a breather. Try again in a few minutes.", 429);
-      try { return res.writeHead(200, { "content-type": "audio/mpeg", "cache-control": "no-store" }).end(await voice(text)); }
+      try { return res.writeHead(200, { "content-type": "audio/mpeg", "cache-control": "no-store" }).end(await voice(text, body.voice)); } // voice.ts keeps it to VOICES
       catch (e) { console.warn(`yomu voice: ${(e as Error).message}`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: "Mochi's voice is offline right now." })); }
     }
     if (url.pathname === "/api/yomu/owner") { // GET: signed in?; POST {key}: sign in, {key: "logout"}: sign out

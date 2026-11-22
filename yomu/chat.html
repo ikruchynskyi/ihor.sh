@@ -60,7 +60,8 @@
       <div class="log" id="log"></div>
       <form class="ask" id="ask"><input id="q" lang="ja" placeholder="日本語で書いてください（or in English）" autocomplete="off" maxlength="300"><button type="submit" id="send">Send</button><button type="button" id="mic" hidden>🎤 Speak</button></form>
       <p class="muted" id="status"></p>
-      <p id="restartRow"><button type="button" id="restart">↺ New conversation</button></p>
+      <p id="restartRow"><button type="button" id="restart">↺ New conversation</button>
+        <label class="muted">Her voice <select id="voice"><option value="ゆき">Yuki · bright, gentle</option><option value="ブリップ">Blip · cute, lively</option><option value="店員">Clerk · polite</option><option value="ニュース">Announcer · clear</option></select></label></p>
       <details class="owner muted" id="owner"><summary id="ownerSum">Site owner</summary>
         <form id="ownerForm"><input type="password" id="ownerKey" placeholder="Owner key" autocomplete="current-password" aria-label="Owner key"><button type="submit">Sign in</button></form>
         <p id="ownerOn" hidden>Mochi answers you with the cloud model, thinking first. <button type="button" class="mini" id="ownerOut">Sign out</button></p></details>
@@ -97,19 +98,27 @@ addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
 const GIRL = /Kyoko|O-ren|Nanami|Haruka|Ayumi|Mizuki|Sayaka|Google 日本語|female/i, BOY = /Otoya|Ichiro|Keita|Hattori|male/i;
 const girlVoice = () => speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => (GIRL.test(b.name) && !BOY.test(b.name)) - (GIRL.test(a.name) && !BOY.test(a.name)))[0];
 const browserVoice = (text) => browserSpeak(text, (state.settings.rate || 1) * 1.05, { voice: "speechSynthesis" in window ? girlVoice() : null, pitch: 1.25 });
-// Her real voice: Irodori-TTS on the server with the stories' young woman's voice (server/voice.ts), made for each line
-// and kept only in this tab's memory (for ▶); the browser's voice when it's offline.
+// Her real voice: Irodori-TTS on the server in one of the stories' young women's voices (server/voice.ts, picked below the
+// chat and remembered in this browser), made for each line and kept only in this tab's memory (for ▶); the browser's
+// voice when it's offline.
 const voices = new Map();
+let voiceName = "ゆき"; try { voiceName = localStorage.getItem("yomu-mochi-voice") || voiceName; } catch {}
+$("voice").value = voiceName; voiceName = $("voice").value || "ゆき"; // a name no longer offered: back to Yuki
+$("voice").onchange = () => {
+  voiceName = $("voice").value; try { localStorage.setItem("yomu-mochi-voice", voiceName); } catch {}
+  const last = turns.findLast((t) => t.role === "assistant"); if (last) { unlockAudio(); mochiSays(last); } // hear the new voice at once
+};
 fetch("/api/yomu/voice/warm", { method: "POST" }).catch(() => {}); // loads her voice now, so her first line doesn't wait ~12 s for it
-const voiceFor = async (text) => {
-  if (!voices.has(text)) {
-    const ask = () => fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => null);
+const voiceFor = async (text, voice = voiceName) => {
+  const key = `${voice}\n${text}`;
+  if (!voices.has(key)) {
+    const ask = () => fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, voice }) }).catch(() => null);
     let r = await ask();
     if (!r?.ok && r?.status !== 429) r = await new Promise((go) => setTimeout(go, 1500)).then(ask); // one more try: a busy moment shouldn't cost her voice
     if (!r?.ok) return null;
-    voices.set(text, URL.createObjectURL(await r.blob()));
+    voices.set(key, URL.createObjectURL(await r.blob()));
   }
-  return voices.get(text);
+  return voices.get(key);
 };
 const mochiSays = async (t, url) => {
   mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content });

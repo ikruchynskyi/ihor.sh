@@ -8,6 +8,9 @@ import readline from "node:readline";
 
 const PY = process.env.VOICE_PY ?? "/Users/irishdash/Irodori-TTS/.venv/bin/python";
 const SCRIPT = path.join(import.meta.dirname, "voice.py");
+/** The voices she can speak in (voice.py has the same list); switching needs no reload: it goes with each line. */
+export const VOICES = ["ゆき", "ブリップ", "店員", "ニュース"] as const;
+const voiceName = (v: unknown) => VOICES.includes(v as any) ? v as string : "ゆき";
 type Worker = { p: ChildProcessWithoutNullStreams; lines: AsyncIterator<string> };
 
 let ready: Promise<Worker> | null = null;
@@ -59,14 +62,14 @@ export async function warmVoiceLocal() {
   armIdle();
 }
 
-/** Speech for `text` as MP3, made here (on the Mac). */
-export function voiceLocal(text: string): Promise<Buffer> {
+/** Speech for `text` as MP3 in one of VOICES, made here (on the Mac). */
+export function voiceLocal(text: string, voice?: string): Promise<Buffer> {
   const run = line.then(async () => {
     clearTimeout(idle);
     const w = await startVoice(); // loads it again if it was unloaded
     const t = setTimeout(() => w.p.kill(), 90_000); // a stuck GPU: killed, and started again
     try {
-      w.p.stdin.write(JSON.stringify({ text }) + "\n");
+      w.p.stdin.write(JSON.stringify({ text, voice: voiceName(voice) }) + "\n");
       const r = await w.lines.next();
       if (r.done) throw new Error("voice worker stopped");
       const j = JSON.parse(r.value);
@@ -85,9 +88,9 @@ export async function warmVoice() {
 }
 
 /** Speech for `text` as MP3: through the host bridge when this runs in Docker. */
-export async function voice(text: string): Promise<Buffer> {
-  if (!process.env.HOST_BRIDGE) return voiceLocal(text);
-  const r = await fetch(`${process.env.HOST_BRIDGE}/voice`, { method: "POST", body: JSON.stringify({ text }), signal: AbortSignal.timeout(100_000) });
+export async function voice(text: string, name?: string): Promise<Buffer> {
+  if (!process.env.HOST_BRIDGE) return voiceLocal(text, name);
+  const r = await fetch(`${process.env.HOST_BRIDGE}/voice`, { method: "POST", body: JSON.stringify({ text, voice: voiceName(name) }), signal: AbortSignal.timeout(100_000) });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `voice: HTTP ${r.status}`);
   return Buffer.from(await r.arrayBuffer());
 }

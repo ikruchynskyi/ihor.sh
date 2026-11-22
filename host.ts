@@ -191,7 +191,8 @@ const httpBridge = http.createServer(async (req, res) => {
     if (req.url === "/voice" && req.method === "POST") { // Mochi's line as MP3 (server/voice.ts), never saved
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
-      const mp3 = await voiceLocal(String(JSON.parse(raw || "{}").text ?? ""));
+      const j = JSON.parse(raw || "{}");
+      const mp3 = await voiceLocal(String(j.text ?? ""), j.voice);
       return res.writeHead(200, { "content-type": "audio/mpeg", "cache-control": "no-store" }).end(mp3);
     }
     send(404, { error: "not found" });
