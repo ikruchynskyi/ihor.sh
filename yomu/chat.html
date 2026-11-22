@@ -31,7 +31,7 @@
     .room { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
     .mochi { position: sticky; top: 64px; height: min(600px, calc(100vh - 90px)); overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
       background: radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card)); } /* until her room loads (overlay.html?room) */
-    .mochi { order: 1; } /* the right column; first in the markup so phones show her above the chat */
+    .mochi { order: 1; cursor: pointer; } /* the right column; first in the markup so phones show her above the chat; a tap pats or pokes her */
     /* color-scheme as overlay.html declares it: a mismatch (the site's dark theme) makes browsers paint the iframe opaque white */
     .mochi iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; color-scheme: normal; }
     .owner { margin-top: 18px; font-size: .9rem; } .owner form:not([hidden]) { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
@@ -92,7 +92,17 @@ if (canListen()) $("mic").hidden = false;
 // the voice speaks (lib.js sends blip:key when any speech starts and stops). Her lines use the browser's own voice.
 // her room is part of her frame (overlay.html?room, room.js): it fits the visitor's time of day and moves with her camera
 const mochi = (cmd) => $("mochi").contentWindow?.postMessage({ mochi: cmd }, location.origin);
-addEventListener("blip:key", (e) => mochi({ talk: !!e.detail?.on }));
+// her mouth moves with her real voice: its loudness goes along when it starts (nextEnv, set just before it plays)
+let nextEnv = null;
+addEventListener("blip:key", (e) => { const on = !!e.detail?.on; mochi({ talk: on, ...(on && nextEnv ? { env: nextEnv, fps: 30 } : {}) }); if (on) nextEnv = null; });
+// What you do, for her (overlay.js): she follows your pointer, watches what you type, and a tap on her is a pat on the
+// head or a poke. Positions are fractions of her frame.
+const frame = $("mochi"), rel = (x, y) => { const r = frame.getBoundingClientRect(); return { x: (x - r.left) / r.width, y: (y - r.top) / r.height }; };
+let moved = 0;
+addEventListener("pointermove", (e) => { if (e.timeStamp - moved > 50) { moved = e.timeStamp; mochi({ you: rel(e.clientX, e.clientY) }); } }, { passive: true });
+const typing = () => { const r = $("q").getBoundingClientRect(); mochi({ typing: rel(r.left + Math.min(r.width - 20, 30 + $("q").value.length * 15), r.top + r.height / 2) }); }; // about where the caret is
+$("q").addEventListener("input", typing); $("q").addEventListener("focus", typing);
+frame.parentElement.addEventListener("click", (e) => { if (!e.target.closest("button")) mochi({ poke: rel(e.clientX, e.clientY) }); });
 // Her voice: a girl's Japanese voice where the browser has one, pitched up and a little quick, for an anime sound.
 const GIRL = /Kyoko|O-ren|Nanami|Haruka|Ayumi|Mizuki|Sayaka|Google 日本語|female/i, BOY = /Otoya|Ichiro|Keita|Hattori|male/i;
 const girlVoice = () => speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => (GIRL.test(b.name) && !BOY.test(b.name)) - (GIRL.test(a.name) && !BOY.test(a.name)))[0];
@@ -119,10 +129,22 @@ const voiceFor = async (text, voice = voiceName) => {
   }
   return voices.get(key);
 };
+// her voice's loudness, 30 values a second from 0 to 1, read from the audio itself
+const envs = new Map();
+const envelope = (url) => {
+  if (!envs.has(url)) envs.set(url, fetch(url).then((r) => r.arrayBuffer()).then((b) => new OfflineAudioContext(1, 1, 22050).decodeAudioData(b)).then((buf) => {
+    const d = buf.getChannelData(0), step = Math.round(buf.sampleRate / 30), out = [];
+    for (let i = 0; i < d.length; i += step) { let e = 0; for (let j = i; j < Math.min(d.length, i + step); j++) e += d[j] * d[j]; out.push(Math.sqrt(e / step)); }
+    const top = [...out].sort((a, b) => a - b)[Math.floor(out.length * .95)] || 1; // her loud syllables open her mouth all the way
+    return out.map((v) => Math.round(Math.min(1, v / top) * 100) / 100);
+  }).catch(() => null));
+  return envs.get(url);
+};
 const mochiSays = async (t, url) => {
   mochi({ mood: t.mood || "happy", emote: t.emote || "", say: t.content });
   url ??= await voiceFor(t.content);
-  if (!url || !(await speak(t.content, 1, url))) browserVoice(t.content);
+  nextEnv = url ? await envelope(url) : null;
+  if (!url || !(await speak(t.content, 1, url))) { nextEnv = null; browserVoice(t.content); }
 };
 
 // The conversation, kept per level in this browser (sessionStorage: a fresh start next visit).
@@ -145,7 +167,7 @@ async function send(text) {
   unlockAudio(); // still inside the tap: her voice can then play when the reply comes
   turns.push({ role: "user", content: text }); keep();
   pending = true; renderLog(); $("q").value = ""; $("send").disabled = true;
-  mochi({ mood: "curious", emote: "dots" });
+  mochi({ mood: "thinking", emote: "dots" });
   try {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */ }) });
     const d = await r.json().catch(() => ({}));
@@ -160,7 +182,7 @@ async function start(t) {
   unlockAudio();
   topic = t; turns = []; keep(); $("status").textContent = "";
   pending = true; renderLog(); $("send").disabled = true;
-  mochi({ mood: "curious", emote: "dots" });
+  mochi({ mood: "thinking", emote: "dots" });
   try {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
     const d = await r.json().catch(() => ({}));

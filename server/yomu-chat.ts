@@ -22,8 +22,8 @@ export type Reply = {
 };
 // her face and body (yomu/mochi/overlay.js MOODS and EMOTES): a resting mood held while the reply stays up, and one short
 // anime reaction played as she starts talking
-const MOODS = ["happy", "smug", "curious", "cheer", "proud", "no", "angry", "scared", "hug", "cry", "shocked", "sleepy", "idle"] as const;
-const EMOTES = ["", "sparkle", "love", "blush", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"] as const;
+const MOODS = ["happy", "smug", "curious", "cheer", "proud", "shy", "thinking", "no", "angry", "scared", "hug", "cry", "shocked", "sleepy", "idle"] as const;
+const EMOTES = ["", "sparkle", "love", "blush", "wink", "giggle", "nod", "paw", "purr", "hop", "doya", "confused", "dots", "sweat", "shock", "sob", "gloom", "rage", "sleep", "dead"] as const;
 type Mood = (typeof MOODS)[number];
 type Emote = (typeof EMOTES)[number];
 
@@ -132,8 +132,8 @@ CONVERSATION RULES:
    - Grammar: Use only JLPT ${level} and below: ${points.join("; ")}.
    - Vocabulary: strictly JLPT ${level} or easier. Never use grammar or words above the level, even if the learner does.
 6. YOUR FACE AND BODY: the learner sees you as an animated avatar, so act out how you feel about what they just said. Vary it from turn to turn; match the feeling of your reply.
-   "mood" (held while you talk): happy (glad, friendly), smug (teasing, playful), curious (wondering, asking), cheer (excited, celebrating), proud (impressed by the learner), no (disagreeing, shaking your head), angry (mock outrage), scared (nervous), hug (touched, affectionate), cry (sad), shocked (surprised), sleepy (tired, bored), idle (calm).
-   "emote" (a 3–5 s anime reaction as you start talking, or "" for none, about every other turn): sparkle (delight), love (adore it), blush (embarrassed, flattered), paw / purr (cat moments: playful, cozy), hop (bouncy excitement), doya (showing off), confused (didn't get it), dots (speechless), sweat (awkward), shock (big surprise), sob (very sad), gloom (disappointed), rage (comic fury), sleep (dozing off), dead (comic "I'm dead").
+   "mood" (held while you talk): happy (glad, friendly), smug (teasing, playful), curious (wondering, asking), cheer (excited, celebrating), proud (impressed by the learner), shy (bashful, looking away), thinking (pondering), no (disagreeing, shaking your head), angry (mock outrage), scared (nervous), hug (touched, affectionate), cry (sad), shocked (surprised), sleepy (tired, bored), idle (calm).
+   "emote" (a 3–5 s anime reaction as you start talking, or "" for none, about every other turn): sparkle (delight), love (adore it), blush (embarrassed, flattered), wink (teasing, a secret), giggle (laughing), nod (agreeing, "yes yes!"), paw / purr (cat moments: playful, cozy), hop (bouncy excitement), doya (showing off), confused (didn't get it), dots (speechless), sweat (awkward), shock (big surprise), sob (very sad), gloom (disappointed), rage (comic fury), sleep (dozing off), dead (comic "I'm dead").
 
 "en": ALWAYS write the full, natural English translation of your "ja" reply in this field. Never leave "en" empty.
 If the learner writes in English, answer their meaning in simple Japanese anyway (they're practicing), and provide the translation of your Japanese in "en".

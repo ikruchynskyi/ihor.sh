@@ -145,6 +145,13 @@ window.MochiRoom = (() => {
 		/** her camera this frame: zoom (1 = whole body) and her face on screen, so the room moves with it */
 		camera(z, fx, fy) { cam.z = z; if (z < 1.02) { cam.fx = fx; cam.fy = fy; } },
 		/** where the visitor's pointer is, -1..1 each way: the room shifts a little against it */
-		look(x, y) { cam.lx = x; cam.ly = y; },
+		look(x, y) { cam.lx = Math.max(-1, Math.min(1, x)); cam.ly = Math.max(-1, Math.min(1, y)); },
+		/** things in the room she might glance at (its windows, its light), 0..1 across the frame */
+		spots() {
+			if (!def) return [];
+			const { s, ox, oy } = cover(), at = (u, v) => ({ x: (ox + u * s) / innerWidth, y: (oy + v * s) / innerHeight });
+			return [at(def.light.x, def.light.y), ...def.fx.filter((f) => f.rect && f.type !== "motes" && f.type !== "fireflies")
+				.map((f) => at((f.rect[0] + f.rect[2]) / 2, (f.rect[1] + f.rect[3]) / 2))].filter((p) => p.x > 0 && p.x < 1);
+		},
 	};
 })();
