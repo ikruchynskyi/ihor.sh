@@ -15,7 +15,7 @@ export type Turn = { role: "user" | "assistant"; content: string };
 export type Reply = {
   ja: string;
   en: string;
-  words: { s: string; r: string; g: string }[];
+  words: { s: string; r: string; g: string; d?: string }[];
   fix: string;
   mood: Mood;
   emote: Emote;
@@ -32,7 +32,7 @@ const SCHEMA = {
   properties: {
     ja: { type: "string", description: "Mochi's reply in Japanese: 1–2 short sentences like a chat message, usually ending with a question" },
     en: { type: "string", description: "natural English translation of Mochi's ja reply (always non-empty)" },
-    words: { type: "array", description: "ja split into every word and particle, in order, with hiragana reading and a short English gloss", items: { type: "object", properties: { s: { type: "string" }, r: { type: "string" }, g: { type: "string" } }, required: ["s", "r", "g"] } },
+    words: { type: "array", description: "ja split into every word and particle, in order, with hiragana reading, a short English gloss and its dictionary form", items: { type: "object", properties: { s: { type: "string" }, r: { type: "string" }, g: { type: "string" }, d: { type: "string" } }, required: ["s", "r", "g", "d"] } },
     fix: { type: "string", description: "one gentle correction of the learner's last Japanese, in English, or empty" },
     mood: { type: "string", enum: MOODS, description: "Mochi's resting mood while she says this" },
     emote: { type: "string", enum: EMOTES, description: "one short anime reaction as she starts talking, or \"\"" },
@@ -41,11 +41,60 @@ const SCHEMA = {
 };
 
 let grammar: Promise<any[]> | null = null;
+const grammarAll = () => grammar ??= readFile(path.join(ROOT, "yomu/data/grammar.json"), "utf8").then(JSON.parse);
 const grammarFor = async (level: Level) => {
-  grammar ??= readFile(path.join(ROOT, "yomu/data/grammar.json"), "utf8").then(JSON.parse);
   const upTo = LEVELS.slice(0, LEVELS.indexOf(level) + 1);
-  return (await grammar).filter((g) => upTo.includes(g.level)).map((g) => `${g.pattern} (${g.meaning})`);
+  return (await grammarAll()).filter((g) => upTo.includes(g.level)).map((g) => `${g.pattern} (${g.meaning})`);
 };
+
+// What each level may use, from Yomu's own lists (yomu/data): words as the lists write them (not by reading: して
+// would be some N3 word read して; the dictionary form she gives each word is 豆 or 食べる),
+// kanji, and the literal part of each grammar pattern (に違いない in ～に違いない), so a reply is checked, not just
+// asked, to stay at its level. 5 is N5 … 1 is N1; a word in several lists counts at its easiest.
+type Marker = { text: string; n: number; pattern: string };
+let lists: Promise<{ word: Map<string, number>; kanji: Map<string, number>; grammar: Marker[]; used: Map<number, string> }> | null = null;
+const N = (level: Level) => 5 - LEVELS.indexOf(level);
+const read = (f: string) => readFile(path.join(ROOT, "yomu/data", f), "utf8").then(JSON.parse);
+const levelLists = () => lists ??= (async () => {
+  const word = new Map<string, number>(), easiest = (m: Map<string, number>, k: string, n: number) => m.set(k, Math.max(m.get(k) ?? 0, n));
+  for (const n of [1, 2, 3, 4, 5]) for (const v of await read(`vocab-n${n}.json`)) if (v.w) easiest(word, v.w, n);
+  // the words of Yomu's own grammar examples count at their level too: the lists put 日本 at N3 and only have か, ね
+  // and の as 蚊, 値 and 野 (N3), but the N5 lessons use them all
+  for (const g of await grammarAll()) for (const ex of g.examples ?? []) for (const [t] of ex.t ?? []) if (t && letters(t)) easiest(word, t, N(g.level));
+  // the greeting and reactions her prompt gives her at every level (CONVERSATION RULES below)
+  for (const p of ["こんにちは", "はじめまして", "そうなんですね", "いいですね", "へえ", "なるほど", "すごい"]) easiest(word, p, 5);
+  // a kanji counts at its easiest word: the kanji list puts 好 at N3, but 好き is an N5 word
+  const kanji = new Map<string, number>((await read("kanji.json")).map((k: any) => [k.k, k.n]));
+  for (const [w, n] of word) for (const k of w.match(/\p{Script=Han}/gu) ?? []) easiest(kanji, k, n);
+  // a pattern's runs of 3+ Japanese characters; not the ones that are words (the word check has them: 開ける, 続ける)
+  // or names of forms (命令形)
+  const grammar = (await grammarAll()).flatMap((g) => g.pattern.replace(/\(.*?\)/g, "").split(/[^\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]+/u)
+    .filter((t: string) => t.length >= 3 && !word.has(t) && !/形|語$/.test(t)).map((text: string) => ({ text, n: N(g.level), pattern: g.pattern })));
+  // the text of the examples at each level and below: a marker they use isn't a sign of the harder pattern there
+  // (～ないで is N4, but the N5 examples say 来ないでください)
+  const points = await grammarAll();
+  const used = new Map([1, 2, 3, 4, 5].map((n) => [n, points.filter((g) => N(g.level) >= n)
+    .flatMap((g: any) => (g.examples ?? []).map((ex: any) => (ex.t ?? []).map((t: any) => t[0] ?? "").join(""))).join(" ")]));
+  return { word, kanji, grammar, used };
+})();
+
+/** What in a reply is above `level`: words, kanji and grammar, each as "X (N3 word)" for the rewrite request. */
+export async function offLevel(ja: string, words: Reply["words"], level: Level): Promise<string[]> {
+  const { word, kanji, grammar, used } = await levelLists(), n = N(level), out = new Set<string>();
+  for (const w of words) {
+    if (/particle/i.test(w.g) || /^\p{Script=Hiragana}$/u.test(w.s)) continue; // は, ね, な: their readings collide with words (値 ね)
+    const found = [w.d, w.s].flatMap((f) => { f = String(f ?? "").trim(); return [f, f.replace(/^[おご]/, "")]; }) // お休み: 休み
+      .map((f) => word.get(f)).filter((x): x is number => x !== undefined);
+    if (found.length && Math.max(...found) < n) out.add(`${w.d || w.s} (N${Math.max(...found)} word)`);
+  }
+  const flagged = [...out].join("");
+  for (const k of ja.match(/\p{Script=Han}/gu) ?? []) {
+    const kn = kanji.get(k) ?? 0; // not in the JLPT lists: rarer than N1
+    if (kn < n && !flagged.includes(k)) out.add(`${k} (${kn ? `N${kn}` : "non-JLPT"} kanji)`); // not again for a word already named
+  }
+  for (const g of grammar) if (g.n < n && ja.includes(g.text) && !used.get(n)!.includes(g.text)) out.add(`${g.text} (N${g.n} grammar ${g.pattern})`);
+  return [...out];
+}
 
 const STYLE: Record<Level, string> = {
   N5: "Very simple: です/ます forms, basic particles, present and past, the most common 700 words. Kanji only for the most basic words (日, 人, 学生, 本), the rest in kana.",
@@ -90,7 +139,7 @@ CONVERSATION RULES:
 If the learner writes in English, answer their meaning in simple Japanese anyway (they're practicing), and provide the translation of your Japanese in "en".
 If their last Japanese had a mistake, put ONE short friendly correction in "fix": a full English sentence that quotes what they wrote and the fixed Japanese (e.g. "Nice! One small thing: 'がくせい' is usually written 学生."); if it was fine or in English, "fix" is "".
 
-"words": split your "ja" into every word and particle in order: s = surface form exactly as in ja, r = its reading in hiragana, g = short English meaning. Punctuation gets s="。" g="". One word/particle per item (e.g. [{"s":"そうなんですね","r":"そうなんですね","g":"I see"},{"s":"！","r":"","g":""},{"s":"本","r":"ほん","g":"book"},{"s":"は","r":"は","g":"topic particle"},{"s":"面白い","r":"おもしろい","g":"interesting"},{"s":"です","r":"です","g":"is"},{"s":"か","r":"か","g":"question particle"},{"s":"？","r":"","g":""}]).
+"words": split your "ja" into every word and particle in order: s = surface form exactly as in ja, r = its reading in hiragana, d = its dictionary form (食べました → 食べる, 面白かった → 面白い; particles as they are), g = short English meaning. Punctuation gets s="。" g="". One word/particle per item (e.g. [{"s":"そうなんですね","r":"そうなんですね","g":"I see"},{"s":"！","r":"","g":""},{"s":"本","r":"ほん","g":"book"},{"s":"は","r":"は","g":"topic particle"},{"s":"面白い","r":"おもしろい","d":"面白い","g":"interesting"},{"s":"です","r":"です","g":"is"},{"s":"か","r":"か","g":"question particle"},{"s":"？","r":"","g":""}]).
 Answer with the JSON object only.`;
   const messages = [{ role: "system", content: system }, ...turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }))];
   if (!turns.length || turns.at(-1)!.role === "assistant") messages.push({ role: "user", content: "(Start the conversation: greet me and ask me something.)" });
@@ -102,30 +151,44 @@ Answer with the JSON object only.`;
   const signal = AbortSignal.timeout(150_000);
   // the owner's first two tries go to the cloud model, thinking first (room for it in the budget); the last to the local one
   const key = cloud ? process.env.OLLAMA_CLOUD_KEY : undefined;
-  let out: Reply | null = null, err: unknown;
-  for (let tries = 0; tries < 3 && !out && !signal.aborted; tries++) {
-    const up = key && tries < 2;
-    try {
-      const r = await fetch(up ? "https://ollama.com/api/chat" : `${OLLAMA}/api/chat`, {
-        method: "POST", signal, headers: up ? { Authorization: `Bearer ${key}` } : {},
-        body: JSON.stringify({ model: up ? CLOUD_CHAT_MODEL : MODEL, stream: false, think: !!up, format: SCHEMA, options: { num_predict: up ? 6000 : 2000, temperature: 0.8 }, messages }),
-      });
-      if (!r.ok) throw new Error(`${up ? "cloud" : "local"} model: ${r.status}`);
-      // with thinking on, deepseek sometimes wraps the JSON in a ```json fence: take the object out of whatever came
-      const text = String((await r.json()).message?.content ?? "");
-      const o = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as Reply;
-      if (!String(o?.ja ?? "").trim()) throw new Error("empty reply");
-      out = o;
-    } catch (e) { err = e; if (up) console.warn(`yomu chat: cloud failed (${(e as Error).message})`); }
-  }
+  let err: unknown;
+  const ask = async (msgs: typeof messages): Promise<Reply | null> => {
+    for (let tries = 0; tries < 3 && !signal.aborted; tries++) {
+      const up = key && tries < 2;
+      try {
+        const r = await fetch(up ? "https://ollama.com/api/chat" : `${OLLAMA}/api/chat`, {
+          method: "POST", signal, headers: up ? { Authorization: `Bearer ${key}` } : {},
+          body: JSON.stringify({ model: up ? CLOUD_CHAT_MODEL : MODEL, stream: false, think: !!up, format: SCHEMA, options: { num_predict: up ? 6000 : 2000, temperature: 0.8 }, messages: msgs }),
+        });
+        if (!r.ok) throw new Error(`${up ? "cloud" : "local"} model: ${r.status}`);
+        // with thinking on, deepseek sometimes wraps the JSON in a ```json fence: take the object out of whatever came
+        const text = String((await r.json()).message?.content ?? "");
+        const o = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as Reply;
+        if (!String(o?.ja ?? "").trim()) throw new Error("empty reply");
+        // one chat line (it sometimes breaks it after each phrase), and no readings in brackets (人(ひと)): the page shows them
+        o.ja = String(o.ja ?? "").replace(/\s*\n\s*/g, "").replace(/[(（]\p{Script=Hiragana}+[)）]/gu, "").trim(); o.en = String(o.en ?? "").trim(); o.fix = String(o.fix ?? "").trim();
+        if (!MOODS.includes(o.mood)) o.mood = "happy";
+        if (!EMOTES.includes(o.emote)) o.emote = "";
+        o.words = cleanWords(o.words);
+        return o;
+      } catch (e) { err = e; if (up) console.warn(`yomu chat: cloud failed (${(e as Error).message})`); }
+    }
+    return null;
+  };
+  let out = await ask(messages);
   // The model answers some topics with nothing, every time (qwen3.5 on Tiananmen 1989, 2026-10-16): say so and move on,
   // in N5 words, instead of an error.
   if (!out && (err as Error)?.message === "empty reply") return { ...DECLINE, words: DECLINE.words.map((w) => ({ ...w })) };
   if (!out) throw err;
-  out.ja = String(out.ja ?? "").trim(); out.en = String(out.en ?? "").trim(); out.fix = String(out.fix ?? "").trim();
-  if (!MOODS.includes(out.mood)) out.mood = "happy";
-  if (!EMOTES.includes(out.emote)) out.emote = "";
-  out.words = (Array.isArray(out.words) ? out.words : []).map((w) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w) => w.s);
+  // Above her level (checked against Yomu's lists, offLevel): she says it again in easier Japanese, once; the version
+  // with less above the level is kept, and anything left is still glossed on a tap like every word.
+  const over = await offLevel(out.ja, out.words, level);
+  if (over.length && !signal.aborted) {
+    const again = await ask([...messages, { role: "assistant", content: JSON.stringify(out) }, { role: "user", content: `(Not me: the level check. Your reply uses Japanese above JLPT ${level}: ${over.join(", ")}. Say the same thing again using only ${level}-or-easier words and grammar; write any word whose kanji is above ${level} in hiragana, with no readings in brackets. Same JSON fields.)` }]).catch(() => null);
+    const left = again ? await offLevel(again.ja, again.words, level) : over;
+    console.log(`yomu chat: ${level} reply had ${over.length} above-level (${over.join(", ")}); rewrite ${again ? `has ${left.length}${left.length ? ` (${left.join(", ")})` : ""}` : "failed"}`);
+    if (again && left.length < over.length) out = again;
+  }
   // the glosses must cover the sentence (the page taps them) and be word-sized; otherwise ask once more just for the
   // split (a small, fast call), and if that fails too the page falls back to the plain line
   if (!wellSplit(out.words, out.ja)) { try { out.words = await splitWords(out.ja); } catch {} }
@@ -159,10 +222,12 @@ export async function splitWords(ja: string): Promise<Reply["words"]> {
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(60_000),
     body: JSON.stringify({ model: MODEL, stream: false, think: false, format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
-      messages: [{ role: "system", content: 'Split the Japanese sentence into dictionary words and particles, in order, covering every character: s = surface form, r = hiragana reading, g = short English meaning (particles: "particle: marks the topic" etc.; punctuation: g ""). One word per item, never a phrase. JSON only.' }, { role: "user", content: ja }] }),
+      messages: [{ role: "system", content: 'Split the Japanese sentence into dictionary words and particles, in order, covering every character: s = surface form, r = hiragana reading, d = dictionary form (食べました → 食べる), g = short English meaning (particles: "particle: marks the topic" etc.; punctuation: g ""). One word per item, never a phrase. JSON only.' }, { role: "user", content: ja }] }),
   });
   if (!r.ok) throw new Error(`Mochi didn't answer (${r.status})`);
-  const d = JSON.parse((await r.json()).message.content);
-  return (Array.isArray(d.words) ? d.words : []).map((w: any) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w: any) => w.s);
+  return cleanWords(JSON.parse((await r.json()).message.content).words);
 }
+// read tolerantly: models drop fields of nested objects now and then
+const cleanWords = (words: unknown): Reply["words"] => (Array.isArray(words) ? words : [])
+  .map((w: any) => ({ s: String(w?.s ?? ""), r: String(w?.r ?? w?.s ?? ""), g: String(w?.g ?? ""), d: String(w?.d ?? w?.s ?? "") })).filter((w) => w.s);
 export const isLevel = (x: unknown): x is Level => LEVELS.includes(x as Level);
