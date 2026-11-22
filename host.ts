@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 import { transcribeLocal } from "./server/monitor.ts";
 import { upscaleLocal } from "./server/upscale.ts";
 import { readLocal } from "./server/ocr.ts";
-import { startVoice, voiceLocal } from "./server/voice.ts";
+import { startVoice, voiceLocal, warmVoiceLocal } from "./server/voice.ts";
 import { crawl, CRAWLED, jobText, jobTexts } from "./server/crawl.ts";
 import { findMeshPort } from "./server/mesh.ts";
 
@@ -183,6 +183,10 @@ const httpBridge = http.createServer(async (req, res) => {
       const r = await fetch(u, { method: body ? "POST" : "GET", redirect: "error", signal: AbortSignal.timeout(30_000), body: body ? JSON.stringify(body) : undefined,
         headers: { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json", ...(body ? { "content-type": "application/json" } : {}) } });
       return send(200, { status: r.status, body: (await r.text()).slice(0, 8_000_000) });
+    }
+    if (req.url === "/voice/warm" && req.method === "POST") { // Yomu chat opened: load Mochi's voice now, answer at once
+      warmVoiceLocal().catch(() => {});
+      return res.writeHead(204).end();
     }
     if (req.url === "/voice" && req.method === "POST") { // Mochi's line as MP3 (server/voice.ts), never saved
       let raw = "";

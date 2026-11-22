@@ -100,6 +100,7 @@ const browserVoice = (text) => browserSpeak(text, (state.settings.rate || 1) * 1
 // Her real voice: Irodori-TTS on the server with the stories' young woman's voice (server/voice.ts), made for each line
 // and kept only in this tab's memory (for ▶); the browser's voice when it's offline.
 const voices = new Map();
+fetch("/api/yomu/voice/warm", { method: "POST" }).catch(() => {}); // loads her voice now, so her first line doesn't wait ~12 s for it
 const voiceFor = async (text) => {
   if (!voices.has(text)) {
     const ask = () => fetch("/api/yomu/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => null);

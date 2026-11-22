@@ -51,6 +51,14 @@ function boot(): Promise<Worker> {
 /** Starts the worker (host.ts, at boot) or returns the running one. */
 export const startVoice = () => (ready ??= boot());
 
+/** Loads the model ahead of Mochi's first line (yomu/chat.html opened) and restarts the 10-minute countdown, so an
+ * unused warm-up unloads like an unused line. Any number at once share one load (startVoice); a countdown armed while
+ * a line is being made can't cut it short: a line takes 90 s at most and arms it again when done. */
+export async function warmVoiceLocal() {
+  await startVoice();
+  armIdle();
+}
+
 /** Speech for `text` as MP3, made here (on the Mac). */
 export function voiceLocal(text: string): Promise<Buffer> {
   const run = line.then(async () => {
@@ -68,6 +76,12 @@ export function voiceLocal(text: string): Promise<Buffer> {
   });
   line = run.catch(() => {});
   return run;
+}
+
+/** warmVoiceLocal through the host bridge when this runs in Docker; doesn't wait for the load. */
+export async function warmVoice() {
+  if (!process.env.HOST_BRIDGE) return void warmVoiceLocal().catch(() => {});
+  await fetch(`${process.env.HOST_BRIDGE}/voice/warm`, { method: "POST", signal: AbortSignal.timeout(5_000) });
 }
 
 /** Speech for `text` as MP3: through the host bridge when this runs in Docker. */

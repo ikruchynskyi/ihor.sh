@@ -34,7 +34,7 @@ import { ADMIN, userFrom, sessionFor, listUsers, setCloud, signOutEverywhere, go
 import { newVapid, vapidPublic, sendPush } from "./server/push.ts";
 import { kanjiInfo, wordSearch } from "./server/yomu-dict.ts";
 import { edgeTTS } from "./server/yomu-tts.ts";
-import { voice } from "./server/voice.ts";
+import { voice, warmVoice } from "./server/voice.ts";
 import { getNhkArticles, getNhkArticleById } from "./server/yomu-nhk.ts";
 import { getTemplates, searchTemplates } from "./server/memes.ts";
 import { buildIndex, isPrivate, publicPages, siteSearch } from "./server/search.ts";
@@ -795,6 +795,10 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
           "content-length": buf.length,
         }).end(buf);
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
+    if (url.pathname === "/api/yomu/voice/warm" && req.method === "POST") { // chat page opened: Mochi's voice loads before her first line
+      if (spend(`voicewarm:${clientIp(req)}`, 30, 10 * 60_000)) warmVoice().catch(() => {});
+      return res.writeHead(204).end();
     }
     if (url.pathname === "/api/yomu/voice" && req.method === "POST") { // Mochi says her reply: Irodori-TTS on the Mac (voice.ts), not saved
       let raw = "";
