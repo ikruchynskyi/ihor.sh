@@ -23,6 +23,7 @@ import { issPasses } from "./server/sat.ts";
 import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, jobSources, type Query as JobQuery } from "./server/jobs.ts";
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
+import { refreshWarn, warnCount, warnFor, layoffsMarket } from "./server/layoffs.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening, weekConcerts } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, nowcast, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
@@ -1204,7 +1205,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       catch (e) { return json403(res, e instanceof LineFull ? "The AI is busy with visitors. Try again in a minute." : "Search by meaning is unavailable right now; try plain search.", e instanceof LineFull ? 429 : 503); }
     }
     if (url.pathname === "/api/jobs/similar") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(jobSimilar(String(url.searchParams.get("id") ?? ""))));
-    if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name) } : { error: "No open jobs from that employer here." })); }
+    if (url.pathname === "/api/jobs/company") { const e = jobEmployer(String(url.searchParams.get("c") ?? "").slice(0, 120)); return res.writeHead(e ? 200 : 404, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(e ? { ...e, card: getCompanyInfo(e.name), warn: warnFor(e.name) } : { error: "No open jobs from that employer here." })); }
     if (url.pathname === "/api/jobs/company-card" && req.method === "POST") { const c = String(url.searchParams.get("c") ?? "").slice(0, 120); return startJob(res, (step) => (step("Reading its news, stock, pay, layoffs and reviews, searching the web, then writing the overview (up to three minutes)…"), makeCard(c)), "Waiting for the AI…", false, canCloud(req) ? undefined : session?.id); }
     if (url.pathname === "/api/me/data") { // the signed-in user's applications, saved searches and (if they ask) résumé
       const u = currentUser(req); if (!u) return json403(res, "Sign in to keep your data in your account.", 401);
@@ -1247,7 +1248,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cronStatus()));
     }
     if (url.pathname === "/api/jobs/guidance") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(latestGuide()));
-    if (url.pathname === "/api/jobs/market") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify({ ...jobMarket(jobQuery(url.searchParams)), levelsFyi: getCompanyInfo(LEVELS_MARKET) }));
+    if (url.pathname === "/api/jobs/market") { const q = jobQuery(url.searchParams), m = jobMarket(q); // with the layoffs around it (layoffs.ts): New York's notices, and its top employers'
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify({ ...m, levelsFyi: getCompanyInfo(LEVELS_MARKET), layoffs: layoffsMarket(q.company, m.companies.map((c: any) => ({ key: c.key, name: c.name }))) })); }
     if (url.pathname === "/api/jobs/check" && req.method === "POST") { const id = String(url.searchParams.get("id") ?? "").slice(0, 300); return startJob(res, () => checkJob(id), "Reading the posting and this employer's record…", false, canCloud(req) ? undefined : session?.id); }
     if (url.pathname === "/api/jobs/brief" && req.method === "POST") { const q = jobQuery(url.searchParams); return startJob(res, () => marketBrief({ ...q, days: undefined, sort: undefined, page: undefined }), "Waiting for the AI…", false, canCloud(req) ? undefined : session?.id); }
     if (url.pathname === "/api/jobs/text") { try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ description: await readJobText(String(url.searchParams.get("id") ?? "").slice(0, 300)) })); } catch { return json403(res, "Couldn't read the posting right now.", 502); } }
@@ -1358,6 +1360,8 @@ if (IN_HOST_SUPERVISOR) {
   schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", (s) => embedJobs(2000, s), 25 * 60_000);
   schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", (s) => refreshGuidance(s), 15 * 60_000);
   schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", (s) => precomputeChecks(s), 210 * 60_000);
+  schedule("jobs-warn", "10 5 * * *", "New York State's layoff notices (WARN), for company pages, the market and the job check", (s) => refreshWarn(s), 5 * 60_000);
+  if (!warnCount()) refreshWarn().catch((e) => console.warn(`warn: ${(e as Error).message}`)); // before the first morning run
   schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", (s) => refreshCards(80, s), 150 * 60_000);
   schedule("nyc-today", "2 * * * *", "the city brief: today in New York (big events, weather, alerts, subway, top news, critical incidents), for the map and /nyc/today.html", () => makeDayBrief(), 15 * 60_000);
   schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts(), 15 * 60_000);

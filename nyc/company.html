@@ -39,7 +39,7 @@
     .ai p { margin: 0 0 8px; } .ai ul { margin: 0; padding-left: 18px; } .ai li { margin: 4px 0; } .badge { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
     .chart .bar.warn { fill: var(--warn); } .chart .bar.unk { fill: color-mix(in srgb, var(--muted) 25%, transparent); stroke: var(--muted); stroke-dasharray: 2 2; }
     .lstats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 6px 0 10px; font-size: 13px; } .lstats span { color: var(--muted); } .lstats b { color: var(--fg); }
-    .ltbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .scrollx { overflow-x: auto; } .ltbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     .ltbl th { text-align: left; font-size: 11.5px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 4px 6px; }
     .ltbl td { padding: 5px 6px; border-bottom: 1px dashed var(--line); } .ltbl .num { text-align: right; font-variant-numeric: tabular-nums; }
     details.lmore { margin-top: 6px; font-size: 13px; } details.lmore summary { cursor: pointer; color: var(--muted); }
@@ -158,6 +158,17 @@ function layoffsHTML(la) {
     </div>
   </div>`;
 }
+/** New York State's layoff notices for this employer (required before laying off 50+ people at one site): the state's record. */
+function warnHTML(w) {
+  if (!w) return "";
+  const n = w.notices, row = (r) => `<tr><td>${day(r.posted)}</td><td class="num">${r.workers.toLocaleString()}</td><td>${esc(r.kind)}${r.temp ? `, ${esc(r.temp.toLowerCase())}` : ""}</td><td>${esc(r.site)}</td><td>${esc(r.reason || "—")}</td></tr>`;
+  const table = (rows) => `<div class="scrollx"><table class="ltbl"><thead><tr><th>Posted</th><th class="num">Workers</th><th>Layoff or closure</th><th>Site</th><th>Reason given</th></tr></thead><tbody>${rows.map(row).join("")}</tbody></table></div>`;
+  return `<div style="margin:14px 0 4px"><h3>Layoff notices in New York <span class="badge">NY State</span></h3>
+    ${n.length ? `<div class="lstats"><span>Notices: <b>${n.length}</b></span><span>Workers: <b>${w.workers.toLocaleString()}</b></span><span>Last 12 months: <b>${w.workers12.toLocaleString()}</b> in ${w.n12} ${w.n12 === 1 ? "notice" : "notices"}</span></div>
+      ${table(n.slice(0, 5))}${n.length > 5 ? `<details class="lmore"><summary>Show ${n.length - 5} earlier</summary>${table(n.slice(5))}</details>` : ""}`
+    : `<p>None filed since ${day(w.since)}.</p>`}
+    <p class="hint">Employers must notify New York State before laying off 50 or more people at one site, so smaller cuts and other states don't appear here. The state's record since ${day(w.since)}, from the <a href="${esc(w.source)}" target="_blank" rel="noopener">NY Department of Labor ↗</a>.</p></div>`;
+}
 function introHTML(c) {
   const s = c.stock, o = c.overview, w = c.weeks ?? e.weeks ?? [], last4 = w.slice(-4).reduce((a, b) => a + b, 0), prev4 = w.slice(-8, -4).reduce((a, b) => a + b, 0);
   const lede = o?.business?.text ?? (c.wiki ? c.wiki.extract.split(/(?<=\.)\s+/).slice(0, 2).join(" ") : "");
@@ -174,11 +185,12 @@ function introHTML(c) {
       ${c.levels ? `<div><h3>What it pays, by level</h3>${c.levels.families.map(ladder).join("")}<p class="hint">Self-reported total pay (salary, stock, bonus) from <a href="https://www.levels.fyi/companies/${esc(c.levels.slug)}" target="_blank" rel="noopener">Levels.fyi</a>.</p></div>` : ""}
     </div>
     ${layoffsHTML(c.layoffs)}
+    ${warnHTML(e.warn)}
     ${c.research?.findings?.length || c.blind || c.signals ? `<div class="igrid"><div>${c.research?.findings?.length ? `<h3>Working there now <span class="badge">AI, from the web</span></h3><ul class="news">${c.research.findings.map((f) => `<li>${esc(f.text)}<span class="hint">${f.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(new URL(x.url).hostname.replace(/^www\./, ""))}</a>`).join(" · ")}</span></li>`).join("")}</ul>` : ""}${c.signals ? sigHTML(c.signals) : ""}</div>
       <div>${c.blind ? blindHTML(c.blind) : ""}<p class="hint">Reviews: ${c.blind ? `<a href="${esc(c.blind.url)}" target="_blank" rel="noopener">Blind ↗</a> · ` : ""}<a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p></div></div>`
       : `<p class="hint">Reviews: <a href="https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(e.name)}" target="_blank" rel="noopener">Glassdoor ↗</a></p>`}
     ${c.news?.length ? `<h3>In the news, last two weeks</h3><ul class="news">${c.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="hint">${esc(n.source)} · ${age(n.at)}</span></li>`).join("")}</ul>` : ""}
-    <p class="hint" style="margin:12px 0 0">Updated ${age(c.at)}. Sources: Wikipedia, Nasdaq, Google News, Levels.fyi, Layoffs.fyi, Blind and the web; the overview is written by AI.</p>`;
+    <p class="hint" style="margin:12px 0 0">Updated ${age(c.at)}. Sources: Wikipedia, Nasdaq, Google News, Levels.fyi, Layoffs.fyi, New York State, Blind and the web; the overview is written by AI.</p>`;
 }
 async function intro() {
   const box = $("intro"), CARD_TTL = 86400; // a day old: read again (server/company.ts)
@@ -208,7 +220,7 @@ try {
   intro();
 } catch (err) { $("cname").textContent = name || "Employer"; $("intro").innerHTML = `<p>${esc(err.message)} <a href="/nyc/jobs.html">Search open jobs</a>.</p>`; }
 window.blipContext = () => ({ page: "One employer on the NYC jobs finder", employer: e && { name: e.name, open: e.open, posted30: e.new30, takenDown30: e.gone30, openOver60DaysPct: e.stale, medianPay: e.pay?.median,
-  business: e.card?.overview?.business?.text, layoffsSummary: e.card?.overview?.layoffs?.text, layoffs: e.card?.layoffs && { total: e.card.layoffs.total, rounds: e.card.layoffs.rounds, latest: e.card.layoffs.latest }, blind: e.card?.blind && { overall: e.card.blind.overall, reviews: e.card.blind.reviews, categories: e.card.blind.categories }, scorecard: e.card?.scorecard?.map((m) => `${m.label}: ${m.value} (${m.basis})`), stock: e.card?.stock && { ticker: e.card.stock.ticker, last: e.card.stock.last, change1yPct: e.card.stock.change1y }, news: e.card?.news?.slice(0, 3).map((n) => n.title) } });
+  business: e.card?.overview?.business?.text, layoffsSummary: e.card?.overview?.layoffs?.text, layoffs: e.card?.layoffs && { total: e.card.layoffs.total, rounds: e.card.layoffs.rounds, latest: e.card.layoffs.latest }, nyLayoffNotices: e.warn && { notices: e.warn.notices.length, workers: e.warn.workers, last12Months: e.warn.workers12, latest: e.warn.notices[0] && { posted: new Date(e.warn.notices[0].posted * 1000).toISOString().slice(0, 10), workers: e.warn.notices[0].workers, kind: e.warn.notices[0].kind } }, blind: e.card?.blind && { overall: e.card.blind.overall, reviews: e.card.blind.reviews, categories: e.card.blind.categories }, scorecard: e.card?.scorecard?.map((m) => `${m.label}: ${m.value} (${m.basis})`), stock: e.card?.stock && { ticker: e.card.stock.ticker, last: e.card.stock.last, change1yPct: e.card.stock.change1y }, news: e.card?.news?.slice(0, 3).map((n) => n.title) } });
 </script>
 </body>
 </html>

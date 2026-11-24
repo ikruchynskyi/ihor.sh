@@ -976,7 +976,7 @@ export function jobHistory(id: string) {
     pay: j.salary_min != null && !j.salary_est ? ((j.salary_min + (j.salary_max ?? j.salary_min)) / 2) * (j.salary_period === "hour" ? 2080 : 1) : null, market: { p25: m.p25, median: m.pay, p75: m.p75, n: m.withPay } };
 }
 /** A company page (nyc/company.html): the employer under any of its names, its open jobs here, how it hires, what it pays. */
-const employerKeys = (name: string) => { const ck = ckey(name); return ck ? (db.prepare("select distinct ckey from jobs where ckey like ? and closed is null").all(`${ck.slice(0, 4)}%`) as any[]).map((r) => r.ckey as string).filter((k) => sameCompany(k, ck)) : []; };
+export const employerKeys = (name: string) => { const ck = ckey(name); return ck ? (db.prepare("select distinct ckey from jobs where ckey like ? and closed is null").all(`${ck.slice(0, 4)}%`) as any[]).map((r) => r.ckey as string).filter((k) => sameCompany(k, ck)) : []; };
 export function employer(name: string) {
   const keys = employerKeys(name);
   if (!keys.length) return null;

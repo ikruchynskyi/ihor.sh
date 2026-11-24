@@ -6,6 +6,7 @@
 import { llmJson, faithful, asker, OLLAMA, LOCAL_MODEL, OWNER_MODEL, inLine, whenIdle, localTurn } from "./llm.ts";
 import { employer, saveCompanyInfo, getCompanyInfo, topEmployers, postingSignals } from "./jobs.ts";
 import { cited } from "./jobs-ai.ts";
+import { warnFor } from "./layoffs.ts";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
 const get = async (u: string, headers: Record<string, string> = {}) => { const r = await fetch(u, { headers: { "user-agent": UA, ...headers }, signal: AbortSignal.timeout(20_000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); };
@@ -253,7 +254,7 @@ export async function research(name: string, about = "", lane: "visitor" | "idle
 // ---------- the scorecard: each mark from one fact, with the fact shown ----------
 type Mark = { key: string; label: string; value: string; mark: "good" | "fair" | "watch" | "info"; basis: string; url?: string };
 const grade = (v: number, good: number, fair: number, higherIsBetter = true): Mark["mark"] => (higherIsBetter ? (v >= good ? "good" : v >= fair ? "fair" : "watch") : v <= good ? "good" : v <= fair ? "fair" : "watch");
-export function scorecard(e: any, st: any, lv: any, bl: any, sig: any, la: any = null): Mark[] {
+export function scorecard(e: any, st: any, lv: any, bl: any, sig: any, la: any = null, wn: any = null): Mark[] {
   const M: Mark[] = [], wk = (e.weeks ?? []) as number[], last4 = wk.slice(-4).reduce((a, b) => a + b, 0), prev4 = wk.slice(-8, -4).reduce((a, b) => a + b, 0);
   if (bl) {
     M.push({ key: "rating", label: "Employees rate it", value: `${bl.overall}/5`, mark: grade(bl.overall, 4, 3.5), basis: `${bl.reviews.toLocaleString("en-US")} reviews on Blind`, url: bl.url });
@@ -274,6 +275,11 @@ export function scorecard(e: any, st: any, lv: any, bl: any, sig: any, la: any =
     const val = la.total ? `${la.total.toLocaleString("en-US")} total` : `${la.rounds} ${la.rounds === 1 ? "round" : "rounds"}`;
     const latestText = la.latest?.date ? `latest ${fmtIsoDate(la.latest.date)}${la.latest.count ? ` (${la.latest.count.toLocaleString("en-US")})` : ""}` : "";
     M.push({ key: "layoffs", label: "Layoffs (Layoffs.fyi)", value: val, mark, basis: `${la.rounds} ${la.rounds === 1 ? "round" : "rounds"}${latestText ? `, ${latestText}` : ""}`, url: la.url });
+  }
+  if (wn?.notices.length) { // New York's WARN notices (layoffs.ts): the state's record of 50+ layoffs at one site
+    const last = wn.notices[0];
+    M.push({ key: "warn", label: "NY layoff notices", value: wn.n12 ? `${wn.workers12.toLocaleString("en-US")} workers` : "none in a year", mark: wn.n12 ? "watch" : "fair",
+      basis: `${wn.n12 ? `${wn.n12} in the last 12 months` : `${wn.notices.length} since ${day(wn.since)}`}, latest ${day(last.posted)} (${last.workers.toLocaleString("en-US")} at one site)`, url: wn.source });
   }
   if (sig && (sig.where.hybrid || sig.where.remote)) M.push({ key: "where", label: "Remote / hybrid", value: `${sig.where.remote}% / ${sig.where.hybrid}%`, mark: "info", basis: sig.officeDays?.quote ? `“${sig.officeDays.quote}”` : `of ${sig.n} postings say remote / hybrid` });
   return M;
@@ -304,16 +310,22 @@ export async function companyCard(name: string, lane: "visitor" | "idle" = "visi
     const activeYears = la.years.filter((y) => y.events > 0);
     if (activeYears.length > 1) add(`Layoffs.fyi annual layoffs at ${la.company}: ${activeYears.map((y) => `${y.year}: ${y.count ? y.count.toLocaleString("en-US") : "undisclosed"} (${y.events} ${y.events === 1 ? "round" : "rounds"})`).join("; ")}.`);
   }
+  const wn = warnFor(e.name);
+  if (wn?.notices.length) {
+    const last = wn.notices[0];
+    add(`New York State layoff notices (WARN, filed before laying off 50 or more people at one site) for ${e.name}: ${wn.notices.length} since ${day(wn.since)}, covering ${wn.workers.toLocaleString("en-US")} workers; ${wn.n12} in the last 12 months, covering ${wn.workers12.toLocaleString("en-US")} workers.`);
+    add(`Its latest New York layoff notice, posted ${day(last.posted)}: ${last.workers.toLocaleString("en-US")} workers at ${last.site} (${last.county} County), ${last.kind.toLowerCase()}${last.temp ? `, ${last.temp.toLowerCase()}` : ""}${last.reason ? `; reason given: ${last.reason}` : ""}.`);
+  }
   for (const x of n.slice(0, 5)) add(`News (${x.source}, ${day(x.at)}): ${x.title}`);
   const [bl, rs] = await Promise.all([blind(nm).catch(() => before?.blind ?? null), research(nm, w?.extract, lane).catch(() => null)]), sig = postingSignals(e.name);
   if (bl) add(`On Blind, employees rate ${e.name} ${bl.overall} out of 5 (${bl.reviews} reviews)${bl.categories.length ? `: ${bl.categories.map((c: any) => `${c.name} ${c.score}`).join(", ")}` : ""}.`);
   for (const r of rs?.findings ?? []) add(`From the web (${r.sources.map((x: any) => new URL(x.url).hostname.replace(/^www\./, "")).join(", ")}): ${r.text}`);
   if (sig) add(`In its ${sig.n} postings here: ${sig.where.remote}% say remote and ${sig.where.hybrid}% hybrid${sig.onCall ? `; ${sig.onCall.pct}% mention on-call` : ""}${sig.travel ? `; ${sig.travel.pct}% mention travel` : ""}${sig.unlimitedPto ? `; ${sig.unlimitedPto.pct}% offer flexible or unlimited time off` : ""}${sig.leave ? `; one offers ${sig.leave.weeks} weeks of parental leave` : ""}.`);
   const byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
-  const out = await localTurn(() => llmJson(`You write a short, plain company profile and evaluation for a job seeker in New York. Use only the numbered facts. 'business': one or two sentences on what the company does. 'hiring': one or two sentences on how it is hiring here now (numbers from this site). 'market': one or two sentences on its stock and recent news, if the facts have them, else "". 'layoffs': one or two sentences evaluating known layoff history (frequency, recency, scale, and how it weighs against current hiring), if the facts mention layoffs, else "". 'people': one or two sentences on what working there is like now (employee ratings, office policy, culture, layoffs context), if the facts have them, else "". 'tips': up to 3 short pieces of advice for someone applying there now (pay to expect, hiring momentum, and layoff/stability risk when relevant). Each item lists the ids of the facts it uses; copy every number (including commas) exactly as its fact writes it ("Third Quarter" stays words, never "Q3"); add nothing the facts don't say. Reply as JSON.`,
+  const out = await localTurn(() => llmJson(`You write a short, plain company profile and evaluation for a job seeker in New York. Use only the numbered facts. 'business': one or two sentences on what the company does. 'hiring': one or two sentences on how it is hiring here now (numbers from this site). 'market': one or two sentences on its stock and recent news, if the facts have them, else "". 'layoffs': one or two sentences evaluating known layoff history (Layoffs.fyi's worldwide record and New York State's layoff notices for its sites here: frequency, recency, scale, and how it weighs against current hiring), if the facts mention layoffs, else "". 'people': one or two sentences on what working there is like now (employee ratings, office policy, culture, layoffs context), if the facts have them, else "". 'tips': up to 3 short pieces of advice for someone applying there now (pay to expect, hiring momentum, and layoff/stability risk when relevant). Each item lists the ids of the facts it uses; copy every number (including commas) exactly as its fact writes it ("Third Quarter" stays words, never "Q3"); add nothing the facts don't say. Reply as JSON.`,
     F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["business", "hiring", "market", "layoffs", "people", "tips"], properties: { business: item, hiring: item, market: item, layoffs: item, people: item, tips: { type: "array", items: item } } }, 1400), lane).catch(() => null);
   const ok = (x: any) => { const c = cited(x); return c.text && faithful(c, byId) ? c : null; };
-  const card = { name: e.name, at: Math.floor(Date.now() / 1000), wiki: w, ticker: sym, stock: st, news: n, levels: lv, layoffs: la, weeks: wk, blind: bl, research: rs, signals: sig, scorecard: scorecard(e, st, lv, bl, sig, la),
+  const card = { name: e.name, at: Math.floor(Date.now() / 1000), wiki: w, ticker: sym, stock: st, news: n, levels: lv, layoffs: la, weeks: wk, blind: bl, research: rs, signals: sig, scorecard: scorecard(e, st, lv, bl, sig, la, wn),
     overview: out ? { business: w ? ok(out.business) : null /* no source, no "what it does" (the number check can't catch a made-up one) */, hiring: ok(out.hiring), market: ok(out.market), layoffs: ok(out.layoffs), people: ok(out.people), tips: (Array.isArray(out.tips) ? out.tips : []).map(ok).filter(Boolean).slice(0, 3) } : null, facts: F };
   saveCompanyInfo(e.name, card);
   return card;

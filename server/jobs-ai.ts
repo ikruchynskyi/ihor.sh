@@ -2,6 +2,7 @@
 // this Mac's Ollama); the ranking and the rewriting use Blip's model (Ollama Cloud, then the local model). The résumé
 // text is used for the request only: never stored, never logged.
 import { needEmbedding, saveEmbedding, candidates, jobText, jobHistory, market, saveGuide, latestGuide, rowsByIds, filteredIds, search, getCheck, saveCheck, freshForChecks, type Query } from "./jobs.ts";
+import { layoffsMarket, warnFor } from "./layoffs.ts";
 import { OLLAMA, llmJson, faithful, inLine, whenIdle, localTurn } from "./llm.ts";
 import { extract, jobTerms, mentions, CLICHES } from "../nyc/resume.js";
 const EMBED = "nomic-embed-text";
@@ -170,7 +171,14 @@ export function marketFacts(qy: Query) {
   for (const w of m.weeks.slice(-4)) add(`Week of ${day(w.from)}: ${w.new} new postings, ${w.closed} taken down${w.pay ? `, median pay of the new ones ${k$(w.pay)}` : ""}`);
   for (const f of m.fields.slice(0, 8)) add(`Field ${FIELD[f.key] ?? f.key}: ${f.open} open, ${f.new7} new this week${vs(f.change)}${f.pay ? `, median pay ${k$(f.pay)}` : ""}`);
   for (const l of m.levels) add(`Level ${LEVEL[l.key] ?? l.key}: ${l.open} open, ${l.new7} new this week${vs(l.change)}${l.pay ? `, median pay ${k$(l.pay)}` : ""}`);
-  for (const c of m.companies.slice(0, 10)) add(`${c.name}: ${c.open} open, ${c.new30} posted and ${c.closed30} taken down in the last 30 days, ${c.stale}% of its open jobs posted over 60 days ago${c.pay ? `, median pay ${k$(c.pay)}` : ""}`);
+  // layoffs around this market (layoffs.ts): New York's notices for NYC and its suburbs, and the top employers' own
+  const L = layoffsMarket(qy.company, m.companies.slice(0, 10).map((c: any) => ({ key: c.key, name: c.name }))), n = (x: number) => x.toLocaleString("en-US");
+  for (const c of m.companies.slice(0, 10)) { const x = L.employers[c.key];
+    add(`${c.name}: ${c.open} open, ${c.new30} posted and ${c.closed30} taken down in the last 30 days, ${c.stale}% of its open jobs posted over 60 days ago${c.pay ? `, median pay ${k$(c.pay)}` : ""}${x?.warn ? `; it filed layoff notices for ${n(x.warn.workers)} workers at its sites in NYC and the New York suburbs in the last 12 months` : ""}${x?.fyi ? `; its latest layoff round on Layoffs.fyi (worldwide) was on ${x.fyi.date}${x.fyi.count ? ` (${n(x.fyi.count)} people)` : ""}` : ""}`); }
+  const where = L.company ? `by ${L.company} for its sites in New York` : "for sites in NYC and its New York suburbs (all fields and levels)";
+  add(`Layoff notices filed with New York State ${where}: ${L.last90.notices} notices covering ${n(L.last90.workers)} workers in the last 90 days; ${L.prev90.notices} notices covering ${n(L.prev90.workers)} workers in the 90 days before; ${L.year.notices} notices, ${n(L.year.workers)} workers in 12 months`);
+  if (L.largest.length) add(`The largest of those layoff notices in the last 90 days: ${L.largest.slice(0, 5).map((r: any) => `${r.company} (${n(r.workers)} workers, ${r.kind.toLowerCase()}, ${r.industry}, posted ${day(r.posted)})`).join("; ")}`);
+  if (!L.company && L.industries.length) add(`Industries with the most workers in New York layoff notices over 12 months: ${L.industries.slice(0, 4).map((g: any) => `${g.industry} ${n(g.workers)}`).join(", ")}`);
   for (const r of m.roles.slice(0, 8)) add(`Role "${r.key}": ${r.open} open${r.pay ? `, median pay ${k$(r.pay)}` : ""}`);
   const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
   [...RESEARCH, ...(latestGuide()?.findings ?? []).slice(0, 6).map((f: any) => `${f.text} (${f.sources.map((x: any) => host(x.url)).join(", ")})`)].forEach((t, i) => add(t, `R${i + 1}`));
@@ -188,7 +196,7 @@ export function marketBrief(qy: Query) {
   const p = (async () => {
     const F = marketFacts(qy), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
     const out = await localTurn(() => llmJson(`You are a labor-market analyst writing for one job seeker. The slice of the market: ${scope}. Use only the numbered facts.
-'overview': two sentences on the state of this slice. 'points': 3 to 5 findings: which fields, levels, companies and roles are growing or shrinking, what they pay, which employers post a lot that sits open. 'advice': 3 to 5 concrete recommendations for someone job hunting in this slice: where to aim, which employers are hiring actively, what pay to ask for, how to apply (the R facts are research about applying). For pay, compare like with like (the same field, level or role) and, for someone who meets the requirements, point between that median and the top of its middle half (the 75th percentile).
+'overview': two sentences on the state of this slice. 'points': 3 to 5 findings: which fields, levels, companies and roles are growing or shrinking, what they pay, which employers post a lot that sits open, and where layoffs are being announced (the layoff facts cover all fields unless they name an employer). 'advice': 3 to 5 concrete recommendations for someone job hunting in this slice: where to aim, which employers are hiring actively (and which of them announced layoffs recently, so the seeker can weigh stability), what pay to ask for, how to apply (the R facts are research about applying). For pay, compare like with like (the same field, level or role) and, for someone who meets the requirements, point between that median and the top of its middle half (the 75th percentile).
 Every item lists the ids of the facts it uses. Copy each number exactly as its fact writes it; never add a number, company, trend or cause that isn't in the facts. Plain words, no filler. Reply as JSON.`,
       F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["overview", "points", "advice"], properties: { overview: item, points: { type: "array", items: item }, advice: { type: "array", items: item } } }, 2500), "visitor");
     const ok = (x: { text: string; facts: string[] }) => !!x.text && faithful(x, byId), list = (l: any) => (Array.isArray(l) ? l.map((x: any) => cited(x)).filter(ok).slice(0, 5) : []), ov = cited(out.overview);
@@ -238,6 +246,7 @@ const RED_FLAGS = `Red flags to look for:
 - Culture: "we're a family", "work hard, play hard", "thick skin", always-on availability, "other duties as assigned" carrying the role.
 - Process: unpaid trial work or long take-home assignments, many interview rounds, money, bank details or an SSN asked before an offer, chat apps or a personal email to apply.
 - A vague role: no clear purpose, outcomes or reporting line; mostly company superlatives.
+- Stability: the employer filed layoff notices recently. Say so with its numbers; it doesn't make this posting fake, but the seeker should ask about the team's stability.
 Good signs count too: pay stated and in line with similar jobs, clear must-haves vs nice-to-haves, an employer that is hiring (new postings and jobs filled), a recent posting.`;
 const VERIFIED = new Set(["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "workable", "oracle", "eightfold", "amazon", "custom", "nycjobs", "usajobs"]);
 const checks = new Map<string, { at: number; p: Promise<any> }>();
@@ -255,6 +264,8 @@ export function checkJob(id: string, lane: "visitor" | "idle" = "visitor") {
     if (e.medianDaysUp != null) add(`Its jobs taken down in the last 6 months had stayed up a median of ${Math.round(e.medianDaysUp)} days (${e.upSample} jobs).`);
     if (h.sameTitle.days) add(`It posted this same title in this area on ${h.sameTitle.days} other days in the last 6 months; ${h.sameTitle.open} of those are still open.`);
     if (h.copies) add(`${h.copies} of its other open jobs have the same description.`);
+    const wn = warnFor(j.company); // New York's layoff notices (layoffs.ts)
+    if (wn?.n12) add(`${j.company} filed ${wn.n12} layoff ${wn.n12 === 1 ? "notice" : "notices"} with New York State in the last 12 months, covering ${wn.workers12.toLocaleString("en-US")} workers; the latest was posted ${day(wn.notices[0].posted)} (${wn.notices[0].kind.toLowerCase()}${wn.notices[0].reason ? `, ${wn.notices[0].reason}` : ""}).`);
     if (h.pay != null && h.market.median != null) add(`Its pay midpoint, about ${k$(h.pay)} a year, compares with ${h.market.n} stated salaries for the same field, level and area: 25th percentile ${k$(h.market.p25)}, median ${k$(h.market.median)}, 75th percentile ${k$(h.market.p75)}.`);
     else if (j.salary_min == null) add(`It states no pay range${j.region === "remote" ? "" : ", which NYC's pay transparency law requires for jobs here"}.`);
     if (j.salary_min != null && j.salary_max != null && j.salary_max > 2 * j.salary_min) add(`Its pay range runs from ${k$(j.salary_min * (j.salary_period === "hour" ? 2080 : 1))} to ${k$(j.salary_max * (j.salary_period === "hour" ? 2080 : 1))} a year.`);

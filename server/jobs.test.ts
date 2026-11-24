@@ -10,6 +10,12 @@ assert.equal(dirSlug("oracle", "ebwg", "https://ebwg.fa.us2.oraclecloud.com/hcmU
 assert.equal(dirSlug("greenhouse", "ICapitalNetwork", "https://job-boards.greenhouse.io/icapitalnetwork"), "icapitalnetwork");
 assert.equal(dirSlug("smartrecruiters", "", "https://careers.smartrecruiters.com/Equinox"), "Equinox"); assert.equal(dirSlug("lever", "a b", ""), null);
 const { guard, match } = await import("./jobs-ai.ts");
+const { warnNames, sameEmployer } = await import("./layoffs.ts");
+// New York's layoff notices: the name filed under, and one employer under its legal names only
+assert.deepEqual(warnNames("SDH Education West, LLC d/b/a Sodexo - Binghamton University"), { legal: "SDH Education West, LLC", dba: "Sodexo" });
+assert.deepEqual(warnNames("Amazon (Western)"), { legal: "Amazon", dba: null });
+assert.ok(sameEmployer("citi", "citigroup") && sameEmployer("meta", "metaplatforms") && sameEmployer("goldmansachs", "goldmansachsand") && sameEmployer("jpmorganchase", "jpmorganchasebankna"));
+assert.ok(!sameEmployer("apple", "applebank") && !sameEmployer("nice", "nicepakproducts") && !sameEmployer("meta", "metasys"));
 
 // Greenhouse escapes its HTML twice: "&amp;mdash;" must come out as a dash, so the pay range parses (2026-11-16)
 assert.equal(stripHtml("&lt;p&gt;Pay: $1&amp;mdash;$2 &amp;amp; more&amp;nbsp;now&lt;/p&gt;&lt;li&gt;A&lt;/li&gt;"), "Pay: $1—$2 & more now\n• A");

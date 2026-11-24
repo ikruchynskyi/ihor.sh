@@ -343,6 +343,30 @@ async function loadMarket() {
   try { const m = await getJSON(`/api/jobs/market?${p}`); if (my === mkReq) { lastMarket = m; renderMarket(m); } }
   catch (e) { if (my === mkReq) $("v-market").innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
 }
+// Layoffs around the market: New York State's notices (sites in NYC and its New York suburbs) and, for the top
+// employers, their latest round on Layoffs.fyi (any country)
+const isoDay = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+const layCell = (L, key) => { const x = L?.employers?.[key]; if (!x) return `<span class="hint">—</span>`;
+  return [x.warn && `<span title="Workers in layoff notices for its NYC-area sites in the last 12 months, the latest ${day(x.warn.latest)}">${x.warn.workers.toLocaleString()} NYC area</span>`,
+    x.fyi && `<span class="hint" title="Its latest layoff round on Layoffs.fyi (any country)">${x.fyi.count ? x.fyi.count.toLocaleString() : "a round"} ${isoDay(x.fyi.date)}</span>`].filter(Boolean).join("<br>"); };
+function layoffsHTML(L, table) {
+  if (!L || (L.company && !L.year.notices)) return "";
+  const top = Math.max(1, ...L.months.map((x) => x.workers)), ch = L.prev90.workers ? Math.round((L.last90.workers / L.prev90.workers - 1) * 100) : null;
+  const mon = (k) => new Date(`${k}-15T12:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  return `<h2 class="sec">Layoffs${L.company ? ` at ${esc(L.company)}` : " in NYC"}</h2><p class="hint">Layoff notices employers filed with New York State for sites in the five boroughs and the New York suburbs${L.company ? "" : ". The filters on the left don't apply here, except an employer"}.</p>
+    <div class="kpis">
+      <div class="kpi card"><b>${L.last90.workers.toLocaleString()}</b><span>workers in ${L.last90.notices} layoff ${L.last90.notices === 1 ? "notice" : "notices"}, last 90 days ${ch == null ? "" : `<span class="${ch > 0 ? "down" : "up"}">${ch >= 0 ? "▲" : "▼"} ${Math.abs(ch)}%</span>`}<br>vs. ${L.prev90.workers.toLocaleString()} in the 90 days before</span></div>
+      <div class="kpi card"><b>${L.year.workers.toLocaleString()}</b><span>workers in ${L.year.notices} notices, last 12 months</span></div>
+    </div>
+    <div class="grid2">
+      <figure class="card"><figcaption><b>Workers in layoff notices, by month</b></figcaption>
+        <div class="cols" role="img" aria-label="Workers in layoff notices for each of the last 12 months">${L.months.map((x) => `<div title="${mon(x.month)}: ${x.workers.toLocaleString()} workers in ${x.notices} notices"><i class="b" style="height:${(x.workers / top) * 100}%"></i></div>`).join("")}</div>
+        <div class="axis"><span>${mon(L.months[0].month)}</span><span>12 months</span><span>${mon(L.months.at(-1).month)}</span></div></figure>
+      ${L.industries.length && !L.company ? `<figure class="card"><figcaption><b>By industry, last 12 months</b></figcaption>${table(L.industries.slice(0, 6), [["Industry", (r) => esc(r.industry)], ["Notices", (r) => r.notices, 1], ["Workers", (r) => r.workers.toLocaleString(), 1]])}</figure>` : ""}
+    </div>
+    ${L.largest.length ? `<h3>The largest, last 90 days</h3>${table(L.largest, [["Posted", (r) => day(r.posted)], ["Employer", (r) => r.hiring ? `<a href="/nyc/company.html?c=${encodeURIComponent(r.company)}">${esc(r.company)}</a>` : esc(r.company)], ["Workers", (r) => r.workers.toLocaleString(), 1], ["Layoff or closure", (r) => esc(r.kind)], ["Industry", (r) => esc(r.industry)], ["Reason given", (r) => esc(r.reason || "—")]])}` : ""}
+    <p class="hint">Notices are required before laying off 50 or more people at one site, so smaller cuts don't appear; New Jersey's and Connecticut's aren't included. From the <a href="${esc(L.source)}" target="_blank" rel="noopener">NY Department of Labor</a>${L.read ? `, read ${age(L.read)}` : ""}.</p>`;
+}
 function renderMarket(m) {
   const all = [...m.fields, ...m.levels, ...m.companies, ...m.roles], max = Math.max(1, ...all.map((g) => g.p75 ?? 0));
   const payBar = (g) => (g.pay == null ? `<span class="hint">${g.withPay ? `only ${g.withPay} stated` : "none stated"}</span>`
@@ -373,7 +397,9 @@ function renderMarket(m) {
       <p>${BIG_ELSEWHERE.map(([n, u]) => `<a class="chip" href="${u}" target="_blank" rel="noopener">${esc(n)} ↗</a>`).join(" ")}</p>
       </details>
     <h2 class="sec">Who's hiring</h2><p class="hint">The 20 employers with the most open jobs here. Many postings that are old and few taken down can mean evergreen or ghost postings; many new and many filled means real hiring.</p>
-    ${table(m.companies, [["Employer", (r) => esc(r.name)], ["Open", (r) => r.open.toLocaleString(), 1], ["Posted, 30 days", (r) => r.new30, 1], ["Taken down, 30 days", (r) => r.closed30, 1], ["Open over 60 days", (r) => `<span class="${r.stale >= 50 ? "down" : ""}">${r.stale}%</span>`, 1], ["Median pay", (r) => k$(r.pay), 1], ["Middle half of pay", payBar]], (r) => `company=${r.name}`)}
+    ${table(m.companies, [["Employer", (r) => esc(r.name)], ["Open", (r) => r.open.toLocaleString(), 1], ["Posted, 30 days", (r) => r.new30, 1], ["Taken down, 30 days", (r) => r.closed30, 1], ["Open over 60 days", (r) => `<span class="${r.stale >= 50 ? "down" : ""}">${r.stale}%</span>`, 1], ["Median pay", (r) => k$(r.pay), 1], ["Middle half of pay", payBar], ["Layoffs", (r) => layCell(m.layoffs, r.key)]], (r) => `company=${r.name}`)}
+    <p class="hint">Layoffs: workers in layoff notices for its sites in NYC and the New York suburbs in the last 12 months, and the latest round on <a href="https://layoffs.fyi" target="_blank" rel="noopener">Layoffs.fyi</a> (any country, last two years).</p>
+    ${layoffsHTML(m.layoffs, table)}
     <h2 class="sec">Positions</h2>${table(m.roles, [["Position (any level)", (r) => esc(titleCase(r.key))], ...base], (r) => `q="${r.key}"&title=1`)}
     ${levels.length ? `<h2 class="sec">Median pay by field and level</h2><div class="scrollx"><table class="mk"><thead><tr><th>Field</th>${levels.map((l) => `<th class="n">${esc(LABEL.seniority[l])}</th>`).join("")}</tr></thead><tbody>${m.fields.filter((f) => m.grid[f.key] && Object.keys(m.grid[f.key]).length).map((f) => `<tr><td>${esc(LABEL.func[f.key] ?? f.key)}</td>${levels.map((l) => { const c = m.grid[f.key][l];
       return c ? `<td class="n" style="background:color-mix(in srgb, var(--accent) ${Math.round(6 + (hi > lo ? (c.pay - lo) / (hi - lo) : 0.5) * 44)}%, transparent)" title="${c.n} salaries">${k$(c.pay)}</td>` : `<td class="n hint">·</td>`; }).join("")}</tr>`).join("")}</tbody></table></div><p class="hint">Cells with fewer than 5 stated salaries are left out.</p>` : ""}
@@ -486,7 +512,8 @@ $("alerts").onclick = async () => {
   } catch (e) { say(`Couldn't turn alerts on: ${e.message}`); }
 };
 window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags; a Market tab with trends and pay; My applications)", tab, search: Object.fromEntries(state()),
-  market: tab === "market" && lastMarket ? { open: lastMarket.open, new7: lastMarket.new7, changeVs3WeeksBefore: lastMarket.change, medianPay: lastMarket.pay, fields: lastMarket.fields.slice(0, 6).map((f) => `${f.key}: ${f.open} open, ${f.new7} new this week${f.change != null ? ` (${f.change}%)` : ""}, median ${k$(f.pay)}`), topEmployers: lastMarket.companies.slice(0, 6).map((c) => `${c.name}: ${c.open} open, ${c.new30} new in 30 days`) } : undefined, results: last ? { total: last.total, top: last.rows.slice(0, 10).map((r) => `${r.title} at ${r.company} (${LABEL.region[r.region]}${r.salary_min ? `, ${money(r.salary_min, r.salary_period)}–${money(r.salary_max, r.salary_period)}` : ""})${r.flags.length ? ` flags: ${r.flags.join(", ")}` : ""}`) } : null });
+  market: tab === "market" && lastMarket ? { open: lastMarket.open, new7: lastMarket.new7, changeVs3WeeksBefore: lastMarket.change, medianPay: lastMarket.pay, fields: lastMarket.fields.slice(0, 6).map((f) => `${f.key}: ${f.open} open, ${f.new7} new this week${f.change != null ? ` (${f.change}%)` : ""}, median ${k$(f.pay)}`), topEmployers: lastMarket.companies.slice(0, 6).map((c) => { const x = lastMarket.layoffs?.employers?.[c.key]; return `${c.name}: ${c.open} open, ${c.new30} new in 30 days${x?.warn ? `; NY layoff notices for ${x.warn.workers} workers in 12 months` : ""}${x?.fyi ? `; latest Layoffs.fyi round ${x.fyi.date}` : ""}`; }),
+    nycLayoffNotices: lastMarket.layoffs && { last90Days: lastMarket.layoffs.last90, the90DaysBefore: lastMarket.layoffs.prev90, last12Months: lastMarket.layoffs.year, largestRecent: lastMarket.layoffs.largest.slice(0, 5).map((r) => `${r.company}: ${r.workers} workers (${r.kind})`) } } : undefined, results: last ? { total: last.total, top: last.rows.slice(0, 10).map((r) => `${r.title} at ${r.company} (${LABEL.region[r.region]}${r.salary_min ? `, ${money(r.salary_min, r.salary_period)}–${money(r.salary_max, r.salary_period)}` : ""})${r.flags.length ? ` flags: ${r.flags.join(", ")}` : ""}`) } : null });
 </script>
 </body>
 </html>
