@@ -22,6 +22,10 @@ assert.deepEqual(parseSalary("The base pay for this position ranges from $139,10
 assert.equal(role("Senior Data Engineer, Payments"), "data engineer");
 assert.equal(role("Manager, Finance"), "manager finance");
 assert.equal(region("Brooklyn, NY"), "nyc"); assert.equal(region("Remote, Manila"), null);
+// places by name (places.json, GeoNames): the boroughs' neighbourhoods, the NY and CT suburbs; not upstate
+assert.equal(region("Jamaica, NY"), "nyc"); assert.equal(region("Upper East Side, New York"), "nyc"); assert.equal(region("Flushing, NY; Remote"), "nyc");
+assert.equal(region("Lake Success, NY"), "metro"); assert.equal(region(usPlace("New Hyde Park, New York, United States")), "metro");
+assert.equal(region("Albany, NY"), null); assert.equal(region("Jamaica, VT"), null);
 // places as Workday and USAJOBS write them
 assert.equal(usPlace("New York New York United States"), "New York, NY"); assert.equal(usPlace("Jersey City, New Jersey"), "Jersey City, NJ");
 assert.equal(usPlace("US-NY-New York"), "New York, NY"); assert.equal(usPlace("Woodbury, NY, United States"), "Woodbury, NY");

@@ -5,7 +5,7 @@
 // listing found only there stays while Adzuna still lists it. Remote boards (Remotive, Himalayas) add remote-US roles.
 // Everything is deduplicated (company + title + area, then a fingerprint of the description), and flagged with reasons.
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { yearsAsked } from "../nyc/resume.js";
 import { PLAIN, jobPostingLd } from "./bigtech.ts";
@@ -103,11 +103,19 @@ const NON_US = /\b(philippines|manila|colombia|argentina|chile|peru|costa rica|s
 const STATES = "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming";
 const US_REMOTE = new RegExp(`\\b(united states|usa|us|u\\.s\\.|anywhere in the us|us-remote|north america|${STATES})\\b|,\\s*[A-Z]{2}\\b`, "i");
 /** Where a job is, for our scope: "nyc", "nj", "metro", "remote" (US), or null when it's outside it. */
+// Places in New York and Connecticut within 60 km of Manhattan by name (places.json, from GeoNames: scripts/places.py):
+// "Jamaica, NY" and "Harlem, NY" are the city, "Lake Success, NY" the metro; the lists above knew half of them.
+const PLACES: Record<string, Record<string, string>> = JSON.parse(readFileSync(path.join(import.meta.dirname, "places.json"), "utf8"));
+const placeRegion = (parts: string[]) => {
+  for (const x of parts) { const m = usPlace(x).match(/^\s*([^,]+?),\s*(NY|CT)\b/i), r = m && PLACES[m[2].toUpperCase()]?.[m[1].trim().toLowerCase()]; if (r) return r; }
+  return null;
+};
 export function region(loc: string, remoteHint = false): string | null {
   const l = loc ?? "", parts = l.split(/;|\|/);
   if (NYC.test(l) || parts.some((x) => NYC_BARE.test(x) || NYC_BARE.test(x.split(",")[0]))) return "nyc"; // Accenture: "New York, 120 Wall Street, Song"
   if (NJ.test(l)) return "nj";
   if (METRO.test(l)) return "metro";
+  const near = placeRegion(parts); if (near) return near;
   const remote = remoteHint || /\bremote\b|anywhere|work from home|distributed/i.test(l);
   // US-remote only when it says so (US, a state), or names no place at all ("Remote"); "Remote, Manila" is not
   const rest = l.replace(/\b(remote|anywhere|work from home|wfh|distributed|hybrid|fully|100%|global|worldwide)\b|[^a-z]+/gi, "");
