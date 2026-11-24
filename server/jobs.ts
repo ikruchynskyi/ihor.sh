@@ -26,6 +26,8 @@ db.exec(`
   create virtual table if not exists jobs_fts2 using fts5(id unindexed, title, company, body, tokenize = 'porter unicode61'); -- porter: engineers = engineer
   create table if not exists runs (at int, what text, ok int, n int, note text);
   create table if not exists probed (ckey text primary key, at int, found text);
+  create table if not exists directory (ats text, slug text, name text, ck text, primary key (ats, slug)); -- employers' board addresses from public lists (refreshDirectory), candidates for discover()
+  create index if not exists directory_ck on directory (ck);
   create table if not exists emb (id text primary key, v blob);
   create table if not exists adz_keys (k text primary key, n int, at int); -- Adzuna ads per company + title (30 days): reposts across runs
   create table if not exists adz_skip (id text primary key, at int); -- Adzuna ads left out (gig, repost), so a later sweep knows them
@@ -51,7 +53,7 @@ const getJson = async (u: string, ms = 30_000, body?: object, sig?: AbortSignal)
 // at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
 // Each run also has a request budget per platform (BUDGET; passed per run): a board that hits it, or a 429, keeps
 // what it read so far and stops, and the next try is simply the next scheduled run (user, 2026-11-16: no retries).
-const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 1000 };
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 3000 }; // SmartRecruiters: 1000 → 3000 with the boards the lists found (2026-11-23)
 // Workday's Cloudflare also turned the Mac away after sustained requests 1.5 s apart (2026-11-16): one every 3 s, once a day
 const WD_PACE = 3000; // a day's run (user: daily is fine for the fullest view)
 // A lane is a platform behind one front door (every Workday board shares Cloudflare's), or one employer's own host
@@ -324,8 +326,9 @@ const titleCase = (s: string) => s.replace(/(^|[-_ ])(\w)/g, (_, a, b) => `${a ?
 
 /** One employer board's jobs. known(id): a job stored and open already, so a board that needs a request per job for its
  *  description (SmartRecruiters, Workday) only lists it; discover() passes () => true to read the lists alone. */
-async function readBoard(ats: string, slug: string, known: (id: string) => boolean = (id) => !!openIds.get(id), spent = spentRun, signal?: AbortSignal): Promise<In[]> {
-  const brief = (id: string, company: string, location: string, isRemote = false): In => ({ known: true, id, source: ats, company, title: "", location, isRemote, url: "", description: "" });
+async function readBoard(ats: string, slug: string, known: (id: string) => boolean = (id) => !!openIds.get(id), spent = spentRun, signal?: AbortSignal, name?: string | null): Promise<In[]> {
+  // a job only listed (stored already, or discover() looking): its title rides along, so discover() can match it
+  const brief = (id: string, company: string, location: string, isRemote = false, title = ""): In => ({ known: true, id, source: ats, company, title, location, isRemote, url: "", description: "" });
   if (ats === "workable") {
     const d = await getJson(`https://apply.workable.com/api/v1/widget/accounts/${slug}?details=true`, 30_000, undefined, signal);
     return (d.jobs ?? []).map((j: any) => ({ id: `wk:${slug}:${j.shortcode}`, source: "workable", company: d.name ?? titleCase(slug), title: j.title,
@@ -341,7 +344,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
       for (const p of d.content ?? []) {
         const id = `sr:${slug}:${p.id}`, loc = usPlace(`${p.location?.city ?? ""}, ${p.location?.region ?? ""}`);
         if (!region(loc, !!p.location?.remote)) continue;
-        if (known(id)) { out.push(brief(id, p.company?.name ?? slug, loc)); continue; }
+        if (known(id)) { out.push(brief(id, p.company?.name ?? slug, loc, false, p.name ?? "")); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
         await pace(lane, 500, spent, signal); const j = await getJson(p.ref, 30_000, undefined, signal).catch((e) => { if (/429/.test(e.message)) throw e; return null; }); if (!j) continue;
         out.push({ id, source: "smartrecruiters", company: j.company?.name ?? slug, title: j.name, location: loc, remoteHint: p.location?.remote ? "remote" : p.location?.hybrid ? "hybrid" : "", posted: Date.parse(j.releasedDate), url: j.postingUrl ?? j.applyUrl,
@@ -354,7 +357,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
   }
   if (ats === "workday") { // a description costs one request, so Workday is asked only for what we want (user, 2026-11-16):
     // the board's own location facets in our area (whatever it names them: S&P's is Location_Region_State_Province) and its job families for technology, engineering, data and finance
-    const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? titleCase(tenant), out: In[] = [], lane = laneOf(ats, slug);
+    const [tenant, n, site] = slug.split("|"), base = `https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}`, company = BOARD_NAME.get(slug) ?? name ?? titleCase(tenant), out: In[] = [], lane = laneOf(ats, slug);
     try {
     await pace(lane, WD_PACE, spent, signal); const vals = wdFacets((await getJson(`${base}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" }, signal)).facets);
     const places = vals.filter((v) => /location/i.test(v.p) && !/country/i.test(v.p) && ["nyc", "nj", "metro"].includes(region(usPlace(v.d)) ?? "")).sort((a, b) => Number(b.p === "locations") - Number(a.p === "locations")), states = vals.filter((v) => /^(new york|new jersey|connecticut)$/i.test(v.d.trim()));
@@ -371,7 +374,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
         const id = `wd:${slug}:${String(p.externalPath).split("/").pop()}`, loc = usPlace(p.locationsText ?? ""), many = /^\d+ locations$/i.test(loc);
         if ((!many && !region(loc, remote)) || (!famP && !["engineering", "data", "finance"].includes(func(p.title ?? "")))) continue; // no family facet: by title
         if (out.some((j) => j.id === id)) continue; // in both passes
-        if (known(id)) { out.push(brief(id, company, many ? (remote ? "Remote, US" : "New York, NY") : loc)); continue; }
+        if (known(id)) { out.push(brief(id, company, many ? (remote ? "Remote, US" : "New York, NY") : loc, false, p.title ?? "")); continue; }
         if (out.filter((j) => !j.known).length >= 100) continue; // the rest next time
         await pace(lane, WD_PACE, spent, signal); const i = (await getJson(`${base}${p.externalPath}`, 30_000, undefined, signal).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.jobPostingInfo; if (!i) continue;
         out.push({ id, source: "workday", company, title: i.title, location: [i.location, ...(i.additionalLocations ?? [])].map(usPlace).join("; "), remoteHint: i.remoteType ?? (remote ? "Remote" : ""), posted: Date.parse(i.startDate),
@@ -383,7 +386,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     return out;
   }
   if (ats === "oracle") { // Oracle Recruiting Cloud's own REST: our area's locations and the tech, data and finance categories; a description costs one request
-    const [host, site] = slug.split("|"), api = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions`, company = BOARD_NAME.get(slug) ?? host.split(".")[0], out: In[] = [], lane = laneOf(ats, slug);
+    const [host, site] = slug.split("|"), api = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions`, company = BOARD_NAME.get(slug) ?? name ?? host.split(".")[0], out: In[] = [], lane = laneOf(ats, slug);
     try {
       await pace(lane, 1000, spent, signal); const f = (await getJson(`${api}?onlyData=true&finder=findReqs;siteNumber=${site},facetsList=LOCATIONS%3BCATEGORIES,limit=1`, 30_000, undefined, signal)).items?.[0];
       const places = (f?.locationsFacet ?? []).filter((l: any) => ["nyc", "nj", "metro"].includes(region(String(l.Name)) ?? "")), cats = (f?.categoriesFacet ?? []).filter((c: any) => WD_FAMILIES.test(String(c.Name)));
@@ -391,7 +394,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
         await pace(lane, 1000, spent, signal); const it = (await getJson(`${api}?onlyData=true&expand=requisitionList.secondaryLocations&finder=findReqs;siteNumber=${site},locationId=${pl.Id},${cats.length ? `selectedCategoriesFacet=${cats.map((c: any) => c.Id).join("%3B")},` : ""}limit=25,offset=${off},sortBy=POSTING_DATES_DESC`, 30_000, undefined, signal)).items?.[0];
         for (const r of it?.requisitionList ?? []) {
           const id = `or:${slug}:${r.Id}`; if (!cats.length && !FOCUS(r.Title ?? "")) continue;
-          if (known(id)) { out.push(brief(id, company, String(r.PrimaryLocation ?? pl.Name))); continue; }
+          if (known(id)) { out.push(brief(id, company, String(r.PrimaryLocation ?? pl.Name), false, r.Title ?? "")); continue; }
           if (out.filter((j) => !j.known).length >= 300) continue; // the rest next time
           await pace(lane, 1000, spent, signal); const d = (await getJson(`https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById;Id=%22${r.Id}%22,siteNumber=${site}`, 30_000, undefined, signal).catch((e) => { if (/429/.test(e.message)) throw e; return null; }))?.items?.[0]; if (!d) continue;
           out.push({ id, source: "oracle", company, title: d.Title ?? r.Title, location: [...new Set([r.PrimaryLocation, ...(r.secondaryLocations ?? []).map((x: any) => x.Name)].filter(Boolean))].join("; "), remoteHint: r.WorkplaceType ?? "",
@@ -502,13 +505,13 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
 const openIds = db.prepare("select 1 from jobs where id = ? and closed is null");
 /** Re-read companies' boards (these ATSes): new and changed jobs saved, missing ones a step closer to closed. */
 export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "workable"], what = "boards", workers = 6, signal?: AbortSignal) {
-  const list = db.prepare(`select ats, slug from companies where ats in (${atses.map(() => "?").join(",")})`).all(...atses) as { ats: string; slug: string }[];
+  const list = db.prepare(`select ats, slug, name from companies where ats in (${atses.map(() => "?").join(",")})`).all(...atses) as { ats: string; slug: string; name: string | null }[];
   const spent = new Map<string, number>();
   let n = 0, bad = 0;
   let next = 0; // a pool of `workers` boards at a time; requests within a lane still wait their turn (pace)
-  const one = async ({ ats, slug }: { ats: string; slug: string }) => {
+  const one = async ({ ats, slug, name }: { ats: string; slug: string; name: string | null }) => {
     try {
-      const jobs = await readBoard(ats, slug, (id) => !!openIds.get(id), spent, signal), seen = new Set<string>(), partial = (jobs as any).partial as string | undefined, listPartial = (jobs as any).listPartial as boolean | undefined;
+      const jobs = await readBoard(ats, slug, (id) => !!openIds.get(id), spent, signal, name), seen = new Set<string>(), partial = (jobs as any).partial as string | undefined, listPartial = (jobs as any).listPartial as boolean | undefined;
       batch(() => {
         for (const j of jobs) if (j.known ? (touch.run(now(), j.id), true) : save(j)) { seen.add(j.id); n++; }
         for (const id of ((jobs as any).listed as string[] | undefined) ?? []) if (!seen.has(id) && openIds.get(id)) { touch.run(now(), id); seen.add(id); }
@@ -643,24 +646,82 @@ export async function refreshRemote() {
 
 /** The employer list grows by itself: companies seen in Adzuna are tried on Greenhouse, Lever and Ashby (once each, up
  *  to `max` a day); any board that answers with NYC-area or US-remote jobs is added and read hourly from then on. */
-export async function discover(max = 100, signal?: AbortSignal) {
-  const cands = db.prepare("select company, ckey, count(*) n from jobs where source = 'adzuna' and closed is null and ckey not in (select ckey from probed) group by ckey order by n desc limit ?").all(max) as any[];
-  const spent = new Map<string, number>();
-  let added = 0, tried = 0;
+// ---------- finding employers' own boards ----------
+// The board lists of github.com/kalil0321/ats-scrapers (MIT; they fold in Latmay's CC BY career-page list): ~37k
+// employers' board addresses on the platforms read here. Only the addresses are used, as candidates for discover(); each
+// is checked live before it's added. Name-guessing alone found a board for 212 of 2,595 employers (2026-11-23). Weekly.
+const DIR_ATS = ["greenhouse", "lever", "ashby", "workable", "smartrecruiters", "workday", "oracle"], HEAVY = new Set(["workday", "oracle"]);
+/** CSV rows (quoted fields, commas and line breaks inside quotes). */
+export function csvRows(text: string): string[][] {
+  const rows: string[][] = []; let row: string[] = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim()));
+}
+/** A listed board as readBoard() names it: Workday "tenant|N|site", Oracle "host|site", the others their slug. */
+export function dirSlug(ats: string, slug: string, url: string) {
+  if (ats === "workday") { const m = url.match(/^https:\/\/([a-z0-9-]+)\.wd(\d+)\.myworkdayjobs\.com\/(?:[a-z]{2}-[A-Z]{2}\/)?([^/?#]+)/i); return m ? `${m[1].toLowerCase()}|${m[2]}|${m[3]}` : null; }
+  if (ats === "oracle") { const m = url.match(/^https:\/\/([a-z0-9.-]+\.oraclecloud\.com)\/hcmUI\/CandidateExperience\/[^/]+\/sites\/([^/?#]+)/i); return m ? `${m[1].toLowerCase()}|${m[2]}` : null; }
+  const s = (slug || url.replace(/\/+$/, "").split("/").pop() || "").trim();
+  return /^[\w.-]+$/.test(s) ? (ats === "smartrecruiters" ? s : s.toLowerCase()) : null;
+}
+export async function refreshDirectory(signal?: AbortSignal) {
+  const rows: [string, string, string][] = [];
+  for (const ats of DIR_ATS) {
+    const r = await fetch(`https://raw.githubusercontent.com/kalil0321/ats-scrapers/HEAD/ats-companies/${ats}.csv`, { headers: { "user-agent": UA["user-agent"] }, signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]) });
+    if (!r.ok) throw new Error(`${ats}: HTTP ${r.status}`);
+    const [head, ...lines] = csvRows(await r.text()), at = (n: string) => head.indexOf(n);
+    for (const l of lines) { const name = (l[at("name")] ?? "").trim(), slug = dirSlug(ats, l[at("slug")] ?? "", l[at("url")] ?? ""); if (name && slug) rows.push([ats, slug, name]); }
+  }
+  if (rows.length < 10_000) throw new Error(`only ${rows.length} boards listed`); // a broken download keeps last week's
+  batch(() => { db.exec("delete from directory"); const ins = db.prepare("insert or ignore into directory values (?,?,?,?)"); for (const [a, sl, n] of rows) ins.run(a, sl, n, ckey(n)); });
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "directory", 1, rows.length, `${rows.length} boards listed`);
+  return rows.length;
+}
+// Names that post for others (job aggregators, AI-training gig work, offshore staffing): not an employer's own board
+const NOT_EMPLOYER = /\b(jobgether|mindrift|toloka|pavago|weekday|crossover|outlier|data ?annotation|remotasks|alignerr|clark davis|lancesoft|cynet|bcforward|vdart|tekwissen|pyramid consulting|amnet|hireright|jobs? via)\b/i;
+/** Employers seen only through Adzuna: their own board, from the board lists first, else guessed from the name. A
+ *  listed board is added when it has jobs here and is that employer's (its owner's name, or a title Adzuna showed);
+ *  Workday and Oracle boards go through the Mac at a slow pace, so a run tries 8 at most. Misses are retried monthly
+ *  (lists only), as the lists grow. */
+export async function discover(max = 400, signal?: AbortSignal) {
+  if (!(db.prepare("select count(*) n from directory").get() as any).n) await refreshDirectory(signal).catch(() => {}); // before the first weekly read
+  const cands = db.prepare(`select company, ckey, count(*) n, group_concat(title, char(10)) titles, (select at from probed p where p.ckey = j.ckey) prev from jobs j
+    where source = 'adzuna' and closed is null and dup_of is null and ckey not in (select ckey from probed where found <> '' or at > ?)
+    and ckey not in (select distinct ckey from jobs where source <> 'adzuna' and closed is null) group by ckey order by n desc limit ?`).all(now() - 30 * 86400, max) as any[];
+  const spent = new Map<string, number>(), have = db.prepare("select 1 from companies where ats = ? and lower(slug) = lower(?)");
+  let added = 0, tried = 0, fromList = 0, heavy = 0;
   for (const c of cands) {
     if (signal?.aborted) break;
     tried++;
-    const slugs = [...new Set([c.ckey, c.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), c.company.toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, "")])].filter((x) => x.length > 2);
+    const titles = new Set(String(c.titles ?? "").split("\n").map(tkey)), skip = STAFFING.test(c.company) || NOT_EMPLOYER.test(c.company);
+    const listed = skip ? [] : (db.prepare("select ats, slug, name, ck from directory where ck like ?").all(`${c.ckey.slice(0, 4)}%`) as any[]).filter((d) => sameCompany(d.ck, c.ckey))
+      .sort((a, b) => Number(b.ck === c.ckey) - Number(a.ck === c.ckey) || Number(HEAVY.has(a.ats)) - Number(HEAVY.has(b.ats))).slice(0, 4);
+    const guesses = skip || c.prev ? [] : [...new Set([c.ckey, c.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), c.company.toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, "")])]
+      .filter((x) => x.length > 2).flatMap((slug) => ["greenhouse", "lever", "ashby", "workable", "smartrecruiters"].map((ats) => ({ ats, slug, name: null, ck: "" })));
     let found = "";
-    for (const slug of slugs) for (const ats of ["greenhouse", "lever", "ashby", "workable", "smartrecruiters"]) {
-      if (found || STAFFING.test(c.company) || signal?.aborted) continue;
-      try { const jobs = await readBoard(ats, slug, () => true, spent, signal); if (jobs.some((j) => region(j.location, j.isRemote)) && jobs.some((j) => ckey(j.company) === c.ckey || ats !== "greenhouse")) found = `${ats}:${slug}`; } catch {}
+    for (const d of [...listed.map((x) => ({ ...x, listed: true })), ...guesses.map((x) => ({ ...x, listed: false }))]) {
+      if (found || signal?.aborted) break;
+      if (have.get(d.ats, d.slug) || (HEAVY.has(d.ats) && heavy >= 8)) continue;
+      if (HEAVY.has(d.ats)) heavy++;
+      try {
+        const jobs = await readBoard(d.ats, d.slug, () => true, spent, signal, d.name), here = jobs.filter((j) => region(j.location, j.isRemote));
+        const mine = d.listed ? here.some((j) => j.title && titles.has(tkey(j.title))) || here.some((j) => sameCompany(ckey(j.company), c.ckey)) || d.ck === c.ckey
+          : jobs.some((j) => ckey(j.company) === c.ckey || d.ats !== "greenhouse"); // a guessed name: as before
+        if (here.length && mine) { found = `${d.ats}:${d.slug}`; if (d.listed) fromList++; db.prepare("insert or ignore into companies (ats, slug, name, added) values (?, ?, ?, ?)").run(d.ats, d.slug, d.name, now()); }
+      } catch {}
     }
     db.prepare("insert or replace into probed values (?, ?, ?)").run(c.ckey, now(), found);
-    if (found) { const [ats, slug] = found.split(":"); db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now()); added++; }
+    if (found) added++;
   }
-  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "discover", 1, added, `${tried} companies tried`);
-  return { tried, added };
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "discover", 1, added, `${tried} employers tried: ${added} boards added (${fromList} from the board lists)`);
+  return { tried, added, fromList };
 }
 
 const pop64 = (x: bigint) => { let n = 0; while (x) { x &= x - 1n; n++; } return n; };
@@ -871,7 +932,8 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-big-boards", "0 3 * * *", "the big employers' own systems (Workday, Oracle, Eightfold, Amazon, SmartRecruiters): paced lanes in parallel", async (s) => { await refreshBoards(BIG, "boards-slow", 12, s); afterIngest(); }, 90 * 60_000],
   ["jobs-custom", "15 4,9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async (s) => { await refreshBoards(["custom"], "boards-custom", 6, s); afterIngest(); }, 20 * 60_000],
   ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", (s) => backfillTexts(60, s), 5 * 60_000],
-  ["jobs-discover", "0 5 * * *", "new employer boards, from Adzuna's employers", (s) => discover(100, s), 25 * 60_000],
+  ["jobs-directory", "30 4 * * 0", "the board lists: employers' board addresses for discovery (weekly)", (s) => refreshDirectory(s), 10 * 60_000],
+  ["jobs-discover", "0 5 * * *", "new employer boards for Adzuna's employers: from the board lists, else by name", (s) => discover(400, s), 40 * 60_000],
   ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
 

@@ -1,7 +1,14 @@
 // Run: node server/jobs.test.ts (an in-memory database: never the live data/jobs.db)
 process.env.JOBS_DB = ":memory:";
 const assert = (await import("node:assert/strict")).default;
-const { stripHtml, parseSalary, role, region, market, usPlace, sameCompany, seniority, flagsFor, dedupe, prune, refreshBoards, jobsHealth, resetLanes, jobsDb } = await import("./jobs.ts");
+const { stripHtml, parseSalary, role, region, market, usPlace, sameCompany, seniority, flagsFor, dedupe, prune, refreshBoards, jobsHealth, resetLanes, jobsDb, csvRows, dirSlug } = await import("./jobs.ts");
+// the board lists: CSV with quotes, and each platform's address as readBoard() takes it
+assert.deepEqual(csvRows('name,slug,url\r\n"Acme, Inc.",acme,https://x\n"Say ""hi""\nthere",b,\n'), [["name", "slug", "url"], ["Acme, Inc.", "acme", "https://x"], ['Say "hi"\nthere', "b", ""]]);
+assert.equal(dirSlug("workday", "23andme/23", "https://23andme.wd5.myworkdayjobs.com/23"), "23andme|5|23");
+assert.equal(dirSlug("workday", "", "https://cvshealth.wd1.myworkdayjobs.com/en-US/CVS_Health_Careers/"), "cvshealth|1|CVS_Health_Careers");
+assert.equal(dirSlug("oracle", "ebwg", "https://ebwg.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX"), "ebwg.fa.us2.oraclecloud.com|CX");
+assert.equal(dirSlug("greenhouse", "ICapitalNetwork", "https://job-boards.greenhouse.io/icapitalnetwork"), "icapitalnetwork");
+assert.equal(dirSlug("smartrecruiters", "", "https://careers.smartrecruiters.com/Equinox"), "Equinox"); assert.equal(dirSlug("lever", "a b", ""), null);
 const { guard, match } = await import("./jobs-ai.ts");
 
 // Greenhouse escapes its HTML twice: "&amp;mdash;" must come out as a dash, so the pay range parses (2026-11-16)
