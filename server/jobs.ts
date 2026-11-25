@@ -28,6 +28,7 @@ db.exec(`
   create table if not exists probed (ckey text primary key, at int, found text);
   create table if not exists directory (ats text, slug text, name text, ck text, primary key (ats, slug)); -- employers' board addresses from public lists (refreshDirectory), candidates for discover()
   create index if not exists directory_ck on directory (ck);
+  create table if not exists swept (ats text, slug text, at int, here int, primary key (ats, slug)); -- listed boards checked for jobs in the NYC area (sweepDirectory)
   create table if not exists emb (id text primary key, v blob);
   create table if not exists adz_keys (k text primary key, n int, at int); -- Adzuna ads per company + title (30 days): reposts across runs
   create table if not exists adz_skip (id text primary key, at int); -- Adzuna ads left out (gig, repost), so a later sweep knows them
@@ -53,7 +54,7 @@ const getJson = async (u: string, ms = 30_000, body?: object, sig?: AbortSignal)
 // at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
 // Each run also has a request budget per platform (BUDGET; passed per run): a board that hits it, or a 429, keeps
 // what it read so far and stops, and the next try is simply the next scheduled run (user, 2026-11-16: no retries).
-const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 3000 }; // SmartRecruiters: 1000 → 3000 with the boards the lists found (2026-11-23)
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 8000 }; // SmartRecruiters: 1000 → 3000 → 8000 as the lists' boards came in (2026-11-25; 500 ms apart: 67 min)
 // Workday's Cloudflare also turned the Mac away after sustained requests 1.5 s apart (2026-11-16): one every 3 s, once a day
 const WD_PACE = 3000; // a day's run (user: daily is fine for the fullest view)
 // A lane is a platform behind one front door (every Workday board shares Cloudflare's), or one employer's own host
@@ -505,7 +506,8 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
 const openIds = db.prepare("select 1 from jobs where id = ? and closed is null");
 /** Re-read companies' boards (these ATSes): new and changed jobs saved, missing ones a step closer to closed. */
 export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "workable"], what = "boards", workers = 6, signal?: AbortSignal) {
-  const list = db.prepare(`select ats, slug, name from companies where ats in (${atses.map(() => "?").join(",")})`).all(...atses) as { ats: string; slug: string; name: string | null }[];
+  // the least recently read first: a run cut short by its time limit leaves the same boards for the next, not starves the newest
+  const list = db.prepare(`select ats, slug, name from companies where ats in (${atses.map(() => "?").join(",")}) order by coalesce(last_ok, 0)`).all(...atses) as { ats: string; slug: string; name: string | null }[];
   const spent = new Map<string, number>();
   let n = 0, bad = 0;
   let next = 0; // a pool of `workers` boards at a time; requests within a lane still wait their turn (pace)
@@ -693,8 +695,8 @@ const NOT_EMPLOYER = /\b(jobgether|mindrift|toloka|pavago|weekday|crossover|outl
 export async function discover(max = 400, signal?: AbortSignal) {
   if (!(db.prepare("select count(*) n from directory").get() as any).n) await refreshDirectory(signal).catch(() => {}); // before the first weekly read
   const cands = db.prepare(`select company, ckey, count(*) n, group_concat(title, char(10)) titles, (select at from probed p where p.ckey = j.ckey) prev from jobs j
-    where source = 'adzuna' and closed is null and dup_of is null and ckey not in (select ckey from probed where found <> '' or at > ?)
-    and ckey not in (select distinct ckey from jobs where source <> 'adzuna' and closed is null) group by ckey order by n desc limit ?`).all(now() - 30 * 86400, max) as any[];
+    where source = 'adzuna' and (closed is null or closed > ?) and dup_of is null and ckey not in (select ckey from probed where found <> '' or at > ?)
+    and ckey not in (select distinct ckey from jobs where source <> 'adzuna' and closed is null) group by ckey order by n desc limit ?`).all(now() - 90 * 86400, now() - 30 * 86400, max) as any[]; // ads closed in the last 90 days count: Cross River's had all expired (2026-11-25)
   const spent = new Map<string, number>(), have = db.prepare("select 1 from companies where ats = ? and lower(slug) = lower(?)");
   let added = 0, tried = 0, fromList = 0, heavy = 0;
   for (const c of cands) {
@@ -724,6 +726,48 @@ export async function discover(max = 400, signal?: AbortSignal) {
   return { tried, added, fromList };
 }
 
+
+// ---------- the board lists, swept: every listed employer with jobs in the NYC area, Adzuna or not ----------
+// discover() only meets employers whose ads show up in Adzuna; 54 of 300 listed boards sampled had jobs in the NYC area
+// (2026-11-25), about 3,000 of the lists' boards, against 509 read then. So every listed board is checked, one request
+// each (Workday and Oracle: their location facets), a slice a day, and added when it has a job in the city, New Jersey
+// or the metro (remote-only boards aren't: the site is about New York). Each board is checked again after 30 days.
+const SWEEP_PACE: Record<string, number> = { greenhouse: 1000, lever: 1000, ashby: 1000, workable: 1500, smartrecruiters: 500, workday: WD_PACE, oracle: 1000 };
+const SWEEP_CAP: Record<string, number> = { workday: 300, oracle: 300 }; // a day: they go through the Mac
+const LOCAL = new Set(["nyc", "nj", "metro"]);
+async function boardHere(ats: string, slug: string, name: string, spent: Map<string, number>, signal?: AbortSignal) {
+  if (ats === "workday") {
+    const [tenant, n, site] = slug.split("|"); await pace(laneOf(ats, slug), WD_PACE, spent, signal);
+    const vals = wdFacets((await getJson(`https://${tenant}.wd${n}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, 30_000, { appliedFacets: {}, limit: 1, offset: 0, searchText: "" }, signal)).facets);
+    return vals.filter((v) => /location/i.test(v.p) && !/country/i.test(v.p) && LOCAL.has(region(usPlace(v.d)) ?? "")).length;
+  }
+  if (ats === "oracle") {
+    const [host, site] = slug.split("|"); await pace(laneOf(ats, slug), 1000, spent, signal);
+    const f = (await getJson(`https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&finder=findReqs;siteNumber=${site},facetsList=LOCATIONS,limit=1`, 30_000, undefined, signal)).items?.[0];
+    return (f?.locationsFacet ?? []).filter((l: any) => LOCAL.has(region(String(l.Name)) ?? "")).length;
+  }
+  if (ats !== "smartrecruiters") await pace(`sweep:${ats}`, SWEEP_PACE[ats], spent, signal); // SmartRecruiters paces itself in readBoard
+  return (await readBoard(ats, slug, () => true, spent, signal, name)).filter((j) => LOCAL.has(region(j.location, j.isRemote) ?? "")).length;
+}
+export async function sweepDirectory(minutes = 50, signal?: AbortSignal) {
+  const until = Date.now() + minutes * 60_000, spent = new Map<string, number>(), stop = () => signal?.aborted || Date.now() > until;
+  const have = db.prepare("select 1 from companies where ats = ? and lower(slug) = lower(?)"), mark = db.prepare("insert or replace into swept values (?, ?, ?, ?)");
+  const added: string[] = []; let checked = 0, failed = 0;
+  await Promise.all(Object.keys(SWEEP_PACE).map(async (ats) => { // one lane a platform, in parallel
+    const todo = db.prepare(`select d.slug, d.name from directory d left join swept s on s.ats = d.ats and s.slug = d.slug where d.ats = ? and (s.at is null or s.at < ?)
+      order by s.at is not null, s.at limit ?`).all(ats, now() - 30 * 86400, SWEEP_CAP[ats] ?? 20_000) as any[];
+    for (const d of todo) {
+      if (stop()) break;
+      if (have.get(ats, d.slug) || STAFFING.test(d.name) || NOT_EMPLOYER.test(d.name)) { mark.run(ats, d.slug, now(), -1); continue; }
+      try {
+        const here = await boardHere(ats, d.slug, d.name, spent, signal); checked++; mark.run(ats, d.slug, now(), here);
+        if (here) { db.prepare("insert or ignore into companies (ats, slug, name, added) values (?, ?, ?, ?)").run(ats, d.slug, d.name, now()); added.push(`${ats}:${d.slug}`); }
+      } catch (e) { failed++; note429(laneOf(ats, d.slug), e); if (/429|requests are used|rests until/.test((e as Error).message)) break; mark.run(ats, d.slug, now(), -2); }
+    }
+  }));
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "sweep", 1, added.length, `${checked} listed boards checked, ${added.length} with jobs here added, ${failed} didn't answer`);
+  return { checked, added: added.length, failed };
+}
 const pop64 = (x: bigint) => { let n = 0; while (x) { x &= x - 1n; n++; } return n; };
 /** Duplicates across sources: the same title in the same area at the same company (under either of its names, so "Citi"
  *  on Workday and "Citibank" on Adzuna meet), or the same company with a near-identical description. Each cluster keeps
@@ -924,7 +968,7 @@ export async function checkLiveness(budget = 800, signal?: AbortSignal, minutes 
   return closed;
 }
 export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => Promise<unknown>, number][] => [
-  ["jobs-boards", "5 * * * *", "Greenhouse, Lever, Ashby and Workable boards and NYC's jobs (liveness); then dedupe and prune", async (s) => { await refreshBoards(undefined, "boards", 6, s); if (!s.aborted) await refreshNycJobs(); afterIngest(true); }, 30 * 60_000],
+  ["jobs-boards", "5 * * * *", "Greenhouse, Lever, Ashby and Workable boards and NYC's jobs (liveness); then dedupe and prune", async (s) => { await refreshBoards(undefined, "boards", 10, s); if (!s.aborted) await refreshNycJobs(); afterIngest(true); }, 30 * 60_000],
   ["jobs-adzuna-nyc", "20 */4 * * *", "Adzuna around NYC (40% IT, 30% finance, 30% everything), within its monthly calls", async () => { const r = await refreshAdzuna("nyc"); afterIngest(); return r; }, 15 * 60_000],
   ["jobs-adzuna-remote", "35 */6 * * *", "Adzuna remote US", async () => { const r = await refreshAdzuna("remote"); afterIngest(); return r; }, 10 * 60_000],
   ["jobs-remote-boards", "40 */6 * * *", "Remotive and Himalayas (a few reads a day at most)", async () => { const r = await refreshRemote(); afterIngest(); return r; }, 15 * 60_000],
@@ -933,6 +977,7 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-custom", "15 4,9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async (s) => { await refreshBoards(["custom"], "boards-custom", 6, s); afterIngest(); }, 20 * 60_000],
   ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", (s) => backfillTexts(60, s), 5 * 60_000],
   ["jobs-directory", "30 4 * * 0", "the board lists: employers' board addresses for discovery (weekly)", (s) => refreshDirectory(s), 10 * 60_000],
+  ["jobs-sweep", "0 6 * * *", "the board lists, swept: listed employers with jobs in the NYC area, a slice a day (each board again after 30 days)", (s) => sweepDirectory(50, s), 55 * 60_000],
   ["jobs-discover", "0 5 * * *", "new employer boards for Adzuna's employers: from the board lists, else by name", (s) => discover(400, s), 40 * 60_000],
   ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
