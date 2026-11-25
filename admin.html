@@ -47,6 +47,7 @@
     <p><button type="button" id="jobsRefresh">Refresh</button> <span class="hint" id="jobsStep"></span></p>
     <div id="jobsOut"></div>
     <div id="sourcesOut"></div>
+    <div id="coverageOut"></div>
   </section>
 </main>
 <script type="module">
@@ -139,10 +140,22 @@ async function loadSources() {
     ${empty.length ? `<h3>Boards with nothing open (${empty.length})</h3>${table(empty)}` : ""}
     <h3>Not read</h3><ul>${NOT_READ.map(([n, why]) => `<li><b>${esc(n)}</b>: ${esc(why)}</li>`).join("")}</ul>`;
 }
+// The big employers in and around NYC (coverage.ts): which the site reads, which have a known board the daily sweep or
+// discovery will check, and which aren't found yet (to add by hand: their board, or a new kind of board to read)
+async function loadCoverage() {
+  const l = await get("/api/admin/coverage"), by = (s) => l.filter((r) => r.status === s), STATUS = { read: "read", listed: "board known, to be checked", none: "not found" };
+  const why = (r) => [r.employees && `${r.employees.toLocaleString()} staff (Wikidata)`, r.ads && `${r.ads} job ads here in a year`, r.laidOff && `laid off ${r.laidOff} at one site here`].filter(Boolean).join(" · ");
+  const table = (rows) => `<div class="scrollx"><table><thead><tr><th>Employer</th><th>Why it's here</th><th class="n">Open jobs</th><th>Status</th><th>Read as / known board</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r.website ? `<a href="${esc(r.website)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</td><td class="hint">${esc(why(r))}</td><td class="n">${r.open || ""}</td><td class="${r.status === "none" ? "bad" : ""}">${STATUS[r.status]}</td><td>${esc((r.status === "read" ? r.via : r.boards).join(", "))}</td></tr>`).join("")}</tbody></table></div>`;
+  $("coverageOut").innerHTML = `<h2>Big employers in and around NYC (${l.length})</h2>
+    <p class="hint">Based in the city with 1,000+ staff (Wikidata), 25+ job ads here in a year, or a layoff notice for 100+ at one site here. ${by("read").length} read, ${by("listed").length} with a known board the daily sweep or discovery will check, ${by("none").length} not found.</p>
+    <h3>Not found (${by("none").length})</h3>${table(by("none"))}
+    <details><summary>Board known, to be checked (${by("listed").length})</summary>${table(by("listed"))}</details>
+    <details><summary>Read (${by("read").length})</summary>${table(by("read"))}</details>`;
+}
 for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
   for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
   if (b.dataset.tab === "activity" && !loadActivity.done) { loadActivity.done = true; loadActivity().catch((e) => ($("actStep").textContent = e.message)); }
-  if (b.dataset.tab === "jobs" && !loadJobsHealth.done) { loadJobsHealth.done = true; loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch((e) => ($("sourcesOut").textContent = e.message)); }
+  if (b.dataset.tab === "jobs" && !loadJobsHealth.done) { loadJobsHealth.done = true; loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch((e) => ($("sourcesOut").textContent = e.message)); loadCoverage().catch((e) => ($("coverageOut").textContent = e.message)); }
 };
 loadUsers().catch((e) => ($("t-users").innerHTML = `<p>${esc(e.message)}</p>`));
 </script>

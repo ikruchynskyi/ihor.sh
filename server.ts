@@ -24,6 +24,7 @@ import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, jo
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { refreshWarn, warnCount, warnFor, layoffsMarket } from "./server/layoffs.ts";
+import { coverage as employerCoverage, refreshBigEmployers, bigEmployersCount } from "./server/coverage.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening, weekConcerts } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, nowcast, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
@@ -1259,6 +1260,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       if (url.pathname === "/api/admin/users" && req.method === "POST") return send({ changed: setCloud(String(url.searchParams.get("id") ?? ""), url.searchParams.get("cloud") === "1") });
       if (url.pathname === "/api/admin/users") return send(listUsers());
       if (url.pathname === "/api/admin/sources") return send(jobSources());
+      if (url.pathname === "/api/admin/coverage") return send(employerCoverage()); // the big employers in and around NYC, read or not (coverage.ts)
       if (url.pathname === "/api/admin/stats") return send(activityStats(Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 7))));
       if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
       if (url.pathname === "/api/admin/jobs-health") {
@@ -1362,6 +1364,8 @@ if (IN_HOST_SUPERVISOR) {
   schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", (s) => precomputeChecks(s), 210 * 60_000);
   schedule("jobs-warn", "10 5 * * *", "New York State's layoff notices (WARN), for company pages, the market and the job check", (s) => refreshWarn(s), 5 * 60_000);
   if (!warnCount()) refreshWarn().catch((e) => console.warn(`warn: ${(e as Error).message}`)); // before the first morning run
+  schedule("jobs-bigco", "0 4 1 * *", "Wikidata's big NYC-based employers, for the admin page's coverage list (monthly)", (s) => refreshBigEmployers(s), 5 * 60_000);
+  if (!bigEmployersCount()) refreshBigEmployers().catch((e) => console.warn(`bigco: ${(e as Error).message}`));
   schedule("jobs-companies", "30 5 * * *", "company cards: business, news, stock, Levels.fyi pay and an AI overview, for the top employers", (s) => refreshCards(80, s), 150 * 60_000);
   schedule("nyc-today", "2 * * * *", "the city brief: today in New York (big events, weather, alerts, subway, top news, critical incidents), for the map and /nyc/today.html", () => makeDayBrief(), 15 * 60_000);
   schedule("jobs-alerts", "0 8 * * *", "push alerts: new jobs for saved searches, follow-ups due", () => sendAlerts(), 15 * 60_000);

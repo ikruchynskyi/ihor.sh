@@ -178,7 +178,7 @@ export const func = (title: string, dept = "") => FUNCS.find(([, re]) => re.test
 const GIG_CO = /instacart|doordash|uber|lyft|amazon flex|spark driver|shipt|grubhub|roadie|taskrabbit|gopuff|postmates|caviar|favor delivery|veho|dolly|wag!?|rover|care\.com/i;
 const GIG_TEXT = /\b(be your own boss|earn cash|earn up to|sign up (today|now)|independent contractor|set your own (hours|schedule)|flexible hours.*(earn|cash)|get paid (weekly|daily|instantly)|side hustle|delivery driver|shopper)\b/i;
 export const isGig = (company: string, title: string, text: string) => GIG_CO.test(company) || GIG_TEXT.test(`${title} ${text}`);
-const STAFFING = /\b(robert half|insight global|teksystems|kforce|randstad|adecco|aerotek|cybercoders|hunter bond|harnham|motion recruitment|apex systems|beacon hill|jobot|collabera|hays|michael page|aston carter|actalent|vaco|creative circle|the judge group|addison group|staffing|recruitment|recruiting|talent partners)\b/i;
+export const STAFFING = /\b(robert half|insight global|teksystems|kforce|randstad|adecco|aerotek|cybercoders|hunter bond|harnham|motion recruitment|apex systems|beacon hill|jobot|collabera|hays|michael page|aston carter|actalent|vaco|creative circle|the judge group|addison group|staffing|recruitment|recruiting|talent partners)\b/i;
 
 /** Reasons a listing deserves a second look. Each flag is shown with its reason; none of them hides a job by itself. */
 // wording that screens people out (age, national origin, insider jargon) and always-on culture: phrases measured on
@@ -219,7 +219,7 @@ const ABBR: Record<string, string> = { sr: "senior", jr: "junior", mgr: "manager
 const tkey = (title: string) => title.toLowerCase().replace(/&/g, " and ").replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/\b[a-z]+\b/g, (w) => ABBR[w] ?? w);
 /** One company under two names: the same key, or one key that is the other plus corporate words ("citi" / "citibank",
  *  "anthropic" / "anthropiclimited"; never "meta" / "metabolix"). Only used with the same title in the same area. */
-const TAIL = /^(bank|na|limited|ltd|inc|llc|plc|llp|financial|group|corporation|corp|company|co|holdings?|global|international|usa?|america|services|solutions|systems|travel|division|health|healthcare|technolog(y|ies)|labs?|partners|ag|sa|nv|gmbh)+$/;
+const TAIL = /^(bank|na|and|lp|limited|ltd|inc|llc|plc|llp|financial|group|corporation|corp|company|co|holdings?|global|international|usa?|america|services|solutions|systems|travel|division|health|healthcare|technolog(y|ies)|labs?|partners|ag|sa|nv|gmbh)+$/;
 export const sameCompany = (a: string, b: string) => { const [s, l] = a.length <= b.length ? [a, b] : [b, a]; return a === b || (s.length >= 4 && l.startsWith(s) && TAIL.test(l.slice(s.length))); };
 
 // ---------- storing ----------
@@ -295,7 +295,7 @@ for (const [ats, slug] of SEED) db.prepare("insert or ignore into companies (ats
 const PREFIX: Record<string, string> = { greenhouse: "gh", lever: "lv", ashby: "ab", smartrecruiters: "sr", workable: "wk", workday: "wd", oracle: "or", amazon: "amz", eightfold: "ef", custom: "cu" }; // job ids are <prefix>:<slug>:<id>
 // Workday boards can't be found from a company's name (the host, number and site differ), so these are listed by hand:
 // big NYC-area employers whose boards answered on 2026-11-16. slug = tenant|wdN|site.
-const WORKDAY: [string, string][] = [["citi|5|2", "Citi"], ["ms|5|External", "Morgan Stanley"], ["pfizer|1|PfizerCareers", "Pfizer"], ["mastercard|1|CorporateCareers", "Mastercard"], ["nasdaq|1|Global_External_Site", "Nasdaq"],
+const WORKDAY: [string, string][] = [["td|3|TD_Bank_Careers", "TD Bank"], ["tjx|1|TJX_External", "TJX Companies"], ["regeneron|1|Careers", "Regeneron"], ["citi|5|2", "Citi"], ["ms|5|External", "Morgan Stanley"], ["pfizer|1|PfizerCareers", "Pfizer"], ["mastercard|1|CorporateCareers", "Mastercard"], ["nasdaq|1|Global_External_Site", "Nasdaq"],
   ["spgi|5|SPGI_Careers", "S&P Global"], ["jj|5|JJ", "Johnson & Johnson"], ["msd|5|SearchJobs", "Merck"], ["bristolmyerssquibb|5|BMS", "Bristol Myers Squibb"], ["pru|5|Careers", "Prudential"], ["blackstone|1|Blackstone_Careers", "Blackstone"],
   ["att|1|ATTGeneral", "AT&T"], ["salesforce|12|External_Career_Site", "Salesforce"], ["verizon|12|verizon-careers", "Verizon"], ["nvidia|5|NVIDIAExternalCareerSite", "NVIDIA"], ["target|5|targetcareers", "Target"],
   ["adobe|5|external_experienced", "Adobe"], ["capitalone|12|Capital_One", "Capital One"], ["visa|5|Visa", "Visa"], // the last three found from their careers pages
@@ -687,7 +687,7 @@ export async function refreshDirectory(signal?: AbortSignal) {
   return rows.length;
 }
 // Names that post for others (job aggregators, AI-training gig work, offshore staffing): not an employer's own board
-const NOT_EMPLOYER = /\b(jobgether|mindrift|toloka|pavago|weekday|crossover|outlier|data ?annotation|remotasks|alignerr|clark davis|lancesoft|cynet|bcforward|vdart|tekwissen|pyramid consulting|amnet|hireright|jobs? via)\b/i;
+export const NOT_EMPLOYER = /\b(jobgether|mindrift|toloka|pavago|weekday|crossover|outlier|data ?annotation|remotasks|alignerr|clark davis|lancesoft|cynet|bcforward|vdart|tekwissen|pyramid consulting|amnet|hireright|jobs? via|alliedtravelcareers|travelnursesource|job\.com|medical solutions|bright vision technologies|confidential|host healthcare|comphealth|onestaffmedical|amn healthcare|talent4health|hcs 247|white glove placement|pro integrate|specialty professional services|genesis10|coast medical service|jackson therapy|stratford davis)\b/i; // travel-nurse and other healthcare staffing agencies and job sites too (2026-11-25)
 /** Employers seen only through Adzuna: their own board, from the board lists first, else guessed from the name. A
  *  listed board is added when it has jobs here and is that employer's (its owner's name, or a title Adzuna showed);
  *  Workday and Oracle boards go through the Mac at a slow pace, so a run tries 8 at most. Misses are retried monthly
