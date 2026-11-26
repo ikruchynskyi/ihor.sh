@@ -94,7 +94,7 @@ assert.equal(guard("Cut costs 5%", "Cut costs 50%", "Cut costs 5%").after, "Cut 
   insClosed.run("gh:acme:recent", "greenhouse", "Acme", "acme", "Analytics Engineer", "New York, NY", "nyc", "onsite", d100 - 10 * 86400, "https://acme/r", "mid", "data", "Analytics", d100 - 10 * 86400, d100, d100, "11", null);
   insClosed.run("gh:acme:old", "greenhouse", "Acme", "acme", "Old Engineer", "New York, NY", "nyc", "onsite", d400 - 10 * 86400, "https://acme/o", "mid", "data", "Old role", d400 - 10 * 86400, d400, d400, "22", null);
   insClosed.run("az:closeddup", "adzuna", "Acme", "acme", "Analytics Engineer", "New York, NY", "nyc", "onsite", d100 - 10 * 86400, "https://az/cd", "mid", "data", "Dup text", d100 - 10 * 86400, d100, d100, "11", "gh:acme:recent");
-  for (const id of ["gh:acme:recent", "gh:acme:old", "az:closeddup"]) { fts.run(id, "Engineer", "Acme", "body"); emb.run(id, vec); }
+  for (const id of ["gh:acme:recent", "gh:acme:old", "az:closeddup"]) { jobsDb.prepare("insert into fts_map values (?, ?)").run(id, Number(fts.run(id, "Engineer", "Acme", "body").lastInsertRowid)); emb.run(id, vec); } // as ftsAdd does
   jobsDb.prepare("insert into runs values (?, ?, 1, 1, 'old')").run(d400, "boards");
   jobsDb.prepare("insert into runs values (?, ?, 1, 1, 'recent')").run(t - 200 * 86400, "boards");
   jobsDb.prepare("insert into adz_keys values ('k', 1, ?)").run(t - 40 * 86400);

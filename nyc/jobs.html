@@ -377,7 +377,7 @@ function renderMarket(m) {
   const levels = Object.keys(LABEL.seniority).filter((l) => Object.values(m.grid).some((g) => g[l])), cells = Object.values(m.grid).flatMap((g) => Object.values(g).map((c) => c.pay)), lo = Math.min(...cells), hi = Math.max(...cells);
   $("v-market").innerHTML = !m.open ? `<p>No open jobs match these filters. Loosen one on the left.</p>` : `
     <div class="kpis">
-      <div class="kpi card"><b>${m.open.toLocaleString()}</b><span>open jobs</span></div>
+      <div class="kpi card"><b>${m.open.toLocaleString()}</b><span>open jobs${m.newBoards?.open ? `<br>${m.newBoards.open.toLocaleString()} from employers added in the last 30 days (wider coverage, not hiring)` : ""}</span></div>
       <div class="kpi card"><b>${m.new7.toLocaleString()}</b><span>new in the last 7 days ${vsTxt(m.change)}<br>the change: employers' own sites vs. their weekly average of the 3 weeks before</span></div>
       <div class="kpi card"><b>${k$(m.pay)}</b><span>median stated pay a year<br>middle half ${k$(m.p25)}–${k$(m.p75)}</span></div>
       <div class="kpi card"><b>${m.open ? Math.round((m.fromEmployers / m.open) * 100) : 0}%</b><span>read from employers' own systems<br>the rest via Adzuna</span></div>
@@ -385,7 +385,7 @@ function renderMarket(m) {
     </div>
     <div class="card" style="padding:10px 14px"><b>✨ AI overview and advice</b> <span class="hint">for the filters you've set</span> <button type="button" id="briefBtn">Write it</button> <span class="hint" id="briefStep" aria-live="polite"></span><div id="brief" class="brief"></div></div>
     ${wk.length ? `<div class="grid2">
-      <figure class="card"><figcaption><b>Postings by week</b><span class="sw"></span>new<span class="sw b"></span>taken down</figcaption>
+      <figure class="card"><figcaption><b>Postings by week</b><span class="sw"></span>new<span class="sw b"></span>taken down${m.seriesTitleOnly ? ` <span class="hint">· keywords matched in job titles, so every week is counted the same way</span>` : ""}</figcaption>
         <div class="cols" role="img" aria-label="New and taken-down postings for each of the last ${wk.length} weeks">${wk.map((w) => `<div title="Week of ${day(w.from)}: ${w.new.toLocaleString()} new, ${w.closed.toLocaleString()} taken down"><i style="height:${(w.new / top) * 100}%"></i><i class="b" style="height:${(w.closed / top) * 100}%"></i></div>`).join("")}</div>
         <div class="axis"><span>week of ${day(wk[0].from)}</span><span>${wk.length} weeks</span><span>this week</span></div></figure>
       <figure class="card"><figcaption><b>Median pay of new postings, by week</b></figcaption>

@@ -168,7 +168,9 @@ export function marketFacts(qy: Query) {
   const m = market(qy), F: { id: string; text: string }[] = [], add = (text: string, id = `F${F.length + 1}`) => F.push({ id, text });
   add(`${m.open} open jobs; ${m.withPay} of them state pay; median stated pay ${k$(m.pay)} a year, middle half ${k$(m.p25)} to ${k$(m.p75)}`);
   add(`${m.new7} new postings in the last 7 days${vs(m.change)}`);
-  for (const w of m.weeks.slice(-4)) add(`Week of ${day(w.from)}: ${w.new} new postings, ${w.closed} taken down${w.pay ? `, median pay of the new ones ${k$(w.pay)}` : ""}`);
+  // coverage is not hiring: boards added lately raise the open count without anyone hiring more (the trends leave them out)
+  if (m.newBoards?.boards) add(`This site added ${m.newBoards.boards} employers' job boards in the last 30 days, which brought ${m.newBoards.open} of the open jobs counted here; the open-job counts grew with them, which is wider coverage, not more hiring. The weekly trends and the % changes count only the employers tracked from the start`);
+  for (const w of m.weeks.slice(-4)) add(`Week of ${day(w.from)}: ${w.new} new postings, ${w.closed} taken down${w.pay ? `, median pay of the new ones ${k$(w.pay)}` : ""}${m.seriesTitleOnly ? " (postings whose titles match the keywords)" : ""}`);
   for (const f of m.fields.slice(0, 8)) add(`Field ${FIELD[f.key] ?? f.key}: ${f.open} open, ${f.new7} new this week${vs(f.change)}${f.pay ? `, median pay ${k$(f.pay)}` : ""}`);
   for (const l of m.levels) add(`Level ${LEVEL[l.key] ?? l.key}: ${l.open} open, ${l.new7} new this week${vs(l.change)}${l.pay ? `, median pay ${k$(l.pay)}` : ""}`);
   // layoffs around this market (layoffs.ts): New York's notices for NYC and its suburbs, and the top employers' own
@@ -182,6 +184,8 @@ export function marketFacts(qy: Query) {
   for (const r of m.roles.slice(0, 8)) add(`Role "${r.key}": ${r.open} open${r.pay ? `, median pay ${k$(r.pay)}` : ""}`);
   const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
   [...RESEARCH, ...(latestGuide()?.findings ?? []).slice(0, 6).map((f: any) => `${f.text} (${f.sources.map((x: any) => host(x.url)).join(", ")})`)].forEach((t, i) => add(t, `R${i + 1}`));
+  // the employers the facts name, so a line can't credit one with another's numbers (marketBrief checks each line)
+  (F as any).names = [...new Set([...m.companies.slice(0, 10).map((c: any) => c.name), ...L.largest.slice(0, 5).map((r: any) => r.company)])].filter((n) => n.length >= 3);
   return F;
 }
 const briefs = new Map<string, { at: number; p: Promise<any> }>();
@@ -197,9 +201,13 @@ export function marketBrief(qy: Query) {
     const F = marketFacts(qy), byId = new Map(F.map((f) => [f.id, f.text])), item = { type: "object", required: ["text", "facts"], properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } };
     const out = await localTurn(() => llmJson(`You are a labor-market analyst writing for one job seeker. The slice of the market: ${scope}. Use only the numbered facts.
 'overview': two sentences on the state of this slice. 'points': 3 to 5 findings: which fields, levels, companies and roles are growing or shrinking, what they pay, which employers post a lot that sits open, and where layoffs are being announced (the layoff facts cover all fields unless they name an employer). 'advice': 3 to 5 concrete recommendations for someone job hunting in this slice: where to aim, which employers are hiring actively (and which of them announced layoffs recently, so the seeker can weigh stability), what pay to ask for, how to apply (the R facts are research about applying). For pay, compare like with like (the same field, level or role) and, for someone who meets the requirements, point between that median and the top of its middle half (the 75th percentile).
-Every item lists the ids of the facts it uses. Copy each number exactly as its fact writes it; never add a number, company, trend or cause that isn't in the facts. Plain words, no filler. Reply as JSON.`,
+Every item lists the ids of the facts it uses. Copy each number exactly as its fact writes it; never add a number, company, trend or cause that isn't in the facts. A rise in open jobs that comes from boards this site added is wider coverage, never hiring growth; growth or decline comes only from the new-postings trends. Plain words, no filler. Reply as JSON.`,
       F.map((f) => `[${f.id}] ${f.text}`).join("\n"), { type: "object", required: ["overview", "points", "advice"], properties: { overview: item, points: { type: "array", items: item }, advice: { type: "array", items: item } } }, 2500), "visitor");
-    const ok = (x: { text: string; facts: string[] }) => !!x.text && faithful(x, byId), list = (l: any) => (Array.isArray(l) ? l.map((x: any) => cited(x)).filter(ok).slice(0, 5) : []), ov = cited(out.overview);
+    // a line's numbers must be in the facts it cites (faithful), and so must every employer it names
+    const names: string[] = (F as any).names ?? [], esc = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const named = (x: { text: string; facts: string[] }) => names.filter((n) => new RegExp(`(^|[^\\w])${esc(n)}([^\\w]|$)`, "i").test(x.text))
+      .every((n) => x.facts.some((id) => (byId.get(id) ?? "").toLowerCase().includes(n.toLowerCase())));
+    const ok = (x: { text: string; facts: string[] }) => !!x.text && faithful(x, byId) && named(x), list = (l: any) => (Array.isArray(l) ? l.map((x: any) => cited(x)).filter(ok).slice(0, 5) : []), ov = cited(out.overview);
     const r = { overview: ok(ov) ? ov : null, points: list(out.points), advice: list(out.advice), facts: F };
     if (!r.overview && !r.points.length && !r.advice.length) throw new Error("The AI's overview didn't check out against the numbers; try again in a minute.");
     return r;

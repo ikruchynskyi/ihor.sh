@@ -219,7 +219,7 @@ const ABBR: Record<string, string> = { sr: "senior", jr: "junior", mgr: "manager
 const tkey = (title: string) => title.toLowerCase().replace(/&/g, " and ").replace(/\(.*?\)|\[.*?\]/g, "").replace(/[^a-z0-9]+/g, " ").trim().replace(/\b[a-z]+\b/g, (w) => ABBR[w] ?? w);
 /** One company under two names: the same key, or one key that is the other plus corporate words ("citi" / "citibank",
  *  "anthropic" / "anthropiclimited"; never "meta" / "metabolix"). Only used with the same title in the same area. */
-const TAIL = /^(bank|na|and|lp|limited|ltd|inc|llc|plc|llp|financial|group|corporation|corp|company|co|holdings?|global|international|usa?|america|services|solutions|systems|travel|division|health|healthcare|technolog(y|ies)|labs?|partners|ag|sa|nv|gmbh)+$/;
+const TAIL = /^(bank|na|and|lp|platforms|limited|ltd|inc|llc|plc|llp|financial|group|corporation|corp|company|co|holdings?|global|international|usa?|america|services|solutions|systems|travel|division|health|healthcare|technolog(y|ies)|labs?|partners|ag|sa|nv|gmbh)+$/;
 export const sameCompany = (a: string, b: string) => { const [s, l] = a.length <= b.length ? [a, b] : [b, a]; return a === b || (s.length >= 4 && l.startsWith(s) && TAIL.test(l.slice(s.length))); };
 
 // ---------- storing ----------
@@ -228,7 +228,16 @@ const upsert = db.prepare(`insert into jobs (id, source, company, ckey, title, l
   values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,null,?,?) on conflict(id) do update set title=excluded.title, location=excluded.location, region=excluded.region, remote=excluded.remote,
   salary_min=excluded.salary_min, salary_max=excluded.salary_max, salary_period=excluded.salary_period, salary_est=excluded.salary_est, url=excluded.url, department=excluded.department,
   employment=excluded.employment, seniority=excluded.seniority, func=excluded.func, description=excluded.description, last_seen=excluded.last_seen, missed=0, closed=null, fp=excluded.fp, flags=excluded.flags`);
-const ftsDel = db.prepare("delete from jobs_fts2 where id = ?"), ftsAdd = db.prepare("insert into jobs_fts2 (id, title, company, body) values (?,?,?,?)");
+// The search index's rows by job id: its id column isn't indexed (FTS5), so "delete where id = ?" scanned the whole
+// index, 21 ms a job on 83k rows (2026-11-25), on every new or changed job. Deletes go by the index's own rowid instead.
+db.exec("create table if not exists fts_map (id text primary key, rid int)");
+if (!(db.prepare("select count(*) n from fts_map").get() as any).n && (db.prepare("select count(*) n from jobs_fts2").get() as any).n) {
+  db.exec("insert or replace into fts_map select id, rowid from jobs_fts2; delete from jobs_fts2 where rowid not in (select rid from fts_map)"); // once; duplicate rows go
+}
+const ftsRid = db.prepare("select rid from fts_map where id = ?"), ftsRm = db.prepare("delete from jobs_fts2 where rowid = ?"), mapDel = db.prepare("delete from fts_map where id = ?");
+const ftsIns = db.prepare("insert into jobs_fts2 (id, title, company, body) values (?,?,?,?)"), mapSet = db.prepare("insert or replace into fts_map values (?, ?)");
+const ftsDel = { run: (id: string) => { const r = ftsRid.get(id) as any; if (r) { ftsRm.run(r.rid); mapDel.run(id); } } };
+const ftsAdd = { run: (id: string, title: string, company: string, body: string) => { mapSet.run(id, Number(ftsIns.run(id, title, company, body).lastInsertRowid)); } };
 if (!(db.prepare("select count(*) n from jobs_fts2").get() as any).n) { // first start with the stemming index: fill it from the jobs
   for (const r of db.prepare("select id, title, company, description from jobs").all() as any[]) ftsAdd.run(r.id, r.title, r.company, String(r.description ?? "").slice(0, 8000));
   db.exec("drop table if exists jobs_fts");
@@ -693,6 +702,7 @@ export const NOT_EMPLOYER = /\b(jobgether|mindrift|toloka|pavago|weekday|crossov
  *  Workday and Oracle boards go through the Mac at a slow pace, so a run tries 8 at most. Misses are retried monthly
  *  (lists only), as the lists grow. */
 export async function discover(max = 400, signal?: AbortSignal) {
+  if (dbUse().over) { db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "discover", 0, 0, "skipped: the database is over its size budget"); return { tried: 0, added: 0, fromList: 0 }; }
   if (!(db.prepare("select count(*) n from directory").get() as any).n) await refreshDirectory(signal).catch(() => {}); // before the first weekly read
   const cands = db.prepare(`select company, ckey, count(*) n, group_concat(title, char(10)) titles, (select at from probed p where p.ckey = j.ckey) prev from jobs j
     where source = 'adzuna' and (closed is null or closed > ?) and dup_of is null and ckey not in (select ckey from probed where found <> '' or at > ?)
@@ -750,6 +760,7 @@ async function boardHere(ats: string, slug: string, name: string, spent: Map<str
   return (await readBoard(ats, slug, () => true, spent, signal, name)).filter((j) => LOCAL.has(region(j.location, j.isRemote) ?? "")).length;
 }
 export async function sweepDirectory(minutes = 50, signal?: AbortSignal) {
+  if (dbUse().over) { db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "sweep", 0, 0, "skipped: the database is over its size budget"); return { checked: 0, added: 0, failed: 0 }; }
   const until = Date.now() + minutes * 60_000, spent = new Map<string, number>(), stop = () => signal?.aborted || Date.now() > until;
   const have = db.prepare("select 1 from companies where ats = ? and lower(slug) = lower(?)"), mark = db.prepare("insert or replace into swept values (?, ?, ?, ?)");
   const added: string[] = []; let checked = 0, failed = 0;
@@ -888,14 +899,21 @@ export function market(qy: Query) {
  *  The weekly series (up to a year) is counted by SQLite; JS only reads open jobs and the last 30 days. */
 function marketNow(qy: Query) {
   const t = now(), D = 86400, W = 7 * D, start = (db.prepare("select min(at) t from runs").get() as any).t ?? t;
-  const late = (db.prepare("select ats, slug from companies where added > ?").all(start + D) as any[]).map((c) => `${PREFIX[c.ats]}:${c.slug}:`);
+  // boards added after tracking began, which the trends leave out: thousands with the board-list sweep, so they sit in a
+  // temporary table, not one SQL parameter each
+  const late = (db.prepare("select ats, slug, added from companies where added > ?").all(start + D) as any[]).map((c) => ({ p: `${PREFIX[c.ats]}:${c.slug}:`, added: c.added as number }));
+  db.exec("create temp table if not exists late_boards (p text primary key)");
+  batch(() => { db.exec("delete from late_boards"); const ins = db.prepare("insert or ignore into late_boards values (?)"); for (const l of late) ins.run(l.p); });
   const { from, w, args } = filters({ ...qy, days: undefined }, false);
+  // the weekly series reach back a year: with keywords they match titles only, as closed jobs keep their titles and not
+  // their text after 45 days (prune), so every week is matched the same way
+  const ser = qy.q && !qy.titleOnly ? filters({ ...qy, days: undefined, titleOnly: true }, false) : { from, w, args };
   const T0 = "coalesce(j.posted, j.first_seen)", PAY = "(j.salary_min + coalesce(j.salary_max, j.salary_min)) / 2.0 * (case when j.salary_period = 'hour' then 2080 else 1 end)";
   // trends count employers' own systems and the government's, not aggregators: Adzuna's and the remote boards' volume follows how much of them we read (2026-11-20: +79% that wasn't hiring)
-  const STEADY = `substr(j.id, 1, 3 + instr(substr(j.id, 4), ':')) not in (${late.map(() => "?").join(",")}) and j.source not in ('adzuna', 'himalayas', 'remotive')`; // "gh:slug:"; "nyc:" is never late
+  const STEADY = `substr(j.id, 1, 3 + instr(substr(j.id, 4), ':')) not in (select p from late_boards) and j.source not in ('adzuna', 'himalayas', 'remotive')`; // "gh:slug:"; "nyc:" is never late
   const GONE = "j.closed - j.first_seen >= 86400"; // closed the day it was seen = a repost we hid, not a job taken down
   const rows = (db.prepare(`select j.id, j.company, j.ckey, j.title, j.func, j.seniority, ${T0} t0, j.closed, j.closed is not null and ${GONE} gone, ${STEADY} steady,
-    case when j.salary_min is not null and j.salary_est = 0 then ${PAY} end pay from ${from} where ${w} and (j.closed is null or j.closed >= ? or ${T0} >= ?)`).all(...late, ...args, t - 30 * D, t - 30 * D) as any[])
+    case when j.salary_min is not null and j.salary_est = 0 then ${PAY} end pay from ${from} where ${w} and (j.closed is null or j.closed >= ? or ${T0} >= ?)`).all(...args, t - 30 * D, t - 30 * D) as any[])
     .map((r) => ({ ...r, k: `${r.ckey}|${r.title.toLowerCase()}` }));
   const distinct = (l: any[]) => new Set(l.map((r) => r.k)).size, pays = (l: any[]) => l.map((r) => r.pay).filter((p) => p != null).sort((a, b) => a - b);
   const nW = Math.max(0, Math.min(52, Math.floor((t - start) / W))), back = Math.min(3, nW - 1);
@@ -907,15 +925,17 @@ function marketNow(qy: Query) {
   const group = (l: any[], keyOf: (r: any) => string) => { const m = new Map<string, any[]>(); for (const r of l) { const k = keyOf(r); (m.get(k) ?? m.set(k, []).get(k)!).push(r); } return m; };
   const by = (keyOf: (r: any) => string, more = (_l: any[]) => ({})) => [...group(rows, keyOf)].map(([key, l]) => ({ key, ...summary(l), ...more(l) })).filter((g) => g.open).sort((a, b) => b.open - a.open);
   // weeks back from now (0 = the last 7 days), each a full week after tracking began
-  const weekly = (col: string, extra: string) => new Map((db.prepare(`select cast((? - ${col}) / ${W} as int) ago, count(distinct j.ckey || '|' || lower(j.title)) n from ${from}
-    where ${w} and ${STEADY} and ${extra} and ${col} >= ? group by ago`).all(t, ...args, ...late, t - nW * W) as any[]).map((r) => [r.ago, r.n]));
+  const weekly = (col: string, extra: string) => new Map((db.prepare(`select cast((? - ${col}) / ${W} as int) ago, count(distinct j.ckey || '|' || lower(j.title)) n from ${ser.from}
+    where ${ser.w} and ${STEADY} and ${extra} and ${col} >= ? group by ago`).all(t, ...ser.args, t - nW * W) as any[]).map((r) => [r.ago, r.n]));
   const born = weekly(T0, "1"), gone = weekly("j.closed", `j.closed is not null and ${GONE}`);
-  const paid = new Map((db.prepare(`with p as (select cast((? - ${T0}) / ${W} as int) ago, ${PAY} pay from ${from} where ${w} and ${STEADY} and j.salary_min is not null and j.salary_est = 0 and ${T0} >= ?),
+  const paid = new Map((db.prepare(`with p as (select cast((? - ${T0}) / ${W} as int) ago, ${PAY} pay from ${ser.from} where ${ser.w} and ${STEADY} and j.salary_min is not null and j.salary_est = 0 and ${T0} >= ?),
     r as (select ago, pay, row_number() over (partition by ago order by pay) rn, count(*) over (partition by ago) n from p) select ago, pay from r where rn = n / 2 + 1 and n >= 5`)
-    .all(t, ...args, ...late, t - nW * W) as any[]).map((r) => [r.ago, Math.round(r.pay)]));
+    .all(t, ...ser.args, t - nW * W) as any[]).map((r) => [r.ago, Math.round(r.pay)]));
   const open = rows.filter((r) => r.closed == null);
   const fromEmployers = open.filter((r) => !r.id.startsWith("az:")).length;
-  return { since: start, at: t, ...summary(rows), fromEmployers,
+  // coverage, not hiring: boards added in the last 30 days and the open jobs they brought (the AI brief is told so)
+  const fresh = new Set(late.filter((l) => l.added > t - 30 * D).map((l) => l.p)), board = (id: string) => id.slice(0, id.indexOf(":", id.indexOf(":") + 1) + 1);
+  return { since: start, at: t, ...summary(rows), fromEmployers, newBoards: { boards: fresh.size, open: open.filter((r) => fresh.has(board(r.id))).length }, seriesTitleOnly: !!(qy.q && !qy.titleOnly),
     weeks: Array.from({ length: nW }, (_, i) => { const ago = nW - 1 - i; return { from: t - (ago + 1) * W, new: born.get(ago) ?? 0, closed: gone.get(ago) ?? 0, pay: paid.get(ago) ?? null }; }),
     fields: by((r) => r.func), levels: by((r) => r.seniority),
     companies: by((r) => r.ckey, (l) => { const o = l.filter((r) => r.closed == null);
@@ -924,22 +944,44 @@ function marketNow(qy: Query) {
     grid: Object.fromEntries([...group(open, (r) => r.func)].map(([f, l]) => [f, Object.fromEntries([...group(l, (r) => r.seniority)].map(([s, m]) => [s, pays(m)] as const).filter(([, p]) => p.length >= 5).map(([s, p]) => [s, { pay: pct(p, 0.5), n: p.length }]))])) };
 }
 
-/** Jobs are kept a year after they close (the market's trends reach back that far), then deleted with their search
- *  rows. Embeddings only serve open non-duplicate jobs; closed duplicates and old run/skip tables are cleared too. */
+/** What's kept, so the database stops growing (2026-11-25: 1.2 GB after six weeks, 61% of it the search index, most of
+ *  that closed jobs' text; ~1,500 jobs close a day). Closed jobs keep what the trends and company pages count (dates,
+ *  title, company, pay, field, level), not their text: after 45 days their description and their search text go (the
+ *  market's 30-day numbers stay exact; its year-long weekly charts match titles only, see marketNow). Closed duplicates
+ *  go after 30 days, closed aggregator ads (never in the trends) after 26 weeks (the company page's chart), everything
+ *  else a year after it closed. Old discovery misses and company cards no one refreshed go too. Each run (hourly) does at
+ *  most 5,000 rows of each, so no run holds the database for long. */
 export function prune() {
-  const t = now(), old = t - 365 * 86400;
+  const t = now(), D = 86400, AGG = "('adzuna', 'himalayas', 'remotive')";
   batch(() => {
-    db.prepare("delete from jobs_fts2 where id in (select id from jobs where closed < ? or (closed is not null and dup_of is not null))").run(old);
-    db.prepare("delete from jobs where closed < ?").run(old);
+    const gone = (where: string, ...a: any[]) => { // jobs, their search rows and embeddings
+      const ids = (db.prepare(`select id from jobs where ${where} limit 5000`).all(...a) as any[]).map((r) => r.id);
+      for (const id of ids) { ftsDel.run(id); db.prepare("delete from emb where id = ?").run(id); db.prepare("delete from jobs where id = ?").run(id); }
+      return ids.length;
+    };
+    gone("closed < ?", t - 365 * D);
+    gone(`closed < ? and source in ${AGG}`, t - 183 * D);
+    gone("closed < ? and dup_of is not null", t - 30 * D);
+    for (const r of db.prepare("select id, title, company from jobs where closed < ? and dup_of is null and description <> '' limit 5000").all(t - 45 * D) as any[]) {
+      ftsDel.run(r.id); ftsAdd.run(r.id, r.title, r.company, ""); db.prepare("update jobs set description = '' where id = ?").run(r.id);
+    }
     db.exec("delete from emb where id in (select id from jobs where closed is not null or dup_of is not null)");
-    db.prepare("delete from adz_keys where at < ?").run(t - 30 * 86400);
-    db.prepare("delete from adz_skip where at < ?").run(t - 30 * 86400);
-    db.prepare("delete from checks where at < ?").run(t - 7 * 86400);
-    db.prepare("delete from runs where at < ?").run(t - 366 * 86400);
+    db.prepare("delete from adz_keys where at < ?").run(t - 30 * D);
+    db.prepare("delete from adz_skip where at < ?").run(t - 30 * D);
+    db.prepare("delete from checks where at < ?").run(t - 7 * D);
+    db.prepare("delete from runs where at < ?").run(t - 366 * D);
+    db.prepare("delete from probed where found = '' and at < ?").run(t - 120 * D);
+    db.prepare("delete from company_info where at < ?").run(t - 60 * D);
+    db.exec("delete from swept where not exists (select 1 from directory d where d.ats = swept.ats and d.slug = swept.slug)");
     db.exec("insert into jobs_fts2(jobs_fts2, rank) values('merge', 500)");
   });
   marketCache.clear();
 }
+// A ceiling on the database (JOBS_DB_MAX_MB, 4 GB): above it, the sweep and discovery add no boards (the admin page shows
+// it), so a mistake can't fill the disk; what's stored still gets read and pruned.
+const MAX_MB = Number(env("JOBS_DB_MAX_MB")) || 4000;
+export const dbUse = () => { const pr = (k: string) => Object.values(db.prepare(`pragma ${k}`).get() as any)[0] as number, ps = pr("page_size");
+  const usedMb = Math.round(((pr("page_count") - pr("freelist_count")) * ps) / 1048576); return { usedMb, budgetMb: MAX_MB, over: usedMb > MAX_MB }; };
 
 export const BIG = ["smartrecruiters", "workday", "oracle", "amazon", "eightfold"];
 const afterIngest = (alsoPrune = false) => { dedupe(); if (alsoPrune) prune(); marketCache.clear(); };
@@ -1145,7 +1187,7 @@ export function jobsHealth() {
     orphaned: { embClosedOrDup: embOrphans },
     boards: { total: (db.prepare("select count(*) n from companies").get() as any).n, failingCount: failing.length, failing: failing.slice(0, 30), staleBoards },
     restingLanes,
-    db: { sizeMb: Math.round((pc * ps) / (1024 * 1024)), freelistMb: Math.round((fc * ps) / (1024 * 1024)), journalMode: jm },
+    db: { sizeMb: Math.round((pc * ps) / (1024 * 1024)), freelistMb: Math.round((fc * ps) / (1024 * 1024)), journalMode: jm, ...dbUse() },
   };
 }
 export const jobsDb = db;

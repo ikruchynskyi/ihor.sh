@@ -107,7 +107,7 @@ async function loadJobsHealth() {
   $("jobsStep").textContent = "Loading…";
   const d = await get("/api/admin/jobs-health"), j = d.jobs, q = j.queues, c = j.counts, l = d.llm, bj = d.briefJobs, br = d.bridge;
   const tile = (v, lbl, sub = "") => `<div class="kpi card"><b>${esc(String(v))}</b><span>${lbl}${sub ? `<br>${sub}` : ""}</span></div>`;
-  $("jobsOut").innerHTML = `<div class="kpis">${tile(c.open.toLocaleString(), "open jobs", `${c.openDup.toLocaleString()} duplicates`)}${tile(c.closed.toLocaleString(), "closed (≤ 1 yr)", `${j.db.sizeMb} MB DB, ${j.db.freelistMb} MB free`)}
+  $("jobsOut").innerHTML = `<div class="kpis">${tile(c.open.toLocaleString(), "open jobs", `${c.openDup.toLocaleString()} duplicates`)}${tile(c.closed.toLocaleString(), "closed (≤ 1 yr)", `${j.db.sizeMb} MB DB, ${j.db.freelistMb} MB free; ${j.db.over ? `<b class="bad">over its ${j.db.budgetMb} MB budget: no new boards are added</b>` : `budget ${j.db.budgetMb} MB`}`)}
     ${tile(q.needEmbedding, "need embeddings", `${j.orphaned.embClosedOrDup} orphaned`)}${tile(q.backfillPending, "need full text", br ? (br.crawlBusy ? `browser busy (+${br.crawlQueued})` : "browser idle") : "bridge off")}
     ${tile(q.freshForChecksPending, "checks queued (24h)")}${tile(`${l.waiting} / ${l.idleWaiting}`, "AI queue", `${l.busy ? "busy" : "idle"} · ${bj.active} active briefs`)}</div>
     <h2>Scheduled tasks</h2><div class="scrollx"><table><thead><tr><th>Task</th><th>Cron</th><th>Status</th><th class="n">Last run</th><th class="n">Duration</th><th>Error</th><th></th></tr></thead><tbody>
@@ -144,10 +144,10 @@ async function loadSources() {
 // discovery will check, and which aren't found yet (to add by hand: their board, or a new kind of board to read)
 async function loadCoverage() {
   const l = await get("/api/admin/coverage"), by = (s) => l.filter((r) => r.status === s), STATUS = { read: "read", listed: "board known, to be checked", none: "not found" };
-  const why = (r) => [r.employees && `${r.employees.toLocaleString()} staff (Wikidata)`, r.ads && `${r.ads} job ads here in a year`, r.laidOff && `laid off ${r.laidOff} at one site here`].filter(Boolean).join(" · ");
+  const why = (r) => [r.employees && `${r.employees.toLocaleString()} staff (Wikidata)`, r.ads && `${r.ads} job ads here in a year`, r.laidOff && `laid off ${r.laidOff} at one site here`, r.h1b && `${r.h1b} H-1B positions here`].filter(Boolean).join(" · ");
   const table = (rows) => `<div class="scrollx"><table><thead><tr><th>Employer</th><th>Why it's here</th><th class="n">Open jobs</th><th>Status</th><th>Read as / known board</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r.website ? `<a href="${esc(r.website)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</td><td class="hint">${esc(why(r))}</td><td class="n">${r.open || ""}</td><td class="${r.status === "none" ? "bad" : ""}">${STATUS[r.status]}</td><td>${esc((r.status === "read" ? r.via : r.boards).join(", "))}</td></tr>`).join("")}</tbody></table></div>`;
   $("coverageOut").innerHTML = `<h2>Big employers in and around NYC (${l.length})</h2>
-    <p class="hint">Based in the city with 1,000+ staff (Wikidata), 25+ job ads here in a year, or a layoff notice for 100+ at one site here. ${by("read").length} read, ${by("listed").length} with a known board the daily sweep or discovery will check, ${by("none").length} not found.</p>
+    <p class="hint">Based in the city with 1,000+ staff (Wikidata), 25+ job ads here in a year, a layoff notice for 100+ at one site here, or H-1B filings for professionals here (the Labor Department's files in data/, made by scripts/h1b.py). ${by("read").length} read, ${by("listed").length} with a known board the daily sweep or discovery will check, ${by("none").length} not found.</p>
     <h3>Not found (${by("none").length})</h3>${table(by("none"))}
     <details><summary>Board known, to be checked (${by("listed").length})</summary>${table(by("listed"))}</details>
     <details><summary>Read (${by("read").length})</summary>${table(by("read"))}</details>`;
