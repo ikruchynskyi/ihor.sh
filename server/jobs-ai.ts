@@ -225,7 +225,7 @@ export async function refreshGuidance(signal?: AbortSignal) {
   const { webSearch } = await import("./nycapi.ts"), y = new Date().getFullYear(), S: { id: string; title: string; url: string; text: string }[] = [], urls = new Set<string>();
   for (const q of QUESTIONS(y)) {
     if (signal?.aborted) break;
-    for (const r of ((await webSearch(q).catch(() => null))?.results ?? []) as any[])
+    for (const r of ((await webSearch(q, { background: true }).catch(() => null))?.results ?? []) as any[])
       if (/^https?:\/\//.test(r.url ?? "") && !urls.has(r.url) && S.length < 24) { urls.add(r.url); S.push({ id: `S${S.length + 1}`, title: String(r.title ?? "").slice(0, 150), url: r.url, text: String(r.snippet ?? "").slice(0, 500) }); }
   }
   if (signal?.aborted) throw new Error("aborted");

@@ -157,7 +157,7 @@ export async function ebDiscover() {
   const add = db.prepare("insert or ignore into eb_orgs (id, found) values (?, ?)");
   let added = 0;
   for (let i = 0; i < n; i++) {
-    const r: any = await webSearch(ebQueries[(turn * n + i) % ebQueries.length]).catch(() => null);
+    const r: any = await webSearch(ebQueries[(turn * n + i) % ebQueries.length], { background: true }).catch(() => null);
     for (const id of ebOrgIds((r?.results ?? []).map((x: any) => x.url))) added += Number(add.run(id, now()).changes);
   }
   run("eb-discover", added); return added;

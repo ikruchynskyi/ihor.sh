@@ -8,6 +8,7 @@
 import { OLLAMA, LOCAL_MODEL } from "./llm.ts";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const env = (k: string) => process.env[k] ?? "";
 const json = async (url: string, headers: Record<string, string> = {}) => {
@@ -788,26 +789,60 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = fa
 }
 
 // ---------- the web ----------
-/** Web search: Tavily (free monthly quota), then DuckDuckGo's HTML results; the first that answers with results. */
-export async function webSearch(query: string) {
-  const key = env("TAVILY_API_KEY");
-  if (key) {
-    try {
-      const r = await fetch("https://api.tavily.com/search", { method: "POST", signal: AbortSignal.timeout(8_000),
-        headers: { "content-type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ query, max_results: 5 }) });
-      const results = r.ok ? ((await r.json()).results ?? []) : [];
-      if (results.length) return { engine: "tavily", results: results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").slice(0, 400) })) };
-    } catch {}
-  }
-  // (Ollama's web search was the next step: it's paid, so a Tavily miss goes straight to DuckDuckGo)
-  const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh Blip)" }, signal: AbortSignal.timeout(8_000) });
-  const html = await r.text();
-  const results = [...html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)].slice(0, 5).map(([, href, title, snippet]) => {
-    const u = new URL(href.replace(/&amp;/g, "&"), "https://duckduckgo.com");
-    return { title: strip(title), url: u.searchParams.get("uddg") ?? u.href, snippet: strip(snippet) };
-  });
-  return { engine: "duckduckgo", results };
+// DuckDuckGo first (free; owner, 2026-11-26). When it answers with its bot check (it did for every request from this
+// address that day), it's left alone for 30 minutes instead of being asked again each search. Then Tavily: two accounts of
+// 1,000 searches a month each (TAVILY_API_KEYS), the one used less this month first, never past 1,000 or a "plan limit"
+// answer. Background work (company research, event discovery, the weekly hiring research) uses Tavily only while the
+// month's use is under 80% of its share of the month so far, so the rest stays for people asking Blip. The counts live
+// in data/search-usage.json (monthly).
+const USAGE_FILE = path.join(import.meta.dirname, "..", "data", "search-usage.json"), TAVILY_CAP = 1000;
+let ddgOffUntil = 0, usageMem: { month: string; keys: Record<string, number>; ddg?: { ok: number; blocked: number } } | null = null;
+const searchUsage = () => {
+  const month = new Date().toISOString().slice(0, 7);
+  if (!usageMem) try { usageMem = JSON.parse(readFileSync(USAGE_FILE, "utf8")); } catch {}
+  if (usageMem?.month !== month) usageMem = { month, keys: {}, ddg: { ok: 0, blocked: 0 } };
+  return usageMem!;
+};
+const saveUsage = () => { try { writeFileSync(USAGE_FILE, JSON.stringify(usageMem)); } catch {} };
+async function duckduckgo(query: string) {
+  try {
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh Blip)" }, signal: AbortSignal.timeout(6_000) });
+    const html = await r.text(), u = searchUsage(); u.ddg ??= { ok: 0, blocked: 0 };
+    const results = [...html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)].slice(0, 5).map(([, href, title, snippet]) => {
+      const x = new URL(href.replace(/&amp;/g, "&"), "https://duckduckgo.com");
+      return { title: strip(title), url: x.searchParams.get("uddg") ?? x.href, snippet: strip(snippet) };
+    });
+    if (!results.length && (r.status === 202 || /anomaly|challenge/i.test(html))) { ddgOffUntil = Date.now() + 30 * 60_000; u.ddg.blocked++; saveUsage(); return null; } // its bot check
+    if (results.length) { u.ddg.ok++; saveUsage(); }
+    return results;
+  } catch { ddgOffUntil = Date.now() + 5 * 60_000; return null; }
 }
+async function tavily(query: string, background: boolean) {
+  const keys = env("TAVILY_API_KEYS").split(",").map((k) => k.trim()).filter(Boolean);
+  if (!keys.length) return null;
+  const u = searchUsage(), id = (k: string) => k.slice(-6), used = (k: string) => u.keys[id(k)] ?? 0; // the counts keep a key's last 6 characters, not the key
+  const total = keys.reduce((n, k) => n + used(k), 0), now = new Date(), days = new Date(now.getUTCFullYear(), now.getUTCMonth() + 1, 0).getDate();
+  if (background && total >= 0.8 * keys.length * TAVILY_CAP * (now.getUTCDate() / days)) return null; // the rest is for visitors
+  const key = keys.filter((k) => used(k) < TAVILY_CAP).sort((a, b) => used(a) - used(b))[0];
+  if (!key) return null;
+  u.keys[id(key)] = used(key) + 1; saveUsage();
+  try {
+    const r = await fetch("https://api.tavily.com/search", { method: "POST", signal: AbortSignal.timeout(8_000),
+      headers: { "content-type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ query, max_results: 5 }) });
+    if ([401, 432, 433].includes(r.status)) { u.keys[id(key)] = TAVILY_CAP; saveUsage(); return null; } // a bad key or its plan's limit: done this month
+    const results = r.ok ? ((await r.json()).results ?? []) : [];
+    return results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").slice(0, 400) }));
+  } catch { return null; }
+}
+/** Web search, DuckDuckGo then Tavily: titles, URLs and snippets. `background`: work no one is waiting for, which leaves
+ *  Tavily's quota to visitors (see above). */
+export async function webSearch(query: string, opts: { background?: boolean } = {}) {
+  if (Date.now() > ddgOffUntil) { const d = await duckduckgo(query); if (d?.length) return { engine: "duckduckgo", results: d }; }
+  const t = await tavily(query, !!opts.background);
+  return t?.length ? { engine: "tavily", results: t } : { engine: "none", results: [] as { title: string; url: string; snippet: string }[] };
+}
+/** This month's searches, for the admin page: each Tavily key's count (by its last 6 characters), DuckDuckGo's answers. */
+export const webSearchUsage = () => ({ ...searchUsage(), cap: TAVILY_CAP, ddgPausedUntil: ddgOffUntil > Date.now() ? Math.floor(ddgOffUntil / 1000) : null });
 
 // ---------- a camera's frame, read by the local Qwen (it sees images) ----------
 const SEEN = {

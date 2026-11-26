@@ -1267,7 +1267,8 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
       if (url.pathname === "/api/admin/jobs-health") {
         const bridge = process.env.HOST_BRIDGE ? await fetch(`${process.env.HOST_BRIDGE}/health`, { signal: AbortSignal.timeout(1500) }).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
-        return send({ schedule: cronStatus(), jobs: jobsHealth(), llm: llmStatus(), briefJobs: briefJobsStatus(), bridge });
+        const { webSearchUsage } = await import("./server/nycapi.ts");
+        return send({ schedule: cronStatus(), jobs: jobsHealth(), llm: llmStatus(), briefJobs: briefJobsStatus(), bridge, search: webSearchUsage() });
       }
       return json403(res, "Not found.", 404);
     }
