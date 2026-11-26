@@ -751,11 +751,15 @@ export async function discover(max = 400, signal?: AbortSignal) {
 // discover() only meets employers whose ads show up in Adzuna; 54 of 300 listed boards sampled had jobs in the NYC area
 // (2026-11-25), about 3,000 of the lists' boards, against 509 read then. So every listed board is checked, one request
 // each (Workday and Oracle: their location facets), a slice a day, and added when it has a job in the city, New Jersey
-// or the metro (remote-only boards aren't: the site is about New York). Each board is checked again after 30 days. A check
+// or the metro (remote-only boards aren't: the site is about New York). A board without jobs here is checked again after
+// a week (RECHECK), so an employer's first NYC job shows up within days; boards with jobs here are read hourly or nightly
+// by the reads, not by this. A check
 // is one request for the board's job list (Workday and Oracle: one for its location counts), only counted, nothing
 // saved; the boards with jobs here are then read by the hourly and nightly reads.
 const SWEEP_PACE: Record<string, number> = { greenhouse: 1000, lever: 1000, ashby: 1000, workable: 1500, smartrecruiters: 500, workday: WD_PACE, oracle: 1000 };
-const SWEEP_CAP: Record<string, number> = { workday: 300, oracle: 300 }; // a day: they go through the Mac
+const SWEEP_CAP: Record<string, number> = { workday: 300, oracle: 300 }; // a run: they go through the Mac
+// a week (was 30 days): 37k boards a week is ~5,300 checks a day, against four runs a day of ~4,600 each (2026-11-26)
+const RECHECK = 7 * 86400;
 const LOCAL = new Set(["nyc", "nj", "metro"]);
 async function boardHere(ats: string, slug: string, name: string, spent: Map<string, number>, signal?: AbortSignal) {
   if (ats === "workday") {
@@ -780,7 +784,7 @@ export async function sweepDirectory(minutes = 50, signal?: AbortSignal) {
     // never-checked boards first, and among them the employers already seen in job ads around here (Cross River's
     // expired Adzuna ads, 2026-11-25), so the ones people search for come before the long tail
     const todo = db.prepare(`select d.slug, d.name from directory d left join swept s on s.ats = d.ats and s.slug = d.slug where d.ats = ? and (s.at is null or s.at < ?)
-      order by s.at is not null, d.ck not in (select ckey from jobs where region in ('nyc', 'nj', 'metro')), s.at limit ?`).all(ats, now() - 30 * 86400, SWEEP_CAP[ats] ?? 20_000) as any[];
+      order by s.at is not null, d.ck not in (select ckey from jobs where region in ('nyc', 'nj', 'metro')), s.at limit ?`).all(ats, now() - RECHECK, SWEEP_CAP[ats] ?? 20_000) as any[];
     for (const d of todo) {
       if (stop()) break;
       if (have.get(ats, d.slug) || STAFFING.test(d.name) || NOT_EMPLOYER.test(d.name)) { mark.run(ats, d.slug, now(), -1); continue; }
@@ -1035,7 +1039,7 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-directory", "30 4 * * 0", "the board lists: employers' board addresses for discovery (weekly)", (s) => refreshDirectory(s), 10 * 60_000],
   // four times a day at the same pace (user, 2026-11-26), clear of the big employers' read at 3:00 (it shares Workday's,
   // Oracle's and SmartRecruiters' lanes), discovery at 5:00 and the browser reads at 4, 9, 13 and 17
-  ["jobs-sweep", "0 0,6,12,18 * * *", "the board lists, swept: listed employers with jobs in the NYC area, 50 minutes a run (each board again after 30 days)", (s) => sweepDirectory(50, s), 55 * 60_000],
+  ["jobs-sweep", "0 0,6,12,18 * * *", "the board lists, swept: listed employers with jobs in the NYC area, 50 minutes a run (boards without jobs here again after a week)", (s) => sweepDirectory(50, s), 55 * 60_000],
   ["jobs-discover", "0 5 * * *", "new employer boards for Adzuna's employers: from the board lists, else by name", (s) => discover(400, s), 40 * 60_000],
   ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
