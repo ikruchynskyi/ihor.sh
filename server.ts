@@ -2,7 +2,7 @@
 // Public behind a Cloudflare tunnel, so only whitelisted paths are served (never the repo root).
 import "./server/env.ts";
 import http from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./server/archive.ts";
@@ -376,7 +376,8 @@ const WELL_KNOWN: Record<string, () => [string, string | Buffer]> = {
 const HOME_LINKS = [`</llms.txt>; rel="service-doc"; type="text/plain"`, `</.well-known/mcp/server-card.json>; rel="service-desc"; type="application/json"`,
   `</.well-known/agent-card.json>; rel="describedby"; type="application/json"`, `</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"`].join(", ");
 
-async function sitemap() {
+/** Every listed page and when it last changed: the sitemap, and what IndexNow is told. */
+async function sitemapUrls() {
   // <lastmod>: the last commit that changed the page (or the data a query page shows), not the file's mtime (freshness.ts)
   const urls: [string, string][] = [[`${SITE}/`, lastChanged("index.html")], [`${SITE}/terms`, lastChanged("terms.html")]];
   // the query-addressed pages: every story, deck level and grammar level
@@ -387,6 +388,10 @@ async function sitemap() {
     for (const f of await publicPages(dir, name))
       // story/deck/grammar.html without a query are canonically their first story or level, listed above
       if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !unlisted(await readFile(path.join(dir, f), "utf8"))) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, lastChanged(path.relative(ROOT, path.join(dir, f)))]);
+  return urls;
+}
+async function sitemap() {
+  const urls = await sitemapUrls();
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc>${d ? `<lastmod>${d}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
 }
@@ -475,6 +480,23 @@ export function fromSite(h: http.IncomingHttpHeaders) {
   if (fetchSite) return fetchSite === "same-origin" || fetchSite === "same-site"; // same-site: an ihor.sh subdomain
   for (const v of [h.origin, h.referer]) { try { if (v && SITE_ORIGINS.test(new URL(String(v)).origin)) return true; } catch {} }
   return false;
+}
+
+// IndexNow (Bing, Yandex, Seznam, Naver, Yep; Google doesn't use it): the site proves it owns ihor.sh by serving
+// /<INDEXNOW_KEY>.txt, and each morning tells them which sitemap pages are new or changed since it last did (all of
+// them the first time). Brave follows Google's rules and has no such feed; Google reads the sitemap. Sent: data/indexnow.json.
+const INDEXNOW_KEY = process.env.INDEXNOW_KEY ?? "", INDEXNOW_SENT = path.join(ROOT, "data", "indexnow.json");
+async function indexNow() {
+  if (!INDEXNOW_KEY) return "no INDEXNOW_KEY";
+  let sent: Record<string, string> = {}; try { sent = JSON.parse(await readFile(INDEXNOW_SENT, "utf8")); } catch {}
+  const urls = await sitemapUrls(), changed = urls.filter(([u, d]) => sent[u] !== (d || "?")).slice(0, 10_000);
+  if (!changed.length) return "nothing new";
+  const r = await fetch("https://api.indexnow.org/indexnow", { method: "POST", signal: AbortSignal.timeout(30_000), headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ host: new URL(SITE).host, key: INDEXNOW_KEY, keyLocation: `${SITE}/${INDEXNOW_KEY}.txt`, urlList: changed.map(([u]) => u) }) });
+  if (r.status !== 200 && r.status !== 202) throw new Error(`IndexNow answered ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  for (const [u, d] of changed) sent[u] = d || "?";
+  await writeFile(INDEXNOW_SENT, JSON.stringify(sent));
+  return `${changed.length} pages sent`;
 }
 
 // The signing secret lives in .env, created on first start, so restarts don't end anyone's session.
@@ -1322,6 +1344,7 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       return res.writeHead(200, { ...head, "content-type": "application/json" }).end(JSON.stringify({ query: q, hits }));
     }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
+    if (INDEXNOW_KEY && url.pathname === `/${INDEXNOW_KEY}.txt`) return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400" }).end(INDEXNOW_KEY);
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
     if (/^\/fonts\/[\w-]+\.woff2$/.test(url.pathname)) return serveFile(res, path.join(PUBLIC, url.pathname));
     if (PUBLIC_FILES.has(url.pathname)) return serveFile(res, path.join(PUBLIC, url.pathname));
@@ -1365,6 +1388,8 @@ if (IN_HOST_SUPERVISOR) {
   schedule("jobs-embed", "*/30 * * * *", "embeddings for new jobs (résumé matching)", (s) => embedJobs(2000, s), 25 * 60_000);
   schedule("jobs-guidance", "0 6 * * 1", "the weekly hiring context, from cited research", (s) => refreshGuidance(s), 15 * 60_000);
   schedule("jobs-redflags", "30 1 * * *", "red-flag checks for the day's fresh jobs, on the local model while no one waits", (s) => precomputeChecks(s), 210 * 60_000);
+  schedule("indexnow", "20 6 * * *", "new and changed pages, told to the search engines that use IndexNow (Bing, Yandex and others)", () => indexNow(), 2 * 60_000);
+  setTimeout(() => runTask("indexnow"), 90_000); // after a deploy: once the site answers, so they can fetch the key file
   schedule("jobs-warn", "10 5 * * *", "New York State's layoff notices (WARN), for company pages, the market and the job check", (s) => refreshWarn(s), 5 * 60_000);
   if (!warnCount()) refreshWarn().catch((e) => console.warn(`warn: ${(e as Error).message}`)); // before the first morning run
   schedule("jobs-bigco", "0 4 1 * *", "Wikidata's big NYC-based employers, for the admin page's coverage list (monthly)", (s) => refreshBigEmployers(s), 5 * 60_000);
