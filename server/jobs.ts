@@ -751,7 +751,9 @@ export async function discover(max = 400, signal?: AbortSignal) {
 // discover() only meets employers whose ads show up in Adzuna; 54 of 300 listed boards sampled had jobs in the NYC area
 // (2026-11-25), about 3,000 of the lists' boards, against 509 read then. So every listed board is checked, one request
 // each (Workday and Oracle: their location facets), a slice a day, and added when it has a job in the city, New Jersey
-// or the metro (remote-only boards aren't: the site is about New York). Each board is checked again after 30 days.
+// or the metro (remote-only boards aren't: the site is about New York). Each board is checked again after 30 days. A check
+// is one request for the board's job list (Workday and Oracle: one for its location counts), only counted, nothing
+// saved; the boards with jobs here are then read by the hourly and nightly reads.
 const SWEEP_PACE: Record<string, number> = { greenhouse: 1000, lever: 1000, ashby: 1000, workable: 1500, smartrecruiters: 500, workday: WD_PACE, oracle: 1000 };
 const SWEEP_CAP: Record<string, number> = { workday: 300, oracle: 300 }; // a day: they go through the Mac
 const LOCAL = new Set(["nyc", "nj", "metro"]);
@@ -1031,7 +1033,9 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-custom", "15 4,9,13,17 * * *", "the career sites read in a browser or by hand (Google, Meta, Apple, Goldman, Bloomberg…): more job pages read each pass", async (s) => { await refreshBoards(["custom"], "boards-custom", 6, s); afterIngest(); }, 20 * 60_000],
   ["jobs-texts", "40 * * * *", "the text of Meta, Apple and Bloomberg jobs a crawl listed but didn't get to read (a minute of the Mac's browser)", (s) => backfillTexts(60, s), 5 * 60_000],
   ["jobs-directory", "30 4 * * 0", "the board lists: employers' board addresses for discovery (weekly)", (s) => refreshDirectory(s), 10 * 60_000],
-  ["jobs-sweep", "0 6 * * *", "the board lists, swept: listed employers with jobs in the NYC area, a slice a day (each board again after 30 days)", (s) => sweepDirectory(50, s), 55 * 60_000],
+  // four times a day at the same pace (user, 2026-11-26), clear of the big employers' read at 3:00 (it shares Workday's,
+  // Oracle's and SmartRecruiters' lanes), discovery at 5:00 and the browser reads at 4, 9, 13 and 17
+  ["jobs-sweep", "0 0,6,12,18 * * *", "the board lists, swept: listed employers with jobs in the NYC area, 50 minutes a run (each board again after 30 days)", (s) => sweepDirectory(50, s), 55 * 60_000],
   ["jobs-discover", "0 5 * * *", "new employer boards for Adzuna's employers: from the board lists, else by name", (s) => discover(400, s), 40 * 60_000],
   ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
