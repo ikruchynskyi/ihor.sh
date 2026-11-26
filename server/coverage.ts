@@ -77,3 +77,14 @@ export function coverage() {
   const size = (r: Row) => (r.employees ?? 0) / (r.ads || r.laidOff || r.h1b ? 100 : 2000) + (r.ads ?? 0) + (r.laidOff ?? 0) / 10 + (r.h1b ?? 0) * 2;
   return rows.sort((a, b) => Number(a.status === "read") - Number(b.status === "read") || size(b) - size(a));
 }
+
+/** admin.html's page of the list: a status (none, listed, read, all), a name search, 25 a page, with the counts. The
+ *  list is worked out at most every 10 minutes (about a second each time). */
+let cached: { at: number; rows: ReturnType<typeof coverage> } | null = null;
+export function coveragePage(status = "none", q = "", page = 0, size = 25) {
+  if (!cached || Date.now() - cached.at > 600_000) cached = { at: Date.now(), rows: coverage() };
+  const all = cached.rows, term = q.trim().toLowerCase(), counts: Record<string, number> = { all: all.length, read: 0, listed: 0, none: 0 };
+  for (const r of all) counts[r.status]++;
+  const rows = all.filter((r) => (status === "all" || r.status === status) && (!term || r.name.toLowerCase().includes(term)));
+  return { counts, total: rows.length, page, size, rows: rows.slice(page * size, page * size + size), at: Math.floor(cached.at / 1000) };
+}

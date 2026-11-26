@@ -26,6 +26,9 @@
     .chart svg { display: block; width: 100%; height: auto; } .chart .bar { fill: var(--accent); } .chart .ax { fill: var(--muted); font-size: 11px; } .chart g:hover .bar { opacity: .7; }
     .chip { display: inline-block; font-size: 11.5px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
     .bad { color: var(--warn); } h2 { margin: 18px 0 6px; font-size: 17px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; } .bar input[type=search] { flex: 1; min-width: 180px; }
+    .pager { display: flex; gap: 10px; align-items: center; } tr.total td { font-weight: 600; border-top: 2px solid var(--line); }
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; } .seg button[aria-pressed="true"] { outline: 2px solid var(--accent, currentColor); }
   </style>
 </head>
 <body>
@@ -117,41 +120,61 @@ async function loadJobsHealth() {
       <td class="${t.error ? "bad" : ""}">${esc(t.error ?? "")}</td>
       <td><button type="button" data-run="${esc(t.name)}" ${t.running ? "disabled" : ""}>Run</button></td></tr>`).join("")}</tbody></table></div>
     ${j.restingLanes.length ? `<h2>Resting rate-limited lanes</h2><p class="hint">${j.restingLanes.map((r) => `${esc(r.lane)} until ${when(r.until)}`).join(" · ")}</p>` : ""}
-    ${j.boards.failingCount ? `<h2>Boards with errors (${j.boards.failingCount})</h2><div class="scrollx"><table><thead><tr><th>ATS</th><th>Board</th><th class="n">Open</th><th class="n">Last OK</th><th>Error</th></tr></thead><tbody>
-      ${j.boards.failing.map((b) => `<tr><td>${esc(b.ats)}</td><td>${esc(b.name || b.slug)}</td><td class="n">${b.open ?? 0}</td><td class="n">${when(b.last_ok)}</td><td class="bad">${esc(b.last_err)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="hint">All ${j.boards.total} boards clean.</p>`}
-    ${j.boards.staleBoards.length ? `<h2>Open jobs unseen &gt; 7 days</h2><div class="scrollx"><table><thead><tr><th>Source</th><th>Board</th><th class="n">Count</th><th class="n">Oldest seen</th></tr></thead><tbody>
-      ${j.boards.staleBoards.map((s) => `<tr><td>${esc(s.source)}</td><td>${esc(s.board)}</td><td class="n">${s.open}</td><td class="n">${when(s.oldestSeen)}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
+`;
   $("jobsStep").textContent = "";
+  // a running task's seconds count up: the table refreshes every 15 s while one runs and this tab is shown
+  clearTimeout(loadJobsHealth.again);
+  if (d.schedule.some((t) => t.running)) loadJobsHealth.again = setTimeout(() => { if (!$("t-jobs").hidden && !document.hidden) loadJobsHealth().catch(() => {}); }, 15_000);
 }
-$("jobsRefresh").onclick = () => { loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch(() => {}); };
+$("jobsRefresh").onclick = () => { loadJobsHealth().catch((e) => ($("jobsStep").textContent = e.message)); loadSources().catch(() => {}); loadCoverage().catch(() => {}); };
 $("jobsOut").addEventListener("click", async (e) => {
   const name = e.target.dataset?.run; if (!name) return;
   e.target.disabled = true;
   try { await get(`/api/jobs/schedule?run=${encodeURIComponent(name)}`, { method: "POST" }); await loadJobsHealth(); } catch (err) { $("jobsStep").textContent = err.message; e.target.disabled = false; }
 });
 $("days").onchange = () => loadActivity().catch((e) => ($("actStep").textContent = e.message));
-/** Every employer board: the ones with nothing open, or with jobs no read has seen for 2 days (the liveness check takes those), and who isn't read at all. */
-const NOT_READ = [["KPMG", "its careers site is a script-only app with no feed found"], ["Microsoft", "read in part: its job site throttles after a few requests"]];
+// Job sources and big employers: a summary, then one page of 25 at a time with a filter and a search (the server does
+// the counting: there are thousands of boards)
+const NOT_READ = [["KPMG", "its careers site is a script-only app with no feed found"]];
+const pager = (d, go) => d.total > d.size ? `<p class="pager"><button type="button" data-${go}="${d.page - 1}" ${d.page ? "" : "disabled"}>‹ Prev</button> ${(d.page * d.size + 1).toLocaleString()}–${Math.min(d.total, (d.page + 1) * d.size).toLocaleString()} of ${d.total.toLocaleString()} <button type="button" data-${go}="${d.page + 1}" ${(d.page + 1) * d.size < d.total ? "" : "disabled"}>Next ›</button></p>` : "";
+const src = { filter: "errors", q: "", page: 0 };
 async function loadSources() {
-  const l = await get("/api/admin/sources"), empty = l.filter((c) => !c.open), stale = l.filter((c) => c.stale > 0);
-  const table = (rows) => `<div class="scrollx"><table><thead><tr><th>Board</th><th>System</th><th class="n">Open</th><th class="n">Unseen 2 days</th><th class="n">Last read</th><th>Last note</th></tr></thead><tbody>${rows.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.ats)}</td><td class="n">${c.open ?? 0}</td><td class="n">${c.stale || ""}</td><td class="n">${when(c.last_ok)}</td><td class="${c.last_err ? "bad" : ""}">${esc(c.last_err ?? "")}</td></tr>`).join("")}</tbody></table></div>`;
-  $("sourcesOut").innerHTML = `<h2>Job sources (${l.length} boards)</h2>
-    ${stale.length ? `<h3>Jobs not seen for 2 days (${stale.length} boards)</h3><p class="hint">Checked at their own page each hour (Adzuna and the job boards); the big employers' come back with their next full read.</p>${table(stale)}` : ""}
-    ${empty.length ? `<h3>Boards with nothing open (${empty.length})</h3>${table(empty)}` : ""}
-    <h3>Not read</h3><ul>${NOT_READ.map(([n, why]) => `<li><b>${esc(n)}</b>: ${esc(why)}</li>`).join("")}</ul>`;
+  const d = await get(`/api/admin/sources?${new URLSearchParams({ filter: src.filter, q: src.q, page: src.page })}`), n = (x) => (x ?? 0).toLocaleString();
+  const T = d.summary.reduce((t, r) => { for (const k of ["boards", "withJobs", "open", "empty", "waiting", "errors", "unseen", "listed", "checked", "here"]) t[k] = (t[k] ?? 0) + (r[k] ?? 0); return t; }, { ats: "All" });
+  const sumRow = (r, b) => `<tr${b ? ' class="total"' : ""}><td>${esc(r.ats)}</td><td class="n">${n(r.boards)}</td><td class="n">${n(r.withJobs)}</td><td class="n">${n(r.open)}</td><td class="n">${n(r.empty)}</td><td class="n">${n(r.waiting)}</td><td class="n ${r.errors ? "bad" : ""}">${n(r.errors)}</td><td class="n">${n(r.unseen)}</td><td class="n">${r.listed ? `${n(r.checked)} / ${n(r.listed)}` : "—"}</td><td class="n">${r.listed ? n(r.here) : "—"}</td></tr>`;
+  const board = (c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.ats)}</td><td class="n">${n(c.open)}</td><td class="n">${c.stale || ""}</td><td class="n">${when(c.last_ok)}</td><td class="${c.last_err ? "bad" : ""}">${esc(c.last_err ?? "")}</td></tr>`;
+  const FILTERS = { errors: "Needs attention (errors)", stale: "Jobs unseen 2+ days", empty: "Nothing open", waiting: "Not read yet", all: "All boards" };
+  $("sourcesOut").innerHTML = `<h2>Job sources</h2>
+    <div class="scrollx"><table><thead><tr><th>Platform</th><th class="n">Boards read</th><th class="n">With jobs</th><th class="n">Open jobs</th><th class="n">Nothing open</th><th class="n">Not read yet</th><th class="n">Errors</th><th class="n">Jobs unseen 2+ days</th><th class="n">Sweep: checked / listed</th><th class="n">Listed with jobs here</th></tr></thead>
+      <tbody>${d.summary.map((r) => sumRow(r)).join("")}${sumRow(T, true)}</tbody></table></div>
+    <form class="bar" id="srcForm"><select id="srcFilter" aria-label="Show">${Object.entries(FILTERS).map(([k, v]) => `<option value="${k}" ${k === src.filter ? "selected" : ""}>${v}</option>`).join("")}</select>
+      <input type="search" id="srcQ" placeholder="Find a board or employer" value="${esc(src.q)}" aria-label="Find a board or employer"><button type="submit">Find</button></form>
+    ${d.rows.length ? `<div class="scrollx"><table><thead><tr><th>Board</th><th>Platform</th><th class="n">Open</th><th class="n">Unseen 2 days</th><th class="n">Last read</th><th>Last note</th></tr></thead><tbody>${d.rows.map(board).join("")}</tbody></table></div>${pager(d, "srcpage")}`
+      : `<p class="hint">${src.q ? `No board read here matches “${esc(src.q)}”.` : src.filter === "errors" ? "No board has an error." : "None."}</p>`}
+    ${d.listed?.length ? `<h3>In the board lists, not read</h3><div class="scrollx"><table><thead><tr><th>Employer</th><th>Platform</th><th>Sweep</th></tr></thead><tbody>${d.listed.map((l) => `<tr><td>${esc(l.name)}</td><td>${esc(l.ats)}</td><td>${l.checked ? `checked ${when(l.checked)}: ${l.here > 0 ? `${l.here} jobs here (added next run)` : l.here === 0 ? "no jobs here" : "didn't answer or left out"}` : "not checked yet"}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    <p class="hint">Not read: ${NOT_READ.map(([nm, why]) => `<b>${esc(nm)}</b> (${esc(why)})`).join("; ")}.</p>`;
 }
-// The big employers in and around NYC (coverage.ts): which the site reads, which have a known board the daily sweep or
-// discovery will check, and which aren't found yet (to add by hand: their board, or a new kind of board to read)
+const cov = { status: "none", q: "", page: 0 };
 async function loadCoverage() {
-  const l = await get("/api/admin/coverage"), by = (s) => l.filter((r) => r.status === s), STATUS = { read: "read", listed: "board known, to be checked", none: "not found" };
+  const d = await get(`/api/admin/coverage?${new URLSearchParams({ status: cov.status, q: cov.q, page: cov.page })}`), c = d.counts;
   const why = (r) => [r.employees && `${r.employees.toLocaleString()} staff (Wikidata)`, r.ads && `${r.ads} job ads here in a year`, r.laidOff && `laid off ${r.laidOff} at one site here`, r.h1b && `${r.h1b} H-1B positions here`].filter(Boolean).join(" · ");
-  const table = (rows) => `<div class="scrollx"><table><thead><tr><th>Employer</th><th>Why it's here</th><th class="n">Open jobs</th><th>Status</th><th>Read as / known board</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r.website ? `<a href="${esc(r.website)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</td><td class="hint">${esc(why(r))}</td><td class="n">${r.open || ""}</td><td class="${r.status === "none" ? "bad" : ""}">${STATUS[r.status]}</td><td>${esc((r.status === "read" ? r.via : r.boards).join(", "))}</td></tr>`).join("")}</tbody></table></div>`;
-  $("coverageOut").innerHTML = `<h2>Big employers in and around NYC (${l.length})</h2>
-    <p class="hint">Based in the city with 1,000+ staff (Wikidata), 25+ job ads here in a year, a layoff notice for 100+ at one site here, or H-1B filings for professionals here (the Labor Department's files in data/, made by scripts/h1b.py). ${by("read").length} read, ${by("listed").length} with a known board the daily sweep or discovery will check, ${by("none").length} not found.</p>
-    <h3>Not found (${by("none").length})</h3>${table(by("none"))}
-    <details><summary>Board known, to be checked (${by("listed").length})</summary>${table(by("listed"))}</details>
-    <details><summary>Read (${by("read").length})</summary>${table(by("read"))}</details>`;
+  const STATUS = { none: "Not found", listed: "Board known, to be checked", read: "Read", all: "All" };
+  const row = (r) => `<tr><td>${r.website ? `<a href="${esc(r.website)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</td><td class="hint">${esc(why(r))}</td><td class="n">${r.open || ""}</td><td class="${r.status === "none" ? "bad" : ""}">${STATUS[r.status]}</td><td>${esc((r.status === "read" ? r.via : r.boards).join(", "))}</td></tr>`;
+  $("coverageOut").innerHTML = `<h2>Big employers in and around NYC</h2>
+    <p class="hint">Based in the city with 1,000+ staff (Wikidata), 25+ job ads here in a year, a layoff notice for 100+ at one site here, or H-1B filings for professionals here (data/, made by scripts/h1b.py). Worked out ${when(d.at)}.</p>
+    <p class="seg" role="group" aria-label="Status">${Object.entries(STATUS).map(([k, v]) => `<button type="button" data-covstatus="${k}" aria-pressed="${k === cov.status}">${v} (${(c[k] ?? 0).toLocaleString()})</button>`).join(" ")}</p>
+    <form class="bar" id="covForm"><input type="search" id="covQ" placeholder="Find an employer" value="${esc(cov.q)}" aria-label="Find an employer"><button type="submit">Find</button></form>
+    ${d.rows.length ? `<div class="scrollx"><table><thead><tr><th>Employer</th><th>Why it's here</th><th class="n">Open jobs</th><th>Status</th><th>Read as / known board</th></tr></thead><tbody>${d.rows.map(row).join("")}</tbody></table></div>${pager(d, "covpage")}` : `<p class="hint">None${cov.q ? ` matching “${esc(cov.q)}”` : ""}.</p>`}`;
 }
+$("sourcesOut").addEventListener("submit", (e) => { e.preventDefault(); Object.assign(src, { filter: $("srcFilter").value, q: $("srcQ").value.trim(), page: 0 }); loadSources().catch((er) => ($("sourcesOut").textContent = er.message)); });
+$("sourcesOut").addEventListener("change", (e) => { if (e.target.id === "srcFilter") { Object.assign(src, { filter: e.target.value, q: "", page: 0 }); loadSources().catch(() => {}); } });
+$("sourcesOut").addEventListener("click", (e) => { const p = e.target.dataset?.srcpage; if (p != null) { src.page = Number(p); loadSources().catch(() => {}); } });
+$("coverageOut").addEventListener("submit", (e) => { e.preventDefault(); Object.assign(cov, { q: $("covQ").value.trim(), page: 0 }); loadCoverage().catch((er) => ($("coverageOut").textContent = er.message)); });
+$("coverageOut").addEventListener("click", (e) => {
+  const st = e.target.dataset?.covstatus, p = e.target.dataset?.covpage;
+  if (st) Object.assign(cov, { status: st, page: 0 }); else if (p != null) cov.page = Number(p); else return;
+  loadCoverage().catch(() => {});
+});
 for (const b of document.querySelectorAll(".tabs [data-tab]")) b.onclick = () => {
   for (const x of document.querySelectorAll(".tabs [data-tab]")) { x.setAttribute("aria-selected", String(x === b)); $(`t-${x.dataset.tab}`).hidden = x !== b; }
   if (b.dataset.tab === "activity" && !loadActivity.done) { loadActivity.done = true; loadActivity().catch((e) => ($("actStep").textContent = e.message)); }

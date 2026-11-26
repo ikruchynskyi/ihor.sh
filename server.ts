@@ -20,11 +20,11 @@ import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
-import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, jobSources, type Query as JobQuery } from "./server/jobs.ts";
+import { jobsTasks, jobsHealth, employer as jobEmployer, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss, market as jobMarket, latestGuide, getCompanyInfo, readJobText, sourcesSummary, sourcesPage, type Query as JobQuery } from "./server/jobs.ts";
 import { track, stats as activityStats, recent as activityRecent } from "./server/activity.ts";
 import { makeCard, miniCard, refreshCards, LEVELS_MARKET } from "./server/company.ts";
 import { refreshWarn, warnCount, warnFor, layoffsMarket } from "./server/layoffs.ts";
-import { coverage as employerCoverage, refreshBigEmployers, bigEmployersCount } from "./server/coverage.ts";
+import { coveragePage, refreshBigEmployers, bigEmployersCount } from "./server/coverage.ts";
 import { embedJobs, refreshGuidance, precomputeChecks, similar as jobSimilar, semanticSearch, match as jobMatch, suggest as jobSuggest, tailor as jobTailor, marketBrief, checkJob, noteToBullet } from "./server/jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening, weekConcerts } from "./server/evening.ts";
 import { aircraft, trace, iss, storms, weather, nowcast, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./server/sky.ts";
@@ -1259,8 +1259,10 @@ const serve = async (req: http.IncomingMessage, res: http.ServerResponse) => {
       const send = (v: unknown) => res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(v));
       if (url.pathname === "/api/admin/users" && req.method === "POST") return send({ changed: setCloud(String(url.searchParams.get("id") ?? ""), url.searchParams.get("cloud") === "1") });
       if (url.pathname === "/api/admin/users") return send(listUsers());
-      if (url.pathname === "/api/admin/sources") return send(jobSources());
-      if (url.pathname === "/api/admin/coverage") return send(employerCoverage()); // the big employers in and around NYC, read or not (coverage.ts)
+      // job sources and big employers: a summary and pages of 25, never thousands of rows at once
+      const pg = Math.max(0, Number(url.searchParams.get("page")) || 0), q = String(url.searchParams.get("q") ?? "").slice(0, 80);
+      if (url.pathname === "/api/admin/sources") return send({ summary: sourcesSummary(), ...sourcesPage(String(url.searchParams.get("filter") ?? "errors"), q, pg) });
+      if (url.pathname === "/api/admin/coverage") return send(coveragePage(String(url.searchParams.get("status") ?? "none"), q, pg));
       if (url.pathname === "/api/admin/stats") return send(activityStats(Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 7))));
       if (url.pathname === "/api/admin/events") return send(activityRecent(url.searchParams.get("who") || undefined, 300, Number(url.searchParams.get("before")) || undefined));
       if (url.pathname === "/api/admin/jobs-health") {

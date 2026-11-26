@@ -1044,9 +1044,37 @@ export const jobsTasks = (): [string, string, string, (signal: AbortSignal) => P
   ["jobs-liveness", "25 * * * *", "jobs no read has seen for 2 days, checked at their own page (Adzuna and the job boards): gone ones close", async (s) => { const n = await checkLiveness(800, s); if (n) afterIngest(); return n; }, 20 * 60_000],
 ];
 
-/** Every employer board with how its last read went (admin.html's job sources): failing, partial or empty first. */
-export const jobSources = () => (db.prepare(`select ats, slug, coalesce(name, slug) name, open, last_ok, last_err, added from companies order by (coalesce(last_err, '') = '') , coalesce(open, 0) > 0, coalesce(open, 0) desc`).all() as any[])
-  .map((c) => ({ ...c, stale: (db.prepare("select count(*) n from jobs where id like ? and closed is null and last_seen < ?").get(`${PREFIX[c.ats] ?? c.ats}:${c.slug}:%`, now() - 2 * 86400) as any).n }));
+// ---------- admin.html's job sources: a summary and pages, never every board at once (thousands with the sweep) ----------
+/** Open jobs no read has seen for 2 days, by board ("gh:slug:"): one grouped query, not one a board. */
+const staleByBoard = () => new Map((db.prepare(`select substr(id, 1, instr(id, ':') + instr(substr(id, instr(id, ':') + 1), ':')) b, count(*) n from jobs
+  where closed is null and last_seen < ? group by b`).all(now() - 2 * 86400) as any[]).map((r) => [r.b as string, r.n as number]));
+/** Per platform: boards read, with jobs, their open jobs, empty, with errors, with jobs unseen 2 days; and the sweep's
+ *  progress through the board lists (listed, checked, with jobs here). */
+export function sourcesSummary() {
+  const stale = staleByBoard(), by = new Map<string, any>();
+  // "nothing open" counts boards that were read; the ones the sweep just added wait for their first read (SmartRecruiters
+  // and Workday: the nightly one), and aren't empty
+  for (const r of db.prepare(`select ats, count(*) boards, sum(coalesce(open, 0) > 0) withJobs, sum(coalesce(open, 0)) open, sum(last_ok is not null and coalesce(open, 0) = 0 and last_err is null) empty,
+    sum(last_ok is null and last_err is null) waiting, sum(last_err is not null) errors, group_concat(slug, char(10)) slugs from companies group by ats`).all() as any[]) {
+    const unseen = String(r.slugs ?? "").split("\n").reduce((n: number, sl: string) => n + ((stale.get(`${PREFIX[r.ats] ?? r.ats}:${sl}:`) ?? 0) > 0 ? 1 : 0), 0);
+    by.set(r.ats, { ats: r.ats, boards: r.boards, withJobs: r.withJobs, open: r.open, empty: r.empty, waiting: r.waiting, errors: r.errors, unseen, listed: 0, checked: 0, here: 0 });
+  }
+  for (const r of db.prepare("select d.ats, count(*) listed, count(s.at) checked, sum(s.here > 0) here from directory d left join swept s on s.ats = d.ats and s.slug = d.slug group by d.ats").all() as any[])
+    Object.assign(by.get(r.ats) ?? by.set(r.ats, { ats: r.ats, boards: 0, withJobs: 0, open: 0, empty: 0, errors: 0, unseen: 0 }).get(r.ats), { listed: r.listed, checked: r.checked, here: r.here ?? 0 });
+  return [...by.values()].sort((a, b) => b.boards - a.boards);
+}
+/** One page of boards: errors (real ones), jobs unseen 2 days, nothing open, or all; a name search; 25 a page. A search
+ *  also lists boards in the lists that aren't read, with what the sweep found there. */
+export function sourcesPage(filter = "errors", q = "", page = 0, size = 25) {
+  const stale = staleByBoard(), term = q.trim().toLowerCase();
+  let rows = (db.prepare("select ats, slug, coalesce(name, slug) name, open, last_ok, last_err, added from companies").all() as any[]).map((c) => ({ ...c, stale: stale.get(`${PREFIX[c.ats] ?? c.ats}:${c.slug}:`) ?? 0 }));
+  if (term) rows = rows.filter((c) => c.name.toLowerCase().includes(term) || c.slug.toLowerCase().includes(term));
+  else rows = rows.filter((c) => filter === "errors" ? c.last_err : filter === "stale" ? c.stale > 0 : filter === "empty" ? c.last_ok && !c.open && !c.last_err : filter === "waiting" ? !c.last_ok && !c.last_err : true);
+  rows.sort((a, b) => Number(!b.last_err) - Number(!a.last_err) || b.stale - a.stale || (b.open ?? 0) - (a.open ?? 0) || a.name.localeCompare(b.name));
+  const listed = term ? (db.prepare(`select d.ats, d.slug, d.name, s.at checked, s.here from directory d left join swept s on s.ats = d.ats and s.slug = d.slug
+    where lower(d.name) like ? and not exists (select 1 from companies c where c.ats = d.ats and lower(c.slug) = lower(d.slug)) limit 10`).all(`%${term}%`) as any[]) : [];
+  return { total: rows.length, page, size, rows: rows.slice(page * size, page * size + size), listed };
+}
 /** A saved search as RSS: the 30 newest matches. */
 export function rss(qy: Query, selfUrl: string, title: string) {
   const r = search(qy), x = (t: string) => t.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
