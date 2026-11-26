@@ -765,8 +765,10 @@ export async function sweepDirectory(minutes = 50, signal?: AbortSignal) {
   const have = db.prepare("select 1 from companies where ats = ? and lower(slug) = lower(?)"), mark = db.prepare("insert or replace into swept values (?, ?, ?, ?)");
   const added: string[] = []; let checked = 0, failed = 0;
   await Promise.all(Object.keys(SWEEP_PACE).map(async (ats) => { // one lane a platform, in parallel
+    // never-checked boards first, and among them the employers already seen in job ads around here (Cross River's
+    // expired Adzuna ads, 2026-11-25), so the ones people search for come before the long tail
     const todo = db.prepare(`select d.slug, d.name from directory d left join swept s on s.ats = d.ats and s.slug = d.slug where d.ats = ? and (s.at is null or s.at < ?)
-      order by s.at is not null, s.at limit ?`).all(ats, now() - 30 * 86400, SWEEP_CAP[ats] ?? 20_000) as any[];
+      order by s.at is not null, d.ck not in (select ckey from jobs where region in ('nyc', 'nj', 'metro')), s.at limit ?`).all(ats, now() - 30 * 86400, SWEEP_CAP[ats] ?? 20_000) as any[];
     for (const d of todo) {
       if (stop()) break;
       if (have.get(ats, d.slug) || STAFFING.test(d.name) || NOT_EMPLOYER.test(d.name)) { mark.run(ats, d.slug, now(), -1); continue; }
