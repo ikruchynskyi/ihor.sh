@@ -54,9 +54,12 @@ const getJson = async (u: string, ms = 30_000, body?: object, sig?: AbortSignal)
 // at most every `ms` (all its boards share the slot), and a 429 rests that platform for an hour.
 // Each run also has a request budget per platform (BUDGET; passed per run): a board that hits it, or a 429, keeps
 // what it read so far and stops, and the next try is simply the next scheduled run (user, 2026-11-16: no retries).
-const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 1000, smartrecruiters: 8000 }; // SmartRecruiters: 1000 → 3000 → 8000 as the lists' boards came in (2026-11-25; 500 ms apart: 67 min)
+const nextSlot = new Map<string, number>(), resting = new Map<string, number>(), spentRun = new Map<string, number>(), BUDGET: Record<string, number> = { workday: 2000, oracle: 3000, amazon: 60, eightfold: 300, smartrecruiters: 8000 }; // SmartRecruiters: 1000 → 3000 → 8000 as the lists' boards came in (2026-11-25; 500 ms apart: 67 min)
 // Workday's Cloudflare also turned the Mac away after sustained requests 1.5 s apart (2026-11-16): one every 3 s, once a day
 const WD_PACE = 3000; // a day's run (user: daily is fine for the fullest view)
+// Microsoft's Eightfold refuses more than a few requests a minute from one address: after a 429 it said no for ~25 s more
+// (2026-11-25), and its nightly read at one request in 3 s got a 429 first thing for days. One in 15 s, 300 a run (75 min).
+const EF_PACE = 15_000;
 // A lane is a platform behind one front door (every Workday board shares Cloudflare's), or one employer's own host
 // (Oracle: each bank's own); lanes run in parallel, and each keeps its own pace and its own budget for the run.
 const pace = async (lane: string, ms: number, spent = spentRun, signal?: AbortSignal) => {
@@ -451,7 +454,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
     const place = (l: string) => { const p = String(l).split(/\s*,\s*/); return usPlace(p[0] === "United States" ? `${p[2] ?? ""}, ${p[1] ?? ""}` : `${p[0]}, ${p[1] ?? ""}`); };
     try {
       for (let start = 0; start < 1500; start += size) {
-        await pace(lane, 3000, spent, signal); // Microsoft's Eightfold answered 429 at one a second
+        await pace(lane, EF_PACE, spent, signal); // Microsoft's answered 429 at one a second, then at one in 3 s every night
         const d = await getJson(pcsx ? `https://${host}/api/pcsx/search?domain=${domain}&query=&location=${encodeURIComponent("New York, NY")}&start=${start}` : `https://${host}/api/apply/v2/jobs?domain=${domain}&location=${encodeURIComponent("New York")}&start=${start}&num=${size}`, 30_000, undefined, signal);
         const list: any[] = (pcsx ? d.data?.positions : d.positions) ?? [];
         for (const p of list) {
@@ -460,7 +463,7 @@ async function readBoard(ats: string, slug: string, known: (id: string) => boole
           const id = `ef:${slug}:${p.id}`;
           if (known(id)) { out.push(brief(id, company, location)); continue; }
           if (out.filter((j) => !j.known).length >= 300) continue;
-          await pace(lane, 3000, spent, signal);
+          await pace(lane, EF_PACE, spent, signal);
           const det = await getJson(pcsx ? `https://${host}/api/pcsx/position_details?position_id=${p.id}&domain=${domain}&hl=en` : `https://${host}/api/apply/v2/jobs/${p.id}?domain=${domain}`, 30_000, undefined, signal).catch((e) => { if (/429/.test(e.message)) throw e; return null; });
           const desc = pcsx ? det?.data?.jobDescription : det?.job_description; if (!desc) continue;
           out.push({ id, source: "eightfold", company, title: p.name, location, remoteHint: p.work_location_option ?? p.workLocationOption ?? "", posted: (p.t_create ?? p.postedTs ?? p.creationTs ?? 0) * 1000,
@@ -527,9 +530,16 @@ export async function refreshBoards(atses = ["greenhouse", "lever", "ashby", "wo
         for (const j of jobs) if (j.known ? (touch.run(now(), j.id), true) : save(j)) { seen.add(j.id); n++; }
         for (const id of ((jobs as any).listed as string[] | undefined) ?? []) if (!seen.has(id) && openIds.get(id)) { touch.run(now(), id); seen.add(id); }
         if (!listPartial) sweep(ats, seen, `${PREFIX[ats]}:${slug}:`); // a board whose list was cut short closes nothing
-        db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = ?, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), partial ? `read in part (${partial})` : null, seen.size, ats, slug);
+        // a read cut short on purpose (a minute a big career site, a run's request budget: the rest comes next run) isn't an error
+        const planned = !!partial && /a minute's reading|requests are used/.test(partial);
+        db.prepare("update companies set name = coalesce(?, name), last_ok = ?, last_err = ?, open = ? where ats = ? and slug = ?").run(jobs[0]?.company ?? null, now(), partial && !planned ? `read in part (${partial})` : null, seen.size, ats, slug);
       });
-    } catch (e) { bad++; note429(laneOf(ats, slug), e); db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug); }
+    } catch (e) {
+      bad++; note429(laneOf(ats, slug), e); db.prepare("update companies set last_err = ? where ats = ? and slug = ?").run((e as Error).message, ats, slug);
+      // a board that's been "not found" for a week is gone (the employer moved or closed it): dropped, its jobs close at their
+      // own pages (checkLiveness); if it comes back with jobs here, the sweep adds it again
+      if (/HTTP (404|410)\b/.test((e as Error).message)) db.prepare("delete from companies where ats = ? and slug = ? and coalesce(last_ok, added) < ?").run(ats, slug, now() - 7 * 86400);
+    }
   };
   await Promise.all(Array.from({ length: Math.min(workers, list.length) }, async () => { while (next < list.length && !signal?.aborted) await one(list[next++]); }));
   db.prepare("insert into runs values (?,?,?,?,?)").run(now(), what, bad ? 0 : 1, n, `${list.length} boards, ${bad} failed`); // failed or not, the next try is the next run
