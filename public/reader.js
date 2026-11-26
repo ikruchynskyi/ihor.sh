@@ -255,7 +255,9 @@ root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle
   };
   const toggleFind = () => { fopen = !fopen; btn.setAttribute("aria-expanded", String(fopen)); render(); if (!fopen) btn.focus(); };
   btn.onclick = toggleFind;
-  addEventListener("keydown", (e) => { if (e.key === "/" && !fopen && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "") && !document.activeElement?.isContentEditable) { e.preventDefault(); toggleFind(); } });
+  // not while typing: the key's own target, which reaches into shadow roots (Blip's chat box is in one)
+  const typing = (e) => { const el = e.composedPath()[0]; return el instanceof Element && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable); };
+  addEventListener("keydown", (e) => { if (e.key === "/" && !fopen && !typing(e)) { e.preventDefault(); toggleFind(); } });
   document.addEventListener("click", (e) => { if (fopen && !e.composedPath().includes(fhost) && e.target !== btn) toggleFind(); });
 }
 

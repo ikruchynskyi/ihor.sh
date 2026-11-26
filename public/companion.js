@@ -642,7 +642,11 @@ addEventListener("blip:look", (e) => { const { x, y, ms = 1500 } = e.detail ?? {
 // Party mode: the Konami code (↑ ↑ ↓ ↓ ← → ← → B A).
 const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
 let konami = 0;
+// Typing in a field: the key event's own target, which reaches into shadow roots (the site search's box is in one, and
+// document.activeElement showed only its host there, so B opened the chat mid-word, 2026-11-26)
+const typing = (e) => { const el = e.composedPath()[0]; return el instanceof Element && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable); };
 addEventListener("keydown", (e) => {
+  if (typing(e)) return;
   konami = e.key === KONAMI[konami] ? konami + 1 : e.key === KONAMI[0] ? 1 : 0;
   if (konami < KONAMI.length) return;
   konami = 0;
@@ -656,9 +660,7 @@ blipEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === "
 // B opens the chat from anywhere on a page (not while typing in a field, and not with a modifier held).
 addEventListener("keydown", (e) => {
   if (e.key !== "b" && e.key !== "B") return;
-  if (e.metaKey || e.ctrlKey || e.altKey || dialogOpen || e.composedPath().includes(host)) return;
-  const el = document.activeElement;
-  if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || dialogOpen || e.composedPath().includes(host) || typing(e)) return;
   e.preventDefault(); openDialog();
 });
 
