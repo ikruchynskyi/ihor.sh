@@ -14,6 +14,7 @@
 	select, input, button { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
 	button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
 	button:disabled { opacity: .6; cursor: progress; }
+	#remove { margin-left: auto; background: #fff; color: #b0306a; border-color: #f0a6c8; }
 	.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 22px rgba(120, 60, 140, .1); }
 	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 	figure { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
@@ -30,6 +31,7 @@
 	<h1>Pictures</h1>
 	<select id="who" aria-label="Character"></select>
 	<a id="stage" href="./">open her on the stage ↗</a>
+	<button id="remove" type="button" hidden>Remove this outfit</button>
 </header>
 <div class="card">
 	<strong id="title"></strong><p id="about"></p>
@@ -51,6 +53,8 @@ async function show(name) {
 	const d = await (await fetch(`api/pictures?character=${encodeURIComponent(name)}`, { cache: "no-store" })).json();
 	$("title").textContent = d.title; $("about").textContent = d.about + (d.look ? `  Look: ${d.look}` : "");
 	$("stage").href = `./?character=${encodeURIComponent(name)}`;
+	$("remove").hidden = !d.from; // only outfits can be removed (not a character drawn from scratch)
+	$("remove").title = d.from ? `${name} was made from ${d.from}` : "";
 	$("outfit").new_name.value = `${name}-`;
 	const fill = (el, files) => {
 		el.replaceChildren(...files.map((f) => {
@@ -74,6 +78,19 @@ async function show(name) {
 	$("who").onchange = () => show($("who").value);
 	await show($("who").value);
 })();
+async function refresh(pick) {
+	const names = await (await fetch("api/characters", { cache: "no-store" })).json();
+	$("who").replaceChildren(...names.map((n) => new Option(n, n)));
+	$("who").value = names.includes(pick) ? pick : names[0];
+	await show($("who").value);
+}
+$("remove").onclick = async () => {
+	const name = $("who").value;
+	if (!confirm(`Remove the outfit "${name}"? Its pictures, rig and faces are deleted.`)) return;
+	const r = await (await fetch("api/remove", { method: "POST", body: JSON.stringify({ name }) })).json();
+	$("msg").textContent = r.error ? `That didn't work: ${r.error}` : `Removed ${name}.`;
+	if (!r.error) await refresh();
+};
 $("outfit").onsubmit = async (e) => {
 	e.preventDefault();
 	const f = e.target, b = f.querySelector("button");
@@ -82,9 +99,7 @@ $("outfit").onsubmit = async (e) => {
 		const r = await (await fetch("api/outfit", { method: "POST", body: JSON.stringify({ name: $("who").value, new_name: f.new_name.value, outfit: f.outfit.value }) })).json();
 		if (r.error) throw new Error(r.error);
 		$("msg").innerHTML = `Done: <a href="./?character=${r.character}">see ${r.character} on the stage</a>.`;
-		const names = await (await fetch("api/characters")).json();
-		$("who").replaceChildren(...names.map((n) => new Option(n, n)));
-		$("who").value = r.character; show(r.character);
+		await refresh(r.character);
 	} catch (err) { $("msg").textContent = `That didn't work: ${err.message}`; }
 	b.disabled = false;
 };

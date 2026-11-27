@@ -17,7 +17,7 @@ a line for her to say. `?character=mochi&clip=cheer_dance` opens straight to one
 📷 *Pictures & outfits* (top right of the studio, or http://127.0.0.1:8793/pictures.html) shows everything the image
 generator drew for a character: the picture, the cut-out, her back, her faces, her rig. Type a new outfit there
 ("a light blue summer dress and a straw hat") and press *Make it*: a few minutes later she's a new character in those
-clothes, and every dance works on her.
+clothes, and every dance works on her. *Remove this outfit* (shown on outfits only) deletes one you don't want.
 
 ## Ask an AI to make things
 

@@ -69,7 +69,9 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
 `change_outfit {name, new_name, outfit}` redraws her clothes in the same pose (front and back) as a new character and
 copies her rig. The picture editor can shift her a little: look at the returned overlay (and `NAME/back`'s), move any
 joint that's off with `rig_character`, then `make_faces`. The owner can do the same from the pictures page
-(`http://127.0.0.1:8793/pictures.html`), which also shows every picture a character has.
+(`http://127.0.0.1:8793/pictures.html`), which also shows every picture a character has. `remove_outfit {name}` (or
+the page's *Remove this outfit*) deletes an outfit's folder; only outfits can go (their `prompt.json` has `from`),
+never a character drawn from scratch.
 
 Pose for rigging: the house style asks for arms and legs a little away from the body; that is what lets limbs move
 without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete example.

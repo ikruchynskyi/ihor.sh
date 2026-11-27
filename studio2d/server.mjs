@@ -8,7 +8,7 @@
 //
 // Local only: it listens on 127.0.0.1 and writes only inside studio2d/characters and studio2d/clips.
 import http from "node:http";
-import { readFile, writeFile, readdir, mkdir, stat } from "node:fs/promises";
+import { readFile, writeFile, readdir, mkdir, stat, rm } from "node:fs/promises";
 import { watch } from "node:fs";
 import { execFile } from "node:child_process";
 import path from "node:path";
@@ -70,6 +70,16 @@ function build(...args) {
   });
 }
 
+// Delete an outfit: only a character whose prompt.json says which character it was made from (a drawn-from-scratch
+// character, like Mochi, stays).
+export async function removeOutfit(name) {
+  const dir = charDir(name);
+  const prompt = JSON.parse(await readFile(path.join(dir, "prompt.json"), "utf8").catch(() => "{}"));
+  if (!prompt.from) throw new Error(`${name} isn't an outfit (it wasn't made from another character), so it can't be removed here`);
+  await rm(dir, { recursive: true, force: true });
+  return `removed ${name} (it was ${prompt.from} in another outfit)`;
+}
+
 // Joint points from a reference picture (a GIF frame, a drawing) -> a pose for this character: each bone's turn from the
 // character's own picture, as clips use them (limbs: + raises/opens; trunk and head: + leans to her left).
 const CHAINS = { body: ["hips", "spine", null], waist: ["spine", "chest", "body"], chest: ["chest", "neck", "waist"], head: ["neck", "head", "chest"],
@@ -115,6 +125,7 @@ export const TOOLS = [
   { name: "make_faces", description: "Redraw a character's face box for each face (blink, talk, joy, wink, surprised, sad, angry, shy, or your own words) with the image service, so she can blink, talk and show feelings. Returns the faces side by side. Takes about 30 s a face.", inputSchema: S({ name: str("character folder"), faces: { type: "array", items: { type: "string" }, description: "face names (omit for all the usual ones)" } }, ["name"]) },
   { name: "make_back_view", description: "Draw a character from behind (looking back over her shoulder) so she can turn round and dance with her back to us: the picture editor redraws her, then the cut-out on a grid. Rig it like the front with rig_character {name: 'NAME/back'} (her left is on the picture's left from behind). Takes ~2 min.", inputSchema: S({ name: str("character folder") }, ["name"]) },
   { name: "change_outfit", description: "The same character in other clothes, as a new character: the picture editor redraws her outfit in the same pose (and her back view, if she has one), and her rig is copied over. Check the returned overlay, fix with rig_character if needed, then make_faces. Takes ~3 min.", inputSchema: S({ name: str("the character to dress"), new_name: str("folder for the new look, e.g. mochi-summer"), outfit: str("the clothes, e.g. 'a light blue summer dress and a straw hat with a ribbon'") }, ["name", "new_name", "outfit"]) },
+  { name: "remove_outfit", description: "Delete a character that was made as an outfit (change_outfit or the pictures page): its whole folder, pictures, rig and faces. Characters drawn from scratch can't be removed this way.", inputSchema: S({ name: str("the outfit's folder, e.g. mochi-summer") }, ["name"]) },
   { name: "show", description: "Put a character on the stage.", inputSchema: S({ character: str("character folder") }, ["character"]) },
   { name: "play", description: "The character on stage plays a clip (a dance or a move); returns when it ends (a looping clip plays `times` times).", inputSchema: S({ clip: str("clip name"), times: num("how many times (default 1)") }, ["clip"]) },
   { name: "stop", description: "Stop the clip playing on stage.", inputSchema: S({}) },
@@ -167,6 +178,7 @@ async function runTool(name, a = {}) {
       await build("outfit", a.name, a.new_name, a.outfit);
       return image(path.join(charDir(a.new_name), "overlay.png"));
     }
+    case "remove_outfit": return removeOutfit(a.name);
     case "show": return command("character", { name: checkName(a.character) });
     case "play": return command("play", a, 300_000);
     case "stop": case "face": case "say": case "snapshot": return command(name, a);
@@ -248,7 +260,11 @@ async function handle(req, res) {
     const name = checkName(url.searchParams.get("character")), dir = charDir(name), list = async (d) => (await readdir(path.join(dir, d)).catch(() => [])).filter((f) => /\.(png|jpg)$/.test(f)).map((f) => path.join(d, f));
     const rig = JSON.parse(await readFile(path.join(dir, "rig.json"), "utf8").catch(() => "{}"));
     const prompt = JSON.parse(await readFile(path.join(dir, "prompt.json"), "utf8").catch(() => "{}"));
-    return json(res, 200, { name, title: rig.name ?? name, about: rig.about ?? "", look: prompt.look ?? "", front: await list(""), back: await list("back"), faces: await list("faces") });
+    return json(res, 200, { name, title: rig.name ?? name, about: rig.about ?? "", look: prompt.look ?? "", from: prompt.from ?? null, front: await list(""), back: await list("back"), faces: await list("faces") });
+  }
+  if (req.method === "POST" && url.pathname === "/api/remove") { // the pictures page's "Remove this outfit"
+    try { return json(res, 200, { ok: true, message: await removeOutfit(JSON.parse((await body(req)) || "{}").name) }); }
+    catch (e) { return json(res, 400, { error: e.message }); }
   }
   if (req.method === "POST" && url.pathname === "/api/outfit") { // the pictures page's form
     const { name, new_name, outfit } = JSON.parse((await body(req)) || "{}");

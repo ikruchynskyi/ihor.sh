@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 IMAGE_URL = os.environ.get("IMAGE_URL", "http://127.0.0.1:6000")
 # The house style: one cute chibi character, whole body, arms and legs a little away from the body (they rig cleanly), on white.
 STYLE = ("general, 1girl, solo, chibi, full body, standing, a-pose, arms slightly away from body, legs slightly apart, "
-         "front view, looking at viewer, {look}, fully clothed, (white background:1.5), (plain background:1.3)")
+         "front view, looking at viewer, {look}, (white background:1.5), (plain background:1.3)")
 # Faces the studio uses: what to redraw inside the face box. "base" is the picture itself.
 FACES = {
     "blink": "eyes closed, closed eyes, gentle smile",
