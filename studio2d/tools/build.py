@@ -25,13 +25,13 @@ from scipy import ndimage
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_URL = os.environ.get("IMAGE_URL", "http://127.0.0.1:6000")
 # The house style: one cute chibi character, whole body, arms and legs a little away from the body (they rig cleanly), on white.
-STYLE = ("general, 1girl, solo, chibi, full body, standing, a-pose, arms slightly away from body, legs slightly apart, "
-         "front view, looking at viewer, {look}, fully clothed, (white background:1.5), (plain background:1.3)")
+STYLE = ("1girl, solo, chibi, full body, standing, a-pose, arms slightly away from body, legs slightly apart, "
+         "front view, looking at viewer, {look}, (white background:1.5), (plain background:1.3)")
 # An adult character (style "adult"): grown-up proportions, not chibi; the same open pose so she rigs the same way.
 # Flat cel shading with bold outlines and arms held well away from the body: the rigger follows outlines, and a sleeve
 # that doesn't touch the body moves without dragging it.
 STYLE_ADULT = ("general, 1girl, solo, adult woman, mature female, (adult:1.2), full body, standing, (arms spread away from body:1.3), "
-               "legs slightly apart, front view, looking at viewer, {look}, fully clothed, anime coloring, flat color, cel shading, "
+               "legs slightly apart, front view, looking at viewer, {look}, anime coloring, flat color, cel shading, "
                "(bold outlines:1.2), (white background:1.5), (plain background:1.3)")
 # Faces the studio uses: what to redraw inside the face box. "base" is the picture itself.
 FACES = {

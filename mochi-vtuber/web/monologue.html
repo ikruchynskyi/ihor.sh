@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>monologue</title>
+<style>
+	html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; color-scheme: normal; }
+	#feed { position: absolute; left: 0; top: 0; right: 0; display: flex; flex-direction: column; gap: 8px; padding: 6px; }
+	.msg {
+		position: relative; align-self: flex-start; max-width: 92%;
+		font: 600 20px/1.38 system-ui, sans-serif; color: #f4ecdc;
+		background: rgba(30, 22, 14, .88); border: 1px solid #c8a15a; border-radius: 4px 14px 14px 14px;
+		padding: 8px 14px 10px; box-shadow: 0 3px 12px rgba(0, 0, 0, .45);
+		animation: in .42s cubic-bezier(.2, 1.4, .4, 1) both;
+	}
+	.msg .who { display: block; font: 800 14px/1.2 system-ui, sans-serif; letter-spacing: .06em; color: #e8b85c; text-transform: uppercase; margin-bottom: 2px; }
+	.msg .mood { font-weight: 600; color: #b9a582; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+	.msg.thought { background: rgba(40, 36, 52, .82); border: 1px dashed #a99bd6; border-radius: 18px; color: #e3dcf6; font-style: italic; }
+	.msg.thought .who { color: #b8a8ef; }
+	.msg.thought::after {
+		content: ""; position: absolute; left: 14px; bottom: -12px; width: 9px; height: 9px; border-radius: 50%;
+		background: rgba(40, 36, 52, .82); border: 1px dashed #a99bd6; box-shadow: -8px 9px 0 -2px rgba(40, 36, 52, .82);
+	}
+	.msg.out { animation: out .5s ease-in both; }
+	@keyframes in { from { opacity: 0; transform: translateX(-24px) scale(.85); } to { opacity: 1; transform: none; } }
+	@keyframes out { to { opacity: 0; transform: translateY(-10px) scale(.95); } }
+</style>
+</head>
+<body>
+<div id="feed"></div>
+<script>
+// The hero's (Truman's) monologue: bubbles in the top-left corner, fed by {"monologue": "...", "thought": bool,
+// "mood_text": "..."} commands from the proxy's event stream. Newest at the bottom, max 3 on screen.
+const feed = document.getElementById("feed");
+const MAX = 3;
+let hero = "Truman Burbank";   // the in-game name; a command with {"hero": "..."} changes it
+
+function show(cmd) {
+	const text = String(cmd.monologue).trim();
+	if (!text) return;
+	const el = document.createElement("div");
+	el.className = "msg" + (cmd.thought ? " thought" : "");
+	const who = document.createElement("span");
+	who.className = "who";
+	who.textContent = cmd.thought ? hero + " (thinking)" : hero;
+	if (cmd.mood_text) {
+		const m = document.createElement("span");
+		m.className = "mood";
+		m.textContent = "· " + cmd.mood_text;
+		who.appendChild(m);
+	}
+	const body = document.createElement("span");
+	el.append(who, body);
+	feed.appendChild(el);
+	let i = 0;
+	const type = setInterval(() => { body.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(type); }, 22);
+	while (feed.children.length > MAX) feed.firstElementChild.remove();
+	const ms = Math.min(16000, 4000 + text.length * 60);
+	setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 500); }, ms);
+}
+
+new EventSource("/__vtuber/events").onmessage = (e) => {
+	try {
+		const cmd = JSON.parse(e.data);
+		if (cmd.build) { if (window.build && window.build !== cmd.build) location.reload(); window.build = cmd.build; }
+		if (cmd.hero) hero = cmd.hero;
+		if (cmd.monologue) show(cmd);
+	} catch (_) {}
+};
+</script>
+</body>
+</html>
