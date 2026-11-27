@@ -44,6 +44,12 @@ const probe = `(() => {
 	for (const toe of ["toeL", "toeR"]) { let seg = null;
 		run("cheer_dance", 1 / 60, () => { const v = P.group.worldToLocal(P.bones[toe].getWorldPosition(new V()));
 			if (v.y - P.lowRest < 3) { seg ??= [v.x, v.x]; seg[0] = Math.min(seg[0], v.x); seg[1] = Math.max(seg[1], v.x); R.slide = Math.max(R.slide, seg[1] - seg[0]); } else seg = null; }); }
+	// cloth swings a little, stays finite, and its hem never flies up
+	R.cloth = null;
+	if (P.cloths.length) { const cl = P.cloths[0]; R.cloth = { swing: 0, up: 0, finite: true };
+		run("happy_jump", 1 / 60, () => { const keep = cl.p; cl.p = null; P.clothStep(0); const want = cl.p; cl.p = keep;
+			keep.forEach((q, k) => { if (!isFinite(q.x + q.y)) R.cloth.finite = false; if (k >= cl.C) { R.cloth.swing = Math.max(R.cloth.swing, q.distanceTo(want[k])); R.cloth.up = Math.max(R.cloth.up, (q.y - want[k].y) / P.height); } });
+			cl.nodes.forEach((nd, k) => P.bones[nd.name].position.copy(keep[k])); }); }
 	return R;
 })()`;
 const out = execFileSync("node", [path.join(here, "shot.mjs"), "--query", `character=${character}`, JSON.stringify({ eval: probe })], { encoding: "utf8" });
@@ -57,4 +63,5 @@ check(R.skew < 1, `hands and shoes not skewed: ${R.skew.toFixed(1)}°`);
 check(R.drag > 5, `forearm trails a swinging upper arm: ${R.drag.toFixed(1)}° behind at most`);
 check(R.flow > 0.5, `motion flows through a key: ${(R.flow * 100).toFixed(0)}% of the average speed there`);
 check(R.slide < 3, `feet on the floor don't slide: ${R.slide.toFixed(1)} px`);
+if (R.cloth) check(R.cloth.finite && R.cloth.swing > 5 && R.cloth.up <= 0.0121, `cloth swings ${R.cloth.swing.toFixed(0)} px, its hem rises at most ${(R.cloth.up * 100).toFixed(1)}% of her height`);
 process.exit(fails.length ? 1 : 0);

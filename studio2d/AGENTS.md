@@ -59,8 +59,12 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
    - `regions`: polygons that override the automatic split (`"bone"`: any joint or pose name pins the area to it): `{"name": "head", "bone": "head", "poly": [...]}` for the
      head with hat and ears (everything above the chin), and spring regions for long hair, a tail, ribbons:
      `{"name": "hairR", "spring": "hairR", "poly": [...]}` (add `"layer": "back"` for a tail behind her).
-   - soft regions (lag and settle as she moves): `{"name": "hemL", "soft": {"bone": "hips", "stiffness": 80,
-     "damping": 6, "max": 0.03}, "poly": [...]}` for a skirt hem, ears (`bone: "head"`), sleeves; an adult character's
+   - cloth (a skirt, a dress, the skirt of a coat: it swings, flares in spins, hangs as she bows and is pushed out by
+     her thighs): `{"name": "skirt", "cloth": {"bone": "hips", "cols": 6, "rows": 4}, "poly": [...]}` from just under
+     the waist to the hem, hands and sleeves kept out (`stiffness` 50, `damping` 5, `hang` 0.6, `max` 0.04 optional). A
+     hem never flies up: keep it that way. Mochi's `coat`, Hana's and mochi-summer's `skirt` are examples.
+   - soft regions (lag and settle as she moves): `{"name": "earL", "soft": {"bone": "head", "stiffness": 110,
+     "damping": 7, "max": 0.02}, "poly": [...]}` for ears, sleeves, a hem on a back view; an adult character's
      chest `{"bone": "chest", "stiffness": 120, "damping": 10, "max": 0.012}` (keep it subtle and natural; never on a
      chibi or young-looking character).
    - `springs`: chains that swing: `{"name": "tail", "parent": "hips", "points": [[x,y], ...], "stiffness": 28,
@@ -145,7 +149,7 @@ Examples: `wave_hello`, `happy_jump`, `bow`, `shy`, `clap`, `cheer_dance` (a cop
   out. A foot on the floor stays planted while the body moves over it (the leg bends); a foot the clip lifts lets go,
   and one it carries far along the floor takes a quick little step. Take-offs and landings squash her a little.
 - Check the engine after changing it: `node studio2d/tools/check.mjs` (same motion at any frame rate, scrubbed =
-  played, turn-overs, no skew, trailing, flowing keys, planted feet).
+  played, turn-overs, no skew, trailing, flowing keys, planted feet, cloth).
 
 ## Copy a dance from a GIF or video
 

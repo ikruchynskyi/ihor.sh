@@ -171,10 +171,26 @@ export class Puppet {
 			make(name, [cx, cy], parent);
 			return { r, name, o: new THREE.Vector3(), ov: new THREE.Vector3(), prev: null, pv: null };
 		});
+		// cloth (a skirt, the skirt of a coat): a grid of points over the region, each a bone; the top row is sewn on, the
+		// rest swing, keep their distances, hang as she leans and are pushed out by her thighs (clothStep)
+		this.cloths = (rig.regions ?? []).filter((r) => r.cloth).map((r) => {
+			const o = r.cloth, C = o.cols ?? 5, R = o.rows ?? 4, xs = r.poly.map((q) => q[0]), ys = r.poly.map((q) => q[1]);
+			const box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], nodes = [];
+			for (let j = 0; j < R; j++) for (let i = 0; i < C; i++) {
+				const pic = [box[0] + ((box[2] - box[0]) * i) / (C - 1), box[1] + ((box[3] - box[1]) * j) / (R - 1)], b = new THREE.Bone();
+				b.name = `cloth_${r.name}${i}_${j}`;
+				b.position.set(...this.toWorld(pic), 0);
+				this.group.add(b); this.bones[b.name] = b;
+				nodes.push({ name: b.name, pic, rest: b.position.clone() });
+			}
+			const edges = []; // neighbours across and down (no diagonals: cloth shears and folds freely)
+			for (let k = 0; k < C * R; k++) { if ((k % C) + 1 < C) edges.push([k, k + 1]); if (k + C < C * R) edges.push([k, k + C]); }
+			return { r, C, R, box, nodes, edges, bone: POSE[o.bone]?.[0] ?? o.bone ?? "hips", k: o.stiffness ?? 50, c: o.damping ?? 5, hang: o.hang ?? 0.6, max: o.max ?? 0.04, p: null };
+		});
 		const order = Object.keys(this.bones);
 		this.root.updateMatrixWorld(true); // the skeleton's bind pose is the picture's pose
 		this.skeleton = new THREE.Skeleton(order.map((n) => this.bones[n]));
-		const index = Object.fromEntries(order.map((n, i) => [n, i])), skin = (b) => index[this.leaf[b] ? b + "~" : b];
+		const index = (this.boneIndex = Object.fromEntries(order.map((n, i) => [n, i]))), skin = (b) => index[this.leaf[b] ? b + "~" : b];
 		// segments: [the bone that turns it (the joint it starts at), from, to, spring chain, far joint] — a mesh point near a
 		// segment follows that bone (the clavicle follows the chest, the pelvis the hips)
 		const segs = [];
@@ -198,7 +214,7 @@ export class Puppet {
 		// labels: regions first; the rest by the cheapest path inside the silhouette from the bones, where crossing a dark
 		// outline (or the see-through edge around her) costs a lot (anime line art closes each part: sleeve vs coat, thigh vs shorts). Limb bones are seeded only
 		// from partway down the limb, so a shoulder or a hip inside the body's outline doesn't claim the body.
-		const n = px.length, label = new Array(n).fill(null), dist = new Float32Array(n).fill(Infinity), regionLayer = new Array(n).fill(null), fixed = new Uint8Array(n);
+		const n = px.length, label = new Array(n).fill(null), dist = new Float32Array(n).fill(Infinity), regionLayer = new Array(n).fill(null), fixed = new Uint8Array(n), regionOf = new Array(n).fill(null);
 		// an outline pixel is a thin dark line: dark, and darker than what's around it (a navy coat is dark but not a line)
 		const blur = document.createElement("canvas");
 		blur.width = W; blur.height = H;
@@ -213,11 +229,12 @@ export class Puppet {
 			const [x, y] = px[v];
 			const reg = (rig.regions ?? []).find((r) => inPoly(x, y, r.poly));
 			if (reg) {
+				regionOf[v] = reg;
 				regionLayer[v] = reg.layer ?? (reg.spring ? (reg.name.startsWith("hair") ? "hair" : "back") : null);
 				fixed[v] = 1;
 				if (reg.bone === "head") { label[v] = { seg: ["neck", J.neck, J.head, null, "head"] }; regionLayer[v] ??= "head"; continue; }
-				if (reg.bone) { // any other joint: this area follows it (e.g. a coat pinned to the chest so a sleeve can't take it)
-					const j = POSE[reg.bone]?.[0] ?? reg.bone;
+				if (reg.bone || reg.cloth) { // any other joint: this area follows it (e.g. a coat pinned to the chest so a sleeve can't take it)
+					const j = POSE[reg.bone ?? reg.cloth.bone]?.[0] ?? reg.bone ?? reg.cloth.bone ?? "hips";
 					if (J[j]) { label[v] = { seg: [j, J[j], J[j], null, "body"], u: 1 }; regionLayer[v] ??= "body"; continue; }
 				}
 				let best = null;
@@ -331,6 +348,22 @@ export class Puppet {
 				skinIndex[v * 4] = index[sf.name]; skinWeight[v * 4] = w;
 				skinIndex[v * 4 + 1] = skin(label[v]?.seg[0] ?? "hips"); skinWeight[v * 4 + 1] = 1 - w;
 			}
+		}
+		for (const cl of this.cloths) { // points in a cloth: onto the four grid points around them
+			const { C, R, box } = cl, ix = (k) => index[cl.nodes[k].name];
+			for (let v = 0; v < n; v++) {
+				if (regionOf[v] !== cl.r) continue;
+				const fx = Math.min(C - 1 - 1e-6, Math.max(0, ((px[v][0] - box[0]) / (box[2] - box[0])) * (C - 1)));
+				const fy = Math.min(R - 1 - 1e-6, Math.max(0, ((px[v][1] - box[1]) / (box[3] - box[1])) * (R - 1)));
+				const i = Math.floor(fx), j = Math.floor(fy), u = fx - i, w = fy - j, k = j * C + i;
+				skinIndex.splice(v * 4, 4, ix(k), ix(k + 1), ix(k + C), ix(k + C + 1));
+				skinWeight.splice(v * 4, 4, (1 - u) * (1 - w), u * (1 - w), (1 - u) * w, u * w);
+			}
+			// each grid point is carried like the trunk at its height (or by its bone); in the picture it sits this deep in
+			// each thigh, and it may never sink deeper
+			for (const nd of cl.nodes) [nd.b1, nd.b2, nd.w] = TRUNK.includes(cl.bone) && chain.length ? trunkWeights(...nd.pic) : [cl.bone, cl.bone, 1];
+			cl.thigh = rig.thickness?.thigh ?? 0.04 * tall;
+			cl.allow = cl.nodes.map((nd) => ["L", "R"].map((sd) => (J["hip" + sd] && J["knee" + sd] ? Math.min(0, segDist(...nd.pic, J["hip" + sd], J["knee" + sd])[0] - cl.thigh) : 0)));
 		}
 		// triangles, sorted into layers by their vertices' layer
 		const tris = Array.from({ length: 7 }, () => []), seams = Array.from({ length: 7 }, () => []);
@@ -521,7 +554,7 @@ export class Puppet {
 
 	// Re-run the moments before T (SETTLE seconds: springs have settled by then) from her exact pose.
 	seek(c, T) {
-		for (const p of [this, this.back]) if (p) { p.follow = {}; p.plants = {}; p.jelly = null; p.lastTurn = undefined; for (const s of p.springs) s.pts = null; for (const sf of p.softs) sf.p = null; }
+		for (const p of [this, this.back]) if (p) { p.follow = {}; p.plants = {}; p.jelly = null; p.lastTurn = undefined; for (const s of p.springs) s.pts = null; for (const sf of p.softs) sf.p = null; for (const cl of p.cloths) cl.p = null; }
 		const start = c.loop ? T - SETTLE : Math.max(0, T - SETTLE), at = (t) => this.poseAt(c, c.loop ? ((t % c.duration) + c.duration) % c.duration : t);
 		this.step(at(start), 0);
 		for (let n = Math.ceil((T - start) / STEP - 1e-9), i = 1; i <= n; i++) this.step(at(start + ((T - start) * i) / n), (T - start) / n);
@@ -614,10 +647,11 @@ export class Puppet {
 		// way anime cuts a spin; how fast she turns flings her hair, tail and hems out sideways
 		this.fling = h > 0 && this.lastTurn !== undefined ? ((turn - this.lastTurn) / h) * 1.5 * this.height : 0;
 		this.lastTurn = turn;
-		const wide = Math.max(0.4, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
+		const wide = Math.max(0.5, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
 		this.group.scale.set((sx / Math.sqrt(1 + q)) * wide * mirror * (this.facing ?? 1), sy * (1 + q), 1);
 		this.springsStep(h);
 		this.softStep(h);
+		this.clothStep(h);
 	}
 
 	// Feet stay where they land: a foot on the floor is planted, and its leg bends (two-bone IK) to keep it there while
@@ -690,6 +724,55 @@ export class Puppet {
 			else { st.a = want; st.w = 0; } // exactly the pose
 			b.rotation.z = st.a - up;
 			drawn[j] = st.a;
+		}
+	}
+
+	// Cloth: each grid point is carried with her as the garment is drawn and, further down, keeps hanging as she leans;
+	// it springs toward that, keeps its distance to its neighbours (cloth doesn't stretch), is flung by spins and pushed
+	// out by her thighs. The top row is sewn on.
+	clothStep(h) {
+		if (!this.cloths.length) return;
+		this.group.updateMatrixWorld(true);
+		const inv = this.group.matrixWorld.clone().invert(), mats = {}, tmp = new THREE.Vector3();
+		const mat = (b) => { b = this.leaf[b] ? b + "~" : b; return (mats[b] ??= inv.clone().multiply(this.bones[b].matrixWorld).multiply(this.skeleton.boneInverses[this.boneIndex[b]])); };
+		const at = (j) => this.group.worldToLocal(this.bones[j].getWorldPosition(tmp.clone())).clone();
+		const thighs = ["L", "R"].map((sd) => (this.bones["hip" + sd] && this.bones["knee" + sd] ? [at("hip" + sd), at("knee" + sd)] : null));
+		for (const cl of this.cloths) {
+			const { C, R, nodes } = cl;
+			const carried = nodes.map((nd) => nd.rest.clone().applyMatrix4(mat(nd.b1)).multiplyScalar(nd.w).add(nd.rest.clone().applyMatrix4(mat(nd.b2)).multiplyScalar(1 - nd.w)));
+			const want = carried.map((c, k) => { const row = Math.floor(k / C), top = k % C; return row ? c.clone().lerp(carried[top].clone().add(nodes[k].rest.clone().sub(nodes[top].rest)), (cl.hang * row) / (R - 1)) : c; });
+			if (!cl.p || !(h > 0)) { cl.p = want.map((w) => w.clone()); cl.v = want.map(() => new THREE.Vector3()); }
+			else {
+				const prev = cl.p.map((q) => q.clone());
+				cl.p.forEach((q, k) => {
+					if (k < C) { q.copy(want[k]); return; } // sewn on
+					cl.v[k].addScaledVector(want[k].clone().sub(q), cl.k * h).multiplyScalar(Math.exp(-cl.c * h));
+					cl.v[k].x += this.fling * h;
+					q.addScaledVector(cl.v[k], h);
+				});
+				for (let it = 0; it < 4; it++) for (const [a, b] of cl.edges) { // cloth doesn't stretch (it may bunch up)
+					if (b < C) continue; // both sewn on
+					const L = want[a].distanceTo(want[b]), d = cl.p[b].clone().sub(cl.p[a]), len = d.length() || 1;
+					if (len <= L) continue;
+					const fix = d.multiplyScalar((len - L) / len);
+					if (a < C) cl.p[b].sub(fix); else { cl.p[a].addScaledVector(fix, 0.5); cl.p[b].addScaledVector(fix, -0.5); }
+				}
+				cl.p.forEach((q, k) => {
+					if (k < C) return;
+					thighs.forEach((t, sd) => {
+						if (!t) return;
+						const [, u] = segDist(q.x, q.y, [t[0].x, t[0].y], [t[1].x, t[1].y]), on = t[0].clone().lerp(t[1], u), out = q.clone().sub(on), d = out.length();
+						if (d > 1e-3 && d - cl.thigh < cl.allow[k][sd]) q.copy(on).addScaledVector(out, (cl.thigh + cl.allow[k][sd]) / d);
+					});
+					// it swings, but only so far, and a hem never flies up (these characters stay wholesome)
+					const off = q.clone().sub(want[k]);
+					off.y = Math.min(off.y, 0.012 * this.height);
+					if (off.length() > cl.max * this.height) off.setLength(cl.max * this.height);
+					q.copy(want[k]).add(off);
+					cl.v[k].copy(q).sub(prev[k]).divideScalar(h);
+				});
+			}
+			nodes.forEach((nd, k) => this.bones[nd.name].position.copy(cl.p[k]));
 		}
 	}
 
