@@ -31,6 +31,19 @@ const probe = `(() => {
 	run("happy_jump", 1 / 60, () => { for (const j of ["handR", "handL", "toeL", "toeR"]) {
 		const e = P.group.matrixWorld.clone().invert().multiply(P.bones[j].matrixWorld).elements, ax = new V(e[0], e[1], 0), ay = new V(e[4], e[5], 0);
 		if (Math.abs(Math.abs(P.bones["elbow" + j.at(-1)].scale.y) - 1) < 1e-6) R.skew = Math.max(R.skew, Math.abs(90 - ax.angleTo(ay) * 57.3)); } });
+	// overlapping action: an upper arm swung up leaves the forearm trailing behind, then it catches up
+	P.setClips({ __swing: { duration: 1.2, keys: [{ t: 0, pose: { upperArmR: 0, foreArmR: 0 } }, { t: 0.3, ease: "linear", pose: { upperArmR: 110, foreArmR: 0 } }, { t: 1.2, pose: { upperArmR: 110, foreArmR: 0 } }] } });
+	R.drag = 0;
+	run("__swing", 1 / 60, () => { R.drag = Math.max(R.drag, Math.abs(P.drawnPose("foreArmR"))); });
+	// motion flows through a key that carries on the same way (speed there vs the average; 0 = a full stop)
+	P.setClips({ __flow: { duration: 1, keys: [{ t: 0, lift: 0 }, { t: 0.5, lift: 0.1 }, { t: 1, lift: 0.2 }] } });
+	const lift = (t) => P.poseAt(P.clips.__flow, t).get("lift");
+	R.flow = (lift(0.51) - lift(0.49)) / 0.02 / 0.2;
+	// a foot on the floor stays put (cheer_dance): how far it slides while it's down
+	R.slide = 0;
+	for (const toe of ["toeL", "toeR"]) { let seg = null;
+		run("cheer_dance", 1 / 60, () => { const v = P.group.worldToLocal(P.bones[toe].getWorldPosition(new V()));
+			if (v.y - P.lowRest < 3) { seg ??= [v.x, v.x]; seg[0] = Math.min(seg[0], v.x); seg[1] = Math.max(seg[1], v.x); R.slide = Math.max(R.slide, seg[1] - seg[0]); } else seg = null; }); }
 	return R;
 })()`;
 const out = execFileSync("node", [path.join(here, "shot.mjs"), "--query", `character=${character}`, JSON.stringify({ eval: probe })], { encoding: "utf8" });
@@ -41,4 +54,7 @@ check(Math.min(...swings) > 0.85 * Math.max(...swings), `tail swing the same at 
 check(R.scrub.handPx < 2 && R.scrub.tailDeg < 2, `scrubbed = played: hand ${R.scrub.handPx.toFixed(1)} px off, tail ${R.scrub.tailDeg.toFixed(1)}° off`);
 check(R.flips.every((a) => a > 95 && a < 125), `forearm turns over at ${R.flips.map((a) => a.toFixed(0)).join(", ") || "-"}° (95–125)`);
 check(R.skew < 1, `hands and shoes not skewed: ${R.skew.toFixed(1)}°`);
+check(R.drag > 5, `forearm trails a swinging upper arm: ${R.drag.toFixed(1)}° behind at most`);
+check(R.flow > 0.5, `motion flows through a key: ${(R.flow * 100).toFixed(0)}% of the average speed there`);
+check(R.slide < 3, `feet on the floor don't slide: ${R.slide.toFixed(1)} px`);
 process.exit(fails.length ? 1 : 0);

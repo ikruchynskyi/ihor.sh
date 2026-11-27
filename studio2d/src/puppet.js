@@ -6,6 +6,8 @@
 import * as THREE from "three";
 
 const D = Math.PI / 180;
+// "smooth" (the default) is a curve through the keys: motion flows through a key that carries on the same way, and
+// eases in and out where it turns back or holds; the others ease each stretch between two keys on its own
 export const EASE = {
 	linear: (u) => u, smooth: (u) => u * u * (3 - 2 * u), in: (u) => u * u * u, out: (u) => 1 - (1 - u) ** 3,
 	back: (u) => 1 + 2.70158 * (u - 1) ** 3 + 1.70158 * (u - 1) ** 2, snap: (u) => (u < 1 ? 0 : 1),
@@ -22,6 +24,7 @@ export const POSE = { body: ["hips", 0], waist: ["spine", 0], chest: ["chest", 0
 const LAYER_OF = (j) => (/^(hip|knee|ankle|toe)[LR]$/.test(j) ? 1 : /^(shoulder|elbow|wrist|hand)[LR]$/.test(j) ? 5 : j === "neck" || j === "head" ? 4 : 2);
 // follow-through springs per joint: [stiffness, damping] (lower stiffness lags more; damping under 2·√stiffness overshoots)
 const FOLLOW = { hips: [320, 28], spine: [320, 28], chest: [300, 26], neck: [220, 20], shoulder: [240, 21], elbow: [170, 15], wrist: [130, 12], hip: [320, 28], knee: [320, 28], ankle: [320, 28] };
+const FOLLOWS = new Set(Object.values(POSE).map(([j]) => j));
 // named poses (poses.json) a clip key can start from: {"use": "fists_chest"} or {"use": ["fists_chest", "knees_bent"]}
 export const POSES = {};
 const LAYERS = { back: 0, legs: 1, body: 2, hair: 3, head: 4, arms: 5, front: 6 };
@@ -39,7 +42,7 @@ export async function loadImage(url) {
 export function compileClip(clip) {
 	const tracks = new Map(), push = (k, t, v, ease) => { if (!tracks.has(k)) tracks.set(k, []); tracks.get(k).push({ t, v, ease }); };
 	for (const k of clip.keys ?? []) {
-		const ease = EASE[k.ease] ?? EASE.smooth, t = Math.max(0, +k.t || 0);
+		const ease = k.ease && k.ease !== "smooth" ? EASE[k.ease] ?? null : null, t = Math.max(0, +k.t || 0);
 		const used = [k.use ?? []].flat().reduce((acc, n) => ({ ...acc, ...(POSES[n]?.pose ?? {}) }), {});
 		for (const f of ["face", "squash", "lift"]) if (k[f] === undefined && [k.use ?? []].flat().some((n) => POSES[n]?.[f] !== undefined)) k[f] = [k.use].flat().map((n) => POSES[n]?.[f]).filter((x) => x !== undefined).at(-1);
 		for (const [b, v] of Object.entries({ ...used, ...(k.pose ?? {}) })) push("pose:" + b, t, Array.isArray(v) ? [+v[0] || 0, v[1] ?? 1, v[2] ?? 0] : [+v || 0, 1, 0], ease);
@@ -51,6 +54,19 @@ export function compileClip(clip) {
 	for (const list of tracks.values()) {
 		list.sort((a, b) => a.t - b.t);
 		if (clip.loop && list.at(-1).t < duration) list.push({ ...list[0], t: duration });
+		// each key's slope (per number): none at a turn or a hold, else a weighted mean of the slopes either side, which
+		// never overshoots a key (Fritsch–Butland). A loop's ends see round the loop.
+		if (typeof list[0].v === "string") continue;
+		const n = list.length, num = (k) => [k.v].flat(), at = (i) => (i < 0 ? (clip.loop && n > 2 ? { ...list[n - 2], t: list[n - 2].t - duration } : null)
+			: i >= n ? (clip.loop && n > 2 ? { ...list[1], t: list[1].t + duration } : null) : list[i]);
+		list.forEach((k, i) => {
+			const a = at(i - 1), b = at(i + 1);
+			k.m = num(k).map((x, c) => {
+				if (!a || !b) return 0;
+				const h0 = k.t - a.t, h1 = b.t - k.t, d0 = (x - num(a)[c]) / Math.max(1e-6, h0), d1 = (num(b)[c] - x) / Math.max(1e-6, h1);
+				return d0 * d1 <= 0 ? 0 : (3 * (h0 + h1)) / ((2 * h1 + h0) / d0 + (h1 + 2 * h0) / d1);
+			});
+		});
 	}
 	return { ...clip, duration, tracks, events: [...(clip.events ?? [])].sort((a, b) => a.t - b.t) };
 }
@@ -61,7 +77,15 @@ export function sampleClip(c, t) {
 	for (const [k, list] of c.tracks) {
 		const i = list.findIndex((x) => x.t > t);
 		if (i <= 0) out.set(k, i === 0 ? list[0].v : list.at(-1).v);
-		else { const a = list[i - 1], b = list[i]; out.set(k, lerp(a.v, b.v, b.ease((t - a.t) / Math.max(1e-6, b.t - a.t)))); }
+		else {
+			const a = list[i - 1], b = list[i], h = Math.max(1e-6, b.t - a.t), u = (t - a.t) / h;
+			if (b.ease || typeof a.v === "string") out.set(k, lerp(a.v, b.v, (b.ease ?? EASE.snap)(u)));
+			else { // the curve through the keys (cubic Hermite)
+				const h00 = 2 * u ** 3 - 3 * u * u + 1, h10 = u ** 3 - 2 * u * u + u, h01 = 3 * u * u - 2 * u ** 3, h11 = u ** 3 - u * u;
+				const v = [a.v].flat().map((x, c) => h00 * x + h10 * h * a.m[c] + h01 * [b.v].flat()[c] + h11 * h * b.m[c]);
+				out.set(k, Array.isArray(a.v) ? v : v[0]);
+			}
+		}
 	}
 	return out;
 }
@@ -497,7 +521,7 @@ export class Puppet {
 
 	// Re-run the moments before T (SETTLE seconds: springs have settled by then) from her exact pose.
 	seek(c, T) {
-		for (const p of [this, this.back]) if (p) { p.follow = {}; for (const s of p.springs) s.pts = null; for (const sf of p.softs) sf.p = null; }
+		for (const p of [this, this.back]) if (p) { p.follow = {}; p.plants = {}; p.jelly = null; p.lastTurn = undefined; for (const s of p.springs) s.pts = null; for (const sf of p.softs) sf.p = null; }
 		const start = c.loop ? T - SETTLE : Math.max(0, T - SETTLE), at = (t) => this.poseAt(c, c.loop ? ((t % c.duration) + c.duration) % c.duration : t);
 		this.step(at(start), 0);
 		for (let n = Math.ceil((T - start) / STEP - 1e-9), i = 1; i <= n; i++) this.step(at(start + ((T - start) * i) / n), (T - start) / n);
@@ -580,12 +604,60 @@ export class Puppet {
 		const hips = this.bones.hips;
 		if (ground) hips.position.y += this.lowRest - this.lowestFoot();
 		hips.position.x += px * this.height; hips.position.y += (py + lift) * this.height;
-		// turning round (turn 1 → -1): she narrows to a quarter, then shows her back (or, with no back view, her front
-		// mirrored), the way anime cuts a spin
-		const wide = Math.max(0.22, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
-		this.group.scale.set(sx * wide * mirror * (this.facing ?? 1), sy, 1);
+		this.plantFeet(h, ground);
+		// a little jelly: she squashes as she's pushed up or lands and stretches as she flies (a weight on a spring
+		// riding on her hips), keeping her volume
+		const hy = hips.position.y, j = (this.jelly = h > 0 && this.jelly ? this.jelly : { p: hy, v: 0, at: hy });
+		if (h > 0) { const carried = (hy - j.at) / h; j.at = hy; j.v += (300 * (hy - j.p) - 20 * (j.v - carried)) * h; j.p += j.v * h; }
+		const q = Math.max(-0.07, Math.min(0.07, ((j.p - hy) / this.height) * 2));
+		// turning round (turn 1 → -1): she narrows, then shows her back (or, with no back view, her front mirrored), the
+		// way anime cuts a spin; how fast she turns flings her hair, tail and hems out sideways
+		this.fling = h > 0 && this.lastTurn !== undefined ? ((turn - this.lastTurn) / h) * 1.5 * this.height : 0;
+		this.lastTurn = turn;
+		const wide = Math.max(0.4, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
+		this.group.scale.set((sx / Math.sqrt(1 + q)) * wide * mirror * (this.facing ?? 1), sy * (1 + q), 1);
 		this.springsStep(h);
 		this.softStep(h);
+	}
+
+	// Feet stay where they land: a foot on the floor is planted, and its leg bends (two-bone IK) to keep it there while
+	// the body moves over it, so feet don't slide. A foot the clip lifts lets go; one the clip carries far along the
+	// floor takes a quick little step there and plants again.
+	plantFeet(h, ground) {
+		if (!ground || !(h > 0)) { this.plants = {}; return; }
+		this.plants ??= {};
+		this.group.updateMatrixWorld(true);
+		const inv = this.group.matrixWorld.clone().invert(), v = new THREE.Vector3();
+		const at = (j) => this.group.worldToLocal(this.bones[j].getWorldPosition(v.clone())).clone();
+		const angle = (j) => { const e = inv.clone().multiply(this.bones[j].matrixWorld).elements; return Math.atan2(e[1], e[0]); };
+		const turnBy = (j, a) => { this.bones[j].rotation.z += Math.atan2(Math.sin(a - angle(j)), Math.cos(a - angle(j))); this.group.updateMatrixWorld(true); };
+		const floor = this.lowRest, tol = 0.015 * this.height, far = 0.05 * this.height, STEP_S = 0.15;
+		for (const s of ["L", "R"]) {
+			const [hip, knee, ankle, toe] = ["hip", "knee", "ankle", "toe"].map((n) => n + s);
+			if (!this.bones[hip] || !this.bones[knee] || !this.bones[ankle] || this.bones[knee].scale.y < 0) continue;
+			const H0 = at(hip), K0 = at(knee), A0 = at(ankle), down = Math.min(A0.y, this.bones[toe] ? at(toe).y : A0.y) <= floor + tol;
+			let p = this.plants[s];
+			if (!p) { if (down) this.plants[s] = { at: A0 }; continue; }
+			if (!p.step && (!down || Math.abs(A0.x - p.at.x) > far)) p.step = { from: p.at, s: 0, lift: down }; // let go, or step
+			let T = p.at;
+			if (p.step) {
+				p.step.s = Math.min(1, p.step.s + h / STEP_S);
+				const u = p.step.s * p.step.s * (3 - 2 * p.step.s);
+				T = p.step.from.clone().lerp(A0, u);
+				if (p.step.lift) T.y += Math.sin(Math.PI * p.step.s) * 0.025 * this.height;
+				if (p.step.s >= 1) { if (down) this.plants[s] = { at: A0 }; else delete this.plants[s]; continue; }
+			}
+			// two-bone IK: the thigh and shin that put the ankle at T, the knee bending the way it bends now (or out)
+			const l1 = H0.distanceTo(K0), l2 = K0.distanceTo(A0), D2 = T.clone().sub(H0);
+			const d = Math.min(l1 + l2 - 1e-3, Math.max(Math.abs(l1 - l2) + 1e-3, D2.length()));
+			const cross = (K0.x - H0.x) * (A0.y - K0.y) - (K0.y - H0.y) * (A0.x - K0.x);
+			const bend = Math.abs(cross) > 0.1 * l1 * l2 ? Math.sign(cross) : (s === "L" ? -1 : 1) * (this.isBack ? -1 : 1);
+			const thigh = Math.atan2(D2.y, D2.x) - bend * Math.acos(Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))));
+			const K1 = H0.clone().add(new THREE.Vector3(Math.cos(thigh), Math.sin(thigh), 0).multiplyScalar(l1)), foot = angle(ankle);
+			turnBy(hip, thigh);
+			turnBy(knee, Math.atan2(T.y - K1.y, T.x - K1.x));
+			turnBy(ankle, foot); // the shoe keeps the angle the pose gave it
+		}
 	}
 
 	// What's drawn this frame: the face, and which seams show.
@@ -601,17 +673,23 @@ export class Puppet {
 		this.hideStretchedSeams();
 	}
 
-	// Follow-through: each posed bone chases its pose like a soft spring (a little lag, a little overshoot, then it
-	// settles), so arms and head flow from pose to pose instead of snapping. Hands lag most, the body least.
+	// Follow-through and overlapping action: each posed bone chases its pose like a soft spring (a little lag, a little
+	// overshoot, then it settles), and it chases it on screen, carried by its parent as drawn: when the upper arm swings,
+	// the forearm and then the hand trail behind and catch up; when the body leans, the head follows a moment later.
+	// Hands lag most, the body least.
 	followThrough(h) {
 		this.follow ??= {};
-		for (const [joint] of Object.values(POSE)) {
-			const b = this.bones[joint];
+		const drawn = {}; // each joint's angle on screen (in her frame)
+		for (const j of Object.keys(TREE)) {
+			const b = this.bones[j];
 			if (!b) continue;
-			const [k, c] = FOLLOW[joint.replace(/[LR]$/, "")] ?? [300, 26], target = b.rotation.z, st = (this.follow[joint] ??= { a: target, w: 0 });
-			if (h > 0) { st.w += (k * (target - st.a) - c * st.w) * h; st.a += st.w * h; }
-			else { st.a = target; st.w = 0; } // exactly the pose
-			b.rotation.z = st.a;
+			const up = b.parent?.isBone ? drawn[b.parent.name] ?? 0 : 0, want = up + b.rotation.z;
+			if (!FOLLOWS.has(j)) { drawn[j] = want; continue; }
+			const [k, c] = FOLLOW[j.replace(/[LR]$/, "")] ?? [300, 26], st = (this.follow[j] ??= { a: want, w: 0 });
+			if (h > 0) { st.w += (k * (want - st.a) - c * st.w) * h; st.a += st.w * h; }
+			else { st.a = want; st.w = 0; } // exactly the pose
+			b.rotation.z = st.a - up;
+			drawn[j] = st.a;
 		}
 	}
 
@@ -626,6 +704,7 @@ export class Puppet {
 			const { stiffness: k = 90, damping: c = 7, max = 0.035 } = sf.r.soft, carried = at.clone().sub(sf.at).divideScalar(h);
 			sf.at = at;
 			sf.v.addScaledVector(at.clone().sub(sf.p), k * h).addScaledVector(sf.v.clone().sub(carried), -c * h);
+			sf.v.x += this.fling * h;
 			sf.p.addScaledVector(sf.v, h);
 			const o = sf.p.clone().sub(at), cap = max * this.height;
 			if (o.length() > cap) sf.p.copy(at).add(o.setLength(cap));
@@ -673,6 +752,7 @@ export class Puppet {
 				pt.q.copy(pt.p);
 				pt.v.multiplyScalar(damp).addScaledVector(target[i].clone().sub(pt.p), K * h);
 				pt.v.y -= g * h;
+				pt.v.x += this.fling * h;
 				pt.p.addScaledVector(pt.v, h);
 			}
 			s.pts[0].p.copy(target[0]);

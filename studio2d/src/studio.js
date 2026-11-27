@@ -136,6 +136,11 @@ function sheet({ clip, frames = 10, cell = 180 }) {
 	return out.toDataURL("image/jpeg", 0.88);
 }
 
+// A clip with "fps" (e.g. 12: anime "on twos") shows a new drawing only on its own frames, holding each one in
+// between; everything still moves underneath at full rate.
+let shownTick;
+const newDrawing = (c, ct) => { const tick = c?.fps ? Math.floor(ct * c.fps) : NaN, show = tick !== shownTick; shownTick = tick; return show; };
+
 // ---- the loop ----
 function frame(dt) {
 	if (!puppet) return;
@@ -148,7 +153,8 @@ function frame(dt) {
 		$("time").textContent = `${t.toFixed(2)} / ${c.duration.toFixed(2)} s`;
 	} else if (live) $("time").textContent = puppet.action ? `${puppet.action.clip.name}` : "";
 	puppet.update(dt * (live || playing ? speed : 0));
-	renderer.render(scene, camera);
+	const c = live ? puppet.action?.clip : puppet.clips[chosen];
+	if (newDrawing(c, live ? puppet.action?.t : t) || !dt) renderer.render(scene, camera);
 	const head = puppet.bones.neck.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, puppet.height * 0.42, 0)).project(camera);
 	$("bubble").style.left = `${(head.x + 1) * 50}%`;
 	$("bubble").style.top = `${Math.max(12, (1 - head.y) * 50)}%`;
@@ -197,7 +203,7 @@ window.studio = {
 		if (i === 0) puppet.simAt = null; // start from her exact first pose
 		puppet.pinned = { clip: c, t: Math.min(c.duration, i / fps) };
 		puppet.update(1 / fps);
-		renderer.render(scene, camera);
+		if (newDrawing(c, puppet.pinned.t) || i === 0) renderer.render(scene, camera);
 		return renderer.domElement.toDataURL("image/png");
 	},
 	sheet,

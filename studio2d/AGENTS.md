@@ -101,7 +101,8 @@ without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete 
    `"pose"`. Missing a pose you'll reuse? Add it to `poses.json` (name, `about`, `pose`; `squash`/`face` optional).
 3. **Act it**: a face per beat; squash on landings `[1.05, 0.95]`, stretch on take-offs `[0.95, 1.06]`; `lift` for
    hops; a small opposite move before a big one; `ease: "out"` into a pose, `"in"` out of it, `"back"` to overshoot.
-   Hair, ears, tails, hems and the arms' follow-through are automatic: don't animate them.
+   Hair, ears, tails, hems, the arms' follow-through, feet staying planted and a little jelly on take-offs and
+   landings are automatic: don't animate them. For a snappier anime feel, add `"fps": 12` (drawn "on twos").
 4. **Look**: `preview_clip` (or shot.mjs `{"sheet": {"clip": "NAME"}}`) and fix what reads wrong; a video:
    `{"video": {"clip": "NAME"}}`. Try it on two characters (Mochi, Hana): poses mean the same on everyone.
 
@@ -119,8 +120,10 @@ Examples: `wave_hello`, `happy_jump`, `bow`, `shy`, `clap`, `cheer_dance` (a cop
   "events": [ { "t": 0.6, "say": "Hi hi!" } ] }
 ```
 
-- Each pose name is its own track: keys glide between values (`ease`: `smooth` default, `linear`, `in`, `out`,
-  `back`, `snap`); a name a clip never keys stays as the picture has it. `"use"` merges named poses; `"pose"` wins.
+- Each pose name is its own track: keys glide between values. `ease` `smooth` (the default) is a curve through the
+  keys: motion flows through a key that carries on the same way and eases where it turns back or holds (two equal
+  keys hold still); `linear`, `in`, `out`, `back`, `snap` ease the stretch up to that key on its own. A name a clip
+  never keys stays as the picture has it. `"use"` merges named poses; `"pose"` wins.
 - Angles are degrees **from one standard stance, the same on every character**: upper arms 45° out from the body,
   forearms straight, thighs 15° apart (the engine measures each picture and corrects for it). **Arms and legs: +
   raises / opens**, mirrored per side; **body, waist, chest, head: + leans toward her left**. Names: `body`, `waist`,
@@ -129,14 +132,20 @@ Examples: `wave_hello`, `happy_jump`, `bow`, `shy`, `clap`, `cheer_dance` (a cop
   shows the sleeve the right way up), `handL/R`, `thighL/R` (+ spreads), `shinL/R` (− tucks the foot in), `footL/R`.
 - `[angle, length, width]`: `length` shortens a bone along itself (a forearm reaching toward us `0.8`, a knee bending
   toward us `0.85`; her feet stay on the ground so she dips); `width` -1 shows its other side. `"ground": false` on a
-  clip lets her leave the ground.
+  clip lets her leave the ground (and her feet aren't planted).
 - `pos [x, y]` (share of her height, x to the picture's right), `lift` (a hop, share of her height),
   `squash [sx, sy]` (squash and stretch around her feet), `turn` 1 → -1 (she turns round:
   below 0 she shows her back view, or her front mirrored if she has none; a quick 0.1 s flip reads like an anime spin;
   -1 → 1 turns her back), `face` (a face name; held until the next one). Poses mean the same from behind: her right
   arm is her right arm, shown on the other side.
-- Motion is softened for you: each bone follows its pose with a little lag and overshoot (hands most), and hair,
-  tails, ears and soft regions swing on their own.
+- `"fps"` on a clip (e.g. `12`): a new drawing only on those frames, each held in between, like anime drawn on twos.
+- Motion is softened for you, the same at any frame rate and when scrubbed: each bone follows its pose with a little
+  lag and overshoot, carried by its parent as drawn (an upper arm swung up leaves the forearm and hand trailing; the
+  head follows the body a moment later). Hair, tails, ears and soft regions swing on their own, and a spin flings them
+  out. A foot on the floor stays planted while the body moves over it (the leg bends); a foot the clip lifts lets go,
+  and one it carries far along the floor takes a quick little step. Take-offs and landings squash her a little.
+- Check the engine after changing it: `node studio2d/tools/check.mjs` (same motion at any frame rate, scrubbed =
+  played, turn-overs, no skew, trailing, flowing keys, planted feet).
 
 ## Copy a dance from a GIF or video
 
