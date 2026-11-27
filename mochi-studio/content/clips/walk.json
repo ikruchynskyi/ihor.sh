@@ -1,0 +1,325 @@
+{
+ "about": "Walking: two steps a second, arms swinging against her legs. The base pose while she moves; speed is how fast she goes (metres a second).",
+ "duration": 1.0,
+ "loop": true,
+ "speed": 1.0,
+ "fade": 0.2,
+ "keys": [
+  {
+   "t": 0,
+   "pose": {
+    "leftUpperLeg": [
+     -24,
+     0,
+     2
+    ],
+    "leftLowerLeg": [
+     6,
+     0,
+     0
+    ],
+    "leftFoot": [
+     10,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     16,
+     0,
+     -2
+    ],
+    "rightLowerLeg": [
+     22,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -13,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     18,
+     0,
+     -74
+    ],
+    "rightUpperArm": [
+     -18,
+     0,
+     74
+    ],
+    "leftLowerArm": [
+     0,
+     -15,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     15,
+     0
+    ],
+    "hips": [
+     0,
+     -5,
+     0
+    ],
+    "spine": [
+     3,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     4.0,
+     0
+    ],
+    "head": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   }
+  },
+  {
+   "t": 0.25,
+   "pose": {
+    "leftUpperLeg": [
+     0,
+     0,
+     2
+    ],
+    "leftLowerLeg": [
+     8,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -8,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -10,
+     0,
+     -2
+    ],
+    "rightLowerLeg": [
+     50,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -20,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     0,
+     0,
+     -74
+    ],
+    "rightUpperArm": [
+     0,
+     0,
+     74
+    ],
+    "leftLowerArm": [
+     0,
+     -15,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     15,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     3,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     0.0,
+     0
+    ],
+    "head": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   }
+  },
+  {
+   "t": 0.5,
+   "pose": {
+    "leftUpperLeg": [
+     16,
+     0,
+     2
+    ],
+    "leftLowerLeg": [
+     22,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -13,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -24,
+     0,
+     -2
+    ],
+    "rightLowerLeg": [
+     6,
+     0,
+     0
+    ],
+    "rightFoot": [
+     10,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     -18,
+     0,
+     -74
+    ],
+    "rightUpperArm": [
+     18,
+     0,
+     74
+    ],
+    "leftLowerArm": [
+     0,
+     -15,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     15,
+     0
+    ],
+    "hips": [
+     0,
+     5,
+     0
+    ],
+    "spine": [
+     3,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     -4.0,
+     0
+    ],
+    "head": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   }
+  },
+  {
+   "t": 0.75,
+   "pose": {
+    "leftUpperLeg": [
+     -10,
+     0,
+     2
+    ],
+    "leftLowerLeg": [
+     50,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -20,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     0,
+     0,
+     -2
+    ],
+    "rightLowerLeg": [
+     8,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -8,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     0,
+     0,
+     -74
+    ],
+    "rightUpperArm": [
+     0,
+     0,
+     74
+    ],
+    "leftLowerArm": [
+     0,
+     -15,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     15,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     3,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     0.0,
+     0
+    ],
+    "head": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   }
+  }
+ ]
+}

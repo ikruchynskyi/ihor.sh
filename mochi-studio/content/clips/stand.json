@@ -1,0 +1,14 @@
+{
+ "about": "Standing at rest: arms relaxed at her sides, a slow breath and a little sway. The base pose under other clips.",
+ "duration": 4,
+ "loop": true,
+ "keys": [
+  { "t": 0, "pose": {
+    "leftUpperArm": [0, 0, -72], "rightUpperArm": [0, 0, 72], "leftLowerArm": [0, -10, 0], "rightLowerArm": [0, 10, 0],
+    "spine": [0, 0, 0], "chest": [0, 0, 0], "neck": [0, 0, 0], "head": [0, 0, 0], "hips": [0, 0, 0],
+    "leftUpperLeg": [0, 0, 2], "rightUpperLeg": [0, 0, -2] },
+    "hands": { "left": "relaxed", "right": "relaxed" } },
+  { "t": 2, "pose": {
+    "leftUpperArm": [0, 0, -70], "rightUpperArm": [0, 0, 70], "chest": [-2, 0, 0], "head": [2, 0, 1.5], "hips": [0, 0, 1] } }
+ ]
+}

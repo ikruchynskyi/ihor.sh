@@ -24,3 +24,6 @@ ai/review/run/
 ai/review/run-*/
 ai/review/.venv/
 .playwright-mcp/
+
+# Mochi Studio pictures from tools/shot.mjs
+mochi-studio/shots/

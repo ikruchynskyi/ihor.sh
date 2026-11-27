@@ -1,0 +1,113 @@
+{
+ "about": "Sitting on a seat about 0.42 m high: thighs level, feet on the floor, hands on her lap. The base pose while she sits.",
+ "duration": 4,
+ "loop": true,
+ "seated": true,
+ "fade": 0.6,
+ "keys": [
+  {
+   "t": 0,
+   "pose": {
+    "leftUpperLeg": [
+     -88,
+     0,
+     3
+    ],
+    "rightUpperLeg": [
+     -88,
+     0,
+     -3
+    ],
+    "leftLowerLeg": [
+     86,
+     0,
+     0
+    ],
+    "rightLowerLeg": [
+     86,
+     0,
+     0
+    ],
+    "leftFoot": [
+     2,
+     0,
+     0
+    ],
+    "rightFoot": [
+     2,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     -28,
+     -8,
+     -78
+    ],
+    "rightUpperArm": [
+     -28,
+     8,
+     78
+    ],
+    "leftLowerArm": [
+     0,
+     -55,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     55,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -8
+    ],
+    "rightHand": [
+     0,
+     0,
+     8
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     -4,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     3,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   }
+  },
+  {
+   "t": 2,
+   "pose": {
+    "chest": [
+     -2,
+     0,
+     0
+    ],
+    "head": [
+     1,
+     0,
+     2
+    ]
+   }
+  }
+ ]
+}

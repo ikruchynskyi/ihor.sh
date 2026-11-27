@@ -1,0 +1,197 @@
+{
+ "about": "Waves hello with her right hand, smiling.",
+ "duration": 2.6,
+ "fade": 0.25,
+ "keys": [
+  {
+   "t": 0,
+   "pose": {
+    "rightUpperArm": [
+     0,
+     0,
+     72
+    ],
+    "rightLowerArm": [
+     0,
+     10,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "right": "relaxed"
+   },
+   "face": {
+    "happy": 0,
+    "relaxed": 0,
+    "aa": 0
+   }
+  },
+  {
+   "t": 0.35,
+   "ease": "out",
+   "pose": {
+    "rightUpperArm": [
+     -15,
+     0,
+     -10
+    ],
+    "rightLowerArm": [
+     0,
+     0,
+     -80
+    ],
+    "rightHand": [
+     -90,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     -4,
+     6
+    ]
+   },
+   "hands": {
+    "right": "open"
+   },
+   "face": {
+    "happy": 0.55,
+    "relaxed": 0.35,
+    "aa": 0.35
+   }
+  },
+  {
+   "t": 0.6,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -62
+    ]
+   }
+  },
+  {
+   "t": 0.85,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -102
+    ]
+   }
+  },
+  {
+   "t": 1.1,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -62
+    ]
+   }
+  },
+  {
+   "t": 1.35,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -102
+    ]
+   }
+  },
+  {
+   "t": 1.6,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -62
+    ]
+   }
+  },
+  {
+   "t": 1.85,
+   "pose": {
+    "rightLowerArm": [
+     0,
+     0,
+     -102
+    ]
+   }
+  },
+  {
+   "t": 2.0,
+   "pose": {
+    "rightUpperArm": [
+     -15,
+     0,
+     -10
+    ],
+    "rightLowerArm": [
+     0,
+     0,
+     -80
+    ],
+    "rightHand": [
+     -90,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     -4,
+     6
+    ]
+   },
+   "face": {
+    "happy": 0.55,
+    "relaxed": 0.35,
+    "aa": 0.1
+   }
+  },
+  {
+   "t": 2.6,
+   "pose": {
+    "rightUpperArm": [
+     0,
+     0,
+     72
+    ],
+    "rightLowerArm": [
+     0,
+     10,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     0,
+     0
+    ]
+   },
+   "hands": {
+    "right": "relaxed"
+   },
+   "face": {
+    "happy": 0,
+    "relaxed": 0.3,
+    "aa": 0
+   }
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "name": "Mochi",
+ "about": "Mochi, a cheerful adult catgirl with honey-blonde hair, cat ears and a fluffy tail. Stand-in body: VRoid's AvatarSample_G (free to use and change), recoloured and reshaped (body), with softer physics on her chest and skirt (springs).",
+ "model": "assets/characters/mochi.vrm",
+ "height": 1.63,
+ "body": {
+  "head": 0.92,
+  "legs": 1.05,
+  "bust": 1.18
+ },
+ "springs": {
+  "Bust": {
+   "stiffness": 0.5,
+   "gravity": 0.06,
+   "drag": 0.16,
+   "limit": 24
+  },
+  "Skirt": {
+   "stiffness": 0.45,
+   "gravity": 0.08,
+   "drag": 0.1
+  }
+ },
+ "base": "stand",
+ "colors": {
+  "HAIR": "#ffe7b8",
+  "Onepice": "#9db8ff",
+  "Shoes": "#9db8ff"
+ },
+ "ears": {
+  "color": "#f6dca6",
+  "inner": "#ffb3c6",
+  "size": 1.3,
+  "at": [
+   0.058,
+   0.19,
+   -0.015
+  ],
+  "tilt": 22
+ },
+ "tail": {
+  "color": "#f6dca6",
+  "tip": "#fff6e3",
+  "length": 0.7,
+  "thickness": 0.03
+ },
+ "voice": {
+  "lang": "en-US",
+  "pitch": 1.35,
+  "rate": 1.05
+ }
+}

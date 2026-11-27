@@ -1,0 +1,546 @@
+{
+ "about": "Crouches by the dog and pats its head with a happy smile, then stands up. Walks to the dog first.",
+ "duration": 5.0,
+ "fade": 0.3,
+ "needs": "dog",
+ "near": 0.55,
+ "events": [
+  {
+   "t": 0.8,
+   "dog": "petted",
+   "seconds": 3.5
+  }
+ ],
+ "keys": [
+  {
+   "t": 0,
+   "pose": {
+    "leftUpperLeg": [
+     0,
+     0,
+     2
+    ],
+    "rightUpperLeg": [
+     0,
+     0,
+     -2
+    ],
+    "leftLowerLeg": [
+     0,
+     0,
+     0
+    ],
+    "rightLowerLeg": [
+     0,
+     0,
+     0
+    ],
+    "leftFoot": [
+     0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     0,
+     0,
+     -72
+    ],
+    "leftLowerArm": [
+     0,
+     -10,
+     0
+    ],
+    "rightUpperArm": [
+     0,
+     0,
+     72
+    ],
+    "rightLowerArm": [
+     0,
+     10,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "face": {
+    "happy": 0,
+    "relaxed": 0
+   }
+  },
+  {
+   "t": 0.8,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperLeg": [
+     -115,
+     0,
+     10
+    ],
+    "rightUpperLeg": [
+     -115,
+     0,
+     -10
+    ],
+    "leftLowerLeg": [
+     140,
+     0,
+     0
+    ],
+    "rightLowerLeg": [
+     140,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -25,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -25,
+     0,
+     0
+    ],
+    "spine": [
+     20,
+     0,
+     0
+    ],
+    "chest": [
+     10,
+     0,
+     0
+    ],
+    "head": [
+     12,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     -40,
+     0,
+     -70
+    ],
+    "leftLowerArm": [
+     0,
+     -50,
+     0
+    ],
+    "rightUpperArm": [
+     -52,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     28,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    -0.06
+   ],
+   "hands": {
+    "left": "relaxed",
+    "right": "open"
+   },
+   "face": {
+    "happy": 0.3,
+    "relaxed": 0.6
+   }
+  },
+  {
+   "t": 1.1,
+   "pose": {
+    "rightUpperArm": [
+     -60,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     38,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 1.4,
+   "pose": {
+    "rightUpperArm": [
+     -48,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 1.7,
+   "pose": {
+    "rightUpperArm": [
+     -60,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     38,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 2.0,
+   "pose": {
+    "rightUpperArm": [
+     -48,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 2.3,
+   "pose": {
+    "rightUpperArm": [
+     -60,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     38,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 2.6,
+   "pose": {
+    "rightUpperArm": [
+     -48,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 2.9,
+   "pose": {
+    "rightUpperArm": [
+     -60,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     38,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 3.2,
+   "pose": {
+    "rightUpperArm": [
+     -48,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 3.5,
+   "pose": {
+    "rightUpperArm": [
+     -60,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     38,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 3.8,
+   "pose": {
+    "rightUpperArm": [
+     -48,
+     0,
+     62
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "relaxed": 0.2
+   }
+  },
+  {
+   "t": 4.2,
+   "pose": {
+    "leftUpperLeg": [
+     -115,
+     0,
+     10
+    ],
+    "rightUpperLeg": [
+     -115,
+     0,
+     -10
+    ],
+    "leftLowerLeg": [
+     140,
+     0,
+     0
+    ],
+    "rightLowerLeg": [
+     140,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -25,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -25,
+     0,
+     0
+    ],
+    "spine": [
+     20,
+     0,
+     0
+    ],
+    "chest": [
+     10,
+     0,
+     0
+    ],
+    "head": [
+     12,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     -40,
+     0,
+     -70
+    ],
+    "leftLowerArm": [
+     0,
+     -50,
+     0
+    ],
+    "rightUpperArm": [
+     -40,
+     0,
+     66
+    ],
+    "rightLowerArm": [
+     0,
+     20,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    -0.06
+   ],
+   "face": {
+    "happy": 0.4,
+    "relaxed": 0.5
+   }
+  },
+  {
+   "t": 5.0,
+   "pose": {
+    "leftUpperLeg": [
+     0,
+     0,
+     2
+    ],
+    "rightUpperLeg": [
+     0,
+     0,
+     -2
+    ],
+    "leftLowerLeg": [
+     0,
+     0,
+     0
+    ],
+    "rightLowerLeg": [
+     0,
+     0,
+     0
+    ],
+    "leftFoot": [
+     0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     0,
+     0,
+     0
+    ],
+    "leftUpperArm": [
+     0,
+     0,
+     -72
+    ],
+    "leftLowerArm": [
+     0,
+     -10,
+     0
+    ],
+    "rightUpperArm": [
+     0,
+     0,
+     72
+    ],
+    "rightLowerArm": [
+     0,
+     10,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "hands": {
+    "left": "relaxed",
+    "right": "relaxed"
+   },
+   "face": {
+    "happy": 0,
+    "relaxed": 0.4
+   }
+  }
+ ]
+}

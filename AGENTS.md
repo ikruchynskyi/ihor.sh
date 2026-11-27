@@ -12,5 +12,9 @@ ham lessons `radio/ham/`, electronics `learn/electronics/`, Yomu `yomu/`), read 
 - **Truthful:** every number comes from code you ran or a linked source; never invent data or results.
 - **Done:** the course's checks pass, a cold-learner read is clean, and the commit contains only your files.
 
+## Mochi Studio (3D Mochi, `mochi-studio/`)
+Local tool, not part of the site. Before you make or change clips, rooms or characters there, read
+[`mochi-studio/AGENTS.md`](mochi-studio/AGENTS.md) (the `mochi-studio` skill).
+
 ## Everything else
 See `README.md` for the layout, the deploy steps and the checks (`npm run check`). Keys live only in `.env`.

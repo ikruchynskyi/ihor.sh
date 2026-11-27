@@ -1,0 +1,1789 @@
+{
+ "about": "Cheer dance: fists up by her chin, bouncing on her knees and swaying side to side with a big open smile, then a little hop with both fists in the air (yay!). Made from a reference GIF of a chibi girl's idle dance.",
+ "duration": 4.8,
+ "loop": true,
+ "fade": 0.3,
+ "keys": [
+  {
+   "t": 0.0,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 0.3,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -25.200000000000003,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -30,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -24,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     6,
+     -3
+    ],
+    "spine": [
+     4,
+     0,
+     -4
+    ],
+    "chest": [
+     2,
+     3,
+     -3
+    ],
+    "neck": [
+     0,
+     0,
+     -3
+    ],
+    "head": [
+     5,
+     4,
+     -10
+    ]
+   },
+   "pos": [
+    0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 0.6,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 0.9,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -30,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -24,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -25.200000000000003,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     -6,
+     3
+    ],
+    "spine": [
+     4,
+     0,
+     4
+    ],
+    "chest": [
+     2,
+     -3,
+     3
+    ],
+    "neck": [
+     0,
+     0,
+     3
+    ],
+    "head": [
+     5,
+     -4,
+     10
+    ]
+   },
+   "pos": [
+    -0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 1.2,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 1.5,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -25.200000000000003,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -30,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -24,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     6,
+     -3
+    ],
+    "spine": [
+     4,
+     0,
+     -4
+    ],
+    "chest": [
+     2,
+     3,
+     -3
+    ],
+    "neck": [
+     0,
+     0,
+     -3
+    ],
+    "head": [
+     5,
+     4,
+     -10
+    ]
+   },
+   "pos": [
+    0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 1.8,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 2.1,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -30,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -24,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -25.200000000000003,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     -6,
+     3
+    ],
+    "spine": [
+     4,
+     0,
+     4
+    ],
+    "chest": [
+     2,
+     -3,
+     3
+    ],
+    "neck": [
+     0,
+     0,
+     3
+    ],
+    "head": [
+     5,
+     -4,
+     10
+    ]
+   },
+   "pos": [
+    -0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 2.4,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 2.7,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -25.200000000000003,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -30,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -24,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     6,
+     -3
+    ],
+    "spine": [
+     4,
+     0,
+     -4
+    ],
+    "chest": [
+     2,
+     3,
+     -3
+    ],
+    "neck": [
+     0,
+     0,
+     -3
+    ],
+    "head": [
+     5,
+     4,
+     -10
+    ]
+   },
+   "pos": [
+    0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 3.0,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6.0,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10.0,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0.0,
+    0,
+    -0.0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 3.3,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -128,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     128,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -30,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -24,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -25.200000000000003,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     45.2,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -20.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     -6,
+     3
+    ],
+    "spine": [
+     4,
+     0,
+     4
+    ],
+    "chest": [
+     2,
+     -3,
+     3
+    ],
+    "neck": [
+     0,
+     0,
+     3
+    ],
+    "head": [
+     5,
+     -4,
+     10
+    ]
+   },
+   "pos": [
+    -0.03,
+    0,
+    -0.015
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 3.6,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -8.4,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     14.4,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -6.0,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -8.4,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     14.4,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -6.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "hands": {
+    "left": "fist",
+    "right": "fist"
+   },
+   "lift": 0
+  },
+  {
+   "t": 3.85,
+   "ease": "in",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -10,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     10,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -110,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     110,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -30,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -24,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -30,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     54,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -24,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     4,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     5,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    -0.02
+   ],
+   "face": {
+    "relaxed": 0.6,
+    "aa": 0.2,
+    "happy": 0
+   },
+   "lift": 0
+  },
+  {
+   "t": 4.05,
+   "ease": "out",
+   "pose": {
+    "leftUpperArm": [
+     -25,
+     0,
+     45
+    ],
+    "rightUpperArm": [
+     -25,
+     0,
+     -45
+    ],
+    "leftLowerArm": [
+     0,
+     -35,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     35,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     30,
+     0,
+     0
+    ],
+    "leftFoot": [
+     20,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     30,
+     0,
+     0
+    ],
+    "rightFoot": [
+     20,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -10,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "face": {
+    "happy": 0.75,
+    "aa": 0.8,
+    "relaxed": 0
+   },
+   "lift": 0.12
+  },
+  {
+   "t": 4.3,
+   "ease": "in",
+   "pose": {
+    "leftUpperArm": [
+     -25,
+     0,
+     45
+    ],
+    "rightUpperArm": [
+     -25,
+     0,
+     -45
+    ],
+    "leftLowerArm": [
+     0,
+     -35,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     35,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     0
+    ],
+    "rightHand": [
+     0,
+     0,
+     0
+    ],
+    "leftUpperLeg": [
+     -27.6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     49.6,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -22.0,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -27.6,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     49.6,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -22.0,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     4,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     5,
+     0,
+     0
+    ]
+   },
+   "face": {
+    "happy": 0.75,
+    "aa": 0.6,
+    "relaxed": 0
+   },
+   "lift": 0
+  },
+  {
+   "t": 4.8,
+   "ease": "smooth",
+   "pose": {
+    "leftUpperArm": [
+     -28,
+     -24,
+     -80
+    ],
+    "rightUpperArm": [
+     -28,
+     24,
+     80
+    ],
+    "leftLowerArm": [
+     0,
+     -142,
+     0
+    ],
+    "rightLowerArm": [
+     0,
+     142,
+     0
+    ],
+    "leftHand": [
+     0,
+     0,
+     -10
+    ],
+    "rightHand": [
+     0,
+     0,
+     10
+    ],
+    "leftUpperLeg": [
+     -6,
+     0,
+     4
+    ],
+    "leftLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "leftFoot": [
+     -4,
+     0,
+     0
+    ],
+    "rightUpperLeg": [
+     -6,
+     0,
+     -4
+    ],
+    "rightLowerLeg": [
+     10,
+     0,
+     0
+    ],
+    "rightFoot": [
+     -4,
+     0,
+     0
+    ],
+    "hips": [
+     0,
+     0,
+     0
+    ],
+    "spine": [
+     0,
+     0,
+     0
+    ],
+    "chest": [
+     2,
+     0,
+     0
+    ],
+    "neck": [
+     0,
+     0,
+     0
+    ],
+    "head": [
+     -3,
+     0,
+     0
+    ]
+   },
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "face": {
+    "relaxed": 0.85,
+    "aa": 0.45,
+    "happy": 0
+   },
+   "lift": 0
+  }
+ ]
+}
