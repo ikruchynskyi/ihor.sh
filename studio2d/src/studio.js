@@ -122,19 +122,15 @@ function sheet({ clip, frames = 10, cell = 180 }) {
 	const g = out.getContext("2d");
 	g.fillStyle = "#fff4fa"; g.fillRect(0, 0, out.width, out.height);
 	const keep = { pinned: puppet.pinned, action: puppet.action };
-	puppet.action = null; puppet.pinned = { clip: c, t: 0 };
-	for (let s = 0; s < 30; s++) { puppet.pinned.t = c.loop ? (c.duration * (s - 30)) / 30 + c.duration : 0; puppet.update(1 / 30); }
+	puppet.action = null;
 	const times = Array.from({ length: frames }, (_, i) => (c.duration * i) / (c.loop ? frames : frames - 1));
-	let k = 0;
-	for (let tt = 0; k < frames; tt += 1 / 30) {
-		puppet.pinned.t = Math.min(tt, c.duration);
-		puppet.update(1 / 30);
-		if (tt + 1e-6 < times[k]) continue;
+	for (let k = 0; k < frames; k++) {
+		puppet.pinned = { clip: c, t: times[k] };
+		puppet.update(0); // the puppet runs her motion up to this moment, exactly as it plays
 		renderer.render(scene, camera);
 		const sw = H * (cell / ch), x = (k % 8) * cell, y = Math.floor(k / 8) * ch;
 		g.drawImage(renderer.domElement, (W - sw) / 2, 0, sw, H, x, y, cell, ch);
 		g.fillStyle = "#7a6290"; g.font = "13px system-ui"; g.fillText(`${times[k].toFixed(2)} s`, x + 6, y + 16);
-		k++;
 	}
 	Object.assign(puppet, keep);
 	return out.toDataURL("image/jpeg", 0.88);
@@ -151,7 +147,7 @@ function frame(dt) {
 		$("scrub").value = t / c.duration;
 		$("time").textContent = `${t.toFixed(2)} / ${c.duration.toFixed(2)} s`;
 	} else if (live) $("time").textContent = puppet.action ? `${puppet.action.clip.name}` : "";
-	puppet.update(dt * (live || playing ? speed : 0) || (dt ? 1e-4 : 0));
+	puppet.update(dt * (live || playing ? speed : 0));
 	renderer.render(scene, camera);
 	const head = puppet.bones.neck.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, puppet.height * 0.42, 0)).project(camera);
 	$("bubble").style.left = `${(head.x + 1) * 50}%`;
@@ -198,7 +194,7 @@ window.studio = {
 		const c = puppet.clips[clip];
 		if (!c) throw new Error(`no clip "${clip}"`);
 		puppet.action = null;
-		if (i === 0) { puppet.pinned = { clip: c, t: 0 }; for (let k = 0; k < 30; k++) puppet.update(1 / 30); }
+		if (i === 0) puppet.simAt = null; // start from her exact first pose
 		puppet.pinned = { clip: c, t: Math.min(c.duration, i / fps) };
 		puppet.update(1 / fps);
 		renderer.render(scene, camera);

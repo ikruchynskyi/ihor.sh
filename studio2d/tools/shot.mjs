@@ -93,3 +93,4 @@ for (const step of steps) {
 }
 await browser.close();
 server.close();
+process.exit(0); // the server's file watcher would keep us running

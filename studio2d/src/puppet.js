@@ -25,6 +25,7 @@ const FOLLOW = { hips: [320, 28], spine: [320, 28], chest: [300, 26], neck: [220
 // named poses (poses.json) a clip key can start from: {"use": "fists_chest"} or {"use": ["fists_chest", "knees_bent"]}
 export const POSES = {};
 const LAYERS = { back: 0, legs: 1, body: 2, hair: 3, head: 4, arms: 5, front: 6 };
+const STEP = 1 / 120, SETTLE = 1.5; // physics step (s); how far back a jump in time re-runs (s)
 
 export async function loadImage(url) {
 	const img = new Image();
@@ -96,7 +97,7 @@ export class Puppet {
 	}
 
 	async load(dir, opts = {}) {
-		this.dir = dir;
+		this.dir = dir; this.isBack = !!opts.back;
 		const rig = (this.rig = await (await fetch(`${dir}/rig.json`, { cache: "no-store" })).json());
 		const img = await loadImage(`${dir}/${rig.image ?? "base.png"}`);
 		const W = (this.W = img.width), H = (this.H = img.height);
@@ -127,6 +128,10 @@ export class Puppet {
 		const MAIN = { hips: "spine", chest: "neck" };
 		const childOf = (j) => MAIN[j] ?? Object.keys(TREE).find((c) => TREE[c] === j && J[c]);
 		for (const [j, p] of Object.entries(TREE)) if (J[j]) make(j, J[j], p && J[p] ? p : p ? TREE[p] : null, J[childOf(j)]);
+		// each joint's own part of the picture hangs on a leaf bone ("elbowR~"), so shortening a forearm scales only the
+		// forearm: the hand after it moves in but isn't squashed
+		this.leaf = {};
+		for (const j of Object.keys(TREE)) if (this.bones[j]) { const l = (this.leaf[j] = new THREE.Bone()); l.name = j + "~"; this.bones[j].add(l); this.bones[l.name] = l; }
 		this.springs = (rig.springs ?? []).map((s) => {
 			const parent = s.parent === "head" ? "neck" : s.parent, names = s.points.map((_, i) => `${s.name}${i}`);
 			s.points.forEach((pt, i) => make(names[i], pt, i ? names[i - 1] : parent, s.points[i + 1]));
@@ -144,7 +149,7 @@ export class Puppet {
 		const order = Object.keys(this.bones);
 		this.root.updateMatrixWorld(true); // the skeleton's bind pose is the picture's pose
 		this.skeleton = new THREE.Skeleton(order.map((n) => this.bones[n]));
-		const index = Object.fromEntries(order.map((n, i) => [n, i]));
+		const index = Object.fromEntries(order.map((n, i) => [n, i])), skin = (b) => index[this.leaf[b] ? b + "~" : b];
 		// segments: [the bone that turns it (the joint it starts at), from, to, spring chain, far joint] — a mesh point near a
 		// segment follows that bone (the clavicle follows the chest, the pelvis the hips)
 		const segs = [];
@@ -266,7 +271,7 @@ export class Puppet {
 		for (let v = 0; v < n; v++) {
 			const L = label[v] ?? { seg: ["hips", J.hips, J.spine, null, "spine"], u: 0.5 }, b = L.seg[0], u0 = Math.max(0, L.u0 ?? 0);
 			const blend = b !== "hips" && L.u < u0 + 0.25 ? 0.5 * (1 - Math.max(0, L.u - u0) / 0.25) : 0;
-			skinIndex.push(index[b], index[parentOf(b)], 0, 0);
+			skinIndex.push(skin(b), skin(parentOf(b)), 0, 0);
 			skinWeight.push(1 - blend, blend, 0, 0);
 			vLayer[v] = regionLayer[v] !== null ? LAYERS[regionLayer[v]] : layerOf(L);
 		}
@@ -278,7 +283,7 @@ export class Puppet {
 				if (!inPoly(x, y, poly)) continue;
 				const w = Math.min(1, edge(x, y) / (inner * 0.7)) * (sf.r.soft.amount ?? 1);
 				skinIndex[v * 4] = index[sf.name]; skinWeight[v * 4] = w;
-				skinIndex[v * 4 + 1] = index[label[v]?.seg[0] ?? "hips"]; skinWeight[v * 4 + 1] = 1 - w;
+				skinIndex[v * 4 + 1] = skin(label[v]?.seg[0] ?? "hips"); skinWeight[v * 4 + 1] = 1 - w;
 			}
 		}
 		// triangles, sorted into layers by their vertices' layer
@@ -368,7 +373,7 @@ export class Puppet {
 		c.width = W; c.height = H;
 		const g = c.getContext("2d");
 		g.globalAlpha = 0.35; g.drawImage(this.faces.base.image, 0, 0); g.globalAlpha = 1;
-		const names = Object.keys(this.bones), hue = (b) => (names.indexOf(b) * 137.5) % 360;
+		const names = Object.keys(this.bones).filter((b) => !b.endsWith("~")), hue = (b) => (names.indexOf(b) * 137.5) % 360;
 		px.forEach(([x, y], v) => { const b = label[v]?.seg[0] ?? "none"; g.fillStyle = b === "none" ? "#000" : `hsl(${hue(b)} 80% 50%)`; g.fillRect(x - 1 - vLayer[v] / 3, y - 1 - vLayer[v] / 3, 2 + vLayer[v] / 1.5, 2 + vLayer[v] / 1.5); });
 		g.font = "13px sans-serif";
 		names.forEach((b, i) => { g.fillStyle = `hsl(${hue(b)} 80% 40%)`; g.fillText(b, 6 + (i % 4) * 110, 16 + Math.floor(i / 4) * 16); });
@@ -394,30 +399,68 @@ export class Puppet {
 	stop() { if (this.action) this.action.ending = true; }
 	setFace(name, seconds = 0) { this.face = this.faces[name] ? name : "base"; this.faceUntil = seconds ? this.time + seconds : 0; }
 
+	// Time passes. Motion is worked out in fixed steps (STEP), so it's the same at any frame rate: on a screen, on a sheet,
+	// in a video. A clip held at a moment (`pinned`: the scrubber, sheets, videos) is followed forward step by step; a jump
+	// (scrubbing back, a new clip) re-runs the moments before it, so what you see paused is exactly what plays.
 	update(dt) {
 		if (!this.meshes) return;
-		const pose = this.sample(dt);
-		this.apply(pose, dt, (this.pinned ?? this.action ?? this.base)?.clip.ground !== false);
-		if (this.back) { // her back view takes the same pose; she shows it while turned round (turn < 0)
-			this.back.time = this.time;
-			this.back.apply(pose, dt, (this.pinned ?? this.action ?? this.base)?.clip.ground !== false, true);
-			const behind = (pose.get("turn") ?? 1) < 0;
+		this.time += dt;
+		const pin = this.pinned, last = this.simAt;
+		if (pin) {
+			const c = pin.clip, at = (t) => (c.loop ? t % c.duration : t);
+			let span = last?.clip === c ? pin.t - last.t : -1;
+			if (c.loop && last?.clip === c && span < 0) span += c.duration; // round the loop
+			if (span < 0 || span > 0.25) this.seek(c, pin.t);
+			else for (let n = Math.ceil(span / STEP - 1e-9), i = 1; i <= n; i++) this.step(this.poseAt(c, at(last.t + (span * i) / n)), span / n);
+			this.simAt = { clip: c, t: pin.t };
+		} else {
+			this.simAt = null;
+			for (let n = Math.ceil(dt / STEP - 1e-9), i = 0; i < n; i++) this.step(this.sample(dt / n), dt / n);
+		}
+		if (!this.pose) return;
+		this.draw(this.pose, dt);
+		if (this.back) { // she shows her back view while turned round (turn < 0)
+			const behind = (this.pose.get("turn") ?? 1) < 0;
 			this.group.visible = !behind; this.back.group.visible = behind;
+			this.back.time = this.time;
+			this.back.draw(this.pose, 0);
 		}
 	}
 
-	// The pose now: the base clip, then a clip held at one moment (sheets, the scrubber) or the action faded over it.
-	sample(dt) {
-		this.time += dt;
+	// Re-run the moments before T (SETTLE seconds: springs have settled by then) from her exact pose.
+	seek(c, T) {
+		for (const p of [this, this.back]) if (p) { p.follow = {}; for (const s of p.springs) s.pts = null; for (const sf of p.softs) sf.p = null; }
+		const start = c.loop ? T - SETTLE : Math.max(0, T - SETTLE), at = (t) => this.poseAt(c, c.loop ? ((t % c.duration) + c.duration) % c.duration : t);
+		this.step(at(start), 0);
+		for (let n = Math.ceil((T - start) / STEP - 1e-9), i = 1; i <= n; i++) this.step(at(start + ((T - start) * i) / n), (T - start) / n);
+	}
+
+	// one step of h seconds (0: exactly the pose, nothing swinging)
+	step(pose, h) {
+		const ground = (this.pinned ?? this.action ?? this.base)?.clip.ground !== false;
+		this.apply(pose, h, ground);
+		if (this.back) this.back.apply(pose, h, ground, true);
+		this.pose = pose;
+	}
+
+	// A held clip at time t, over the idle (at the same time, so it's the same every time).
+	poseAt(c, t) {
+		const pose = new Map();
+		if (this.base) for (const [k, v] of sampleClip(this.base.clip, t % this.base.clip.duration)) pose.set(k, v);
+		for (const [k, v] of sampleClip(c, t)) pose.set(k, v);
+		return pose;
+	}
+
+	// The pose now, live: the base clip with the action faded over it.
+	sample(h) {
 		const pose = new Map(), fade = (c) => Math.max(0.05, c.fade ?? 0.25);
-		if (this.base) { this.base.t = (this.base.t + dt) % this.base.clip.duration; for (const [k, v] of sampleClip(this.base.clip, this.base.t)) pose.set(k, v); }
-		const a = this.pinned ? null : this.action;
-		if (this.pinned) for (const [k, v] of sampleClip(this.pinned.clip, this.pinned.t)) pose.set(k, v);
+		if (this.base) { this.base.t = (this.base.t + h) % this.base.clip.duration; for (const [k, v] of sampleClip(this.base.clip, this.base.t)) pose.set(k, v); }
+		const a = this.action;
 		if (a) {
-			a.t += dt;
+			a.t += h;
 			const c = a.clip, end = c.loop ? (a.times ? a.times * c.duration : Infinity) : c.duration;
 			if (a.t >= end - (c.loop ? 0 : fade(c) * 0.5)) a.ending = true;
-			a.w = a.ending ? a.w - dt / fade(c) : Math.min(1, a.w + dt / fade(c));
+			a.w = a.ending ? a.w - h / fade(c) : Math.min(1, a.w + h / fade(c));
 			const lt = c.loop ? a.t % c.duration : Math.min(a.t, c.duration);
 			for (const e of c.events) if (e.t <= lt && e.t > a.fired) this.onEvent?.(e);
 			a.fired = lt < a.fired ? -1 : lt;
@@ -428,10 +471,16 @@ export class Puppet {
 		return pose;
 	}
 
-	// Put this view of her in a pose. The back view is the front mirrored (her left is on the picture's left), so every
-	// turn goes the other way round on screen.
-	apply(pose, dt, ground = true, backView = false) {
-		const flip = backView ? -1 : 1;
+	// A pose name's angle as drawn now (after follow-through), in clip units.
+	drawnPose(name) {
+		const [joint, side] = POSE[name], b = this.bones[joint];
+		return (b.rotation.z - this.restRot[joint]) / D / ((this.isBack ? -1 : 1) * (side || -1)) + (this.offsets[name] ?? 0);
+	}
+
+	// Put this view of her in a pose and move her springs h seconds on. The back view is the front mirrored (her left is
+	// on the picture's left), so every turn goes the other way round on screen.
+	apply(pose, h, ground = true, backView = false) {
+		const flip = backView ? -1 : 1, width = {};
 		for (const [k, b] of Object.entries(this.bones)) { b.rotation.z = this.restRot[k]; b.scale.set(1, 1, 1); b.position.copy(this.restLocal[k]); }
 		for (const [k, v] of pose) {
 			if (!k.startsWith("pose:")) continue;
@@ -440,13 +489,22 @@ export class Puppet {
 			if (!b) continue;
 			const a = v[0] - (this.offsets[k.slice(5)] ?? 0); // from the standard stance, not from this picture's pose
 			b.rotation.z = this.restRot[joint] + flip * (side === 0 ? -a : side * a) * D; // centre bones: + leans toward her left (screen right from the front)
-			if (v[1] !== 1) b.scale.x = v[1]; // along the bone: a forearm reaching toward us, a bent knee
-			// across the bone: -1 shows its other side. A forearm folded back over the upper arm (past 110°) turns over by
-			// itself, so a fist at her chest shows the sleeve the right way up instead of an upside-down cuff
-			const w = v[2] || (joint.startsWith("elbow") && Math.abs(v[0]) > 110 ? -1 : 1);
-			if (w !== 1) b.scale.y = w;
+			if (v[1] !== 1) { // along the bone (a forearm reaching toward us, a bent knee): its picture shortens, what hangs after it moves in
+				this.leaf[joint].scale.x = v[1];
+				for (const ch of b.children) if (ch.isBone && ch !== this.leaf[joint]) ch.position.x = this.restLocal[ch.name].x * v[1];
+			}
+			width[joint] = v[2];
 		}
-		this.followThrough(dt);
+		this.followThrough(h);
+		// across the bone: -1 shows its other side. A forearm folded back over the upper arm turns over by itself as it's
+		// drawn past ~110° (it narrows, then shows its other side), so a fist at her chest shows the sleeve the right way up
+		for (const [joint, w] of Object.entries(width)) if (w) this.bones[joint].scale.y = w;
+		for (const s of ["L", "R"]) {
+			const b = this.bones["elbow" + s];
+			if (!b || width["elbow" + s]) continue;
+			const u = Math.min(1, Math.max(0, (Math.abs(this.drawnPose("foreArm" + s)) - 95) / 30)), w = Math.cos(Math.PI * u * u * (3 - 2 * u));
+			b.scale.y = Math.sign(w || 1) * Math.max(0.15, Math.abs(w));
+		}
 		// the whole of her: feet on the ground, then position, hop, squash and stretch, turning
 		const [px = 0, py = 0] = pose.get("pos") ?? [], lift = pose.get("lift") ?? 0, [sx = 1, sy = 1] = pose.get("squash") ?? [], turn = pose.get("turn") ?? 1;
 		this.group.position.set(0, 0, 0);
@@ -456,10 +514,14 @@ export class Puppet {
 		hips.position.x += px * this.height; hips.position.y += (py + lift) * this.height;
 		// turning round (turn 1 → -1): she narrows to a quarter, then shows her back (or, with no back view, her front
 		// mirrored), the way anime cuts a spin
-		const width = Math.max(0.22, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
-		this.group.scale.set(sx * width * mirror * (this.facing ?? 1), sy, 1);
-		this.springsStep(dt);
-		this.softStep(dt);
+		const wide = Math.max(0.22, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
+		this.group.scale.set(sx * wide * mirror * (this.facing ?? 1), sy, 1);
+		this.springsStep(h);
+		this.softStep(h);
+	}
+
+	// What's drawn this frame: the face, and which seams show.
+	draw(pose, dt) {
 		// face: the clip's, else a mood set by a command; blinking and talking on top
 		let face = pose.get("face") ?? (this.faceUntil === 0 || this.time < this.faceUntil ? this.face : "base");
 		if (this.talk > 0) { this.talk -= dt; if (this.faces.talk && (face === "base" || face === "talk") && this.time % 0.24 < 0.12) face = "talk"; }
@@ -473,34 +535,33 @@ export class Puppet {
 
 	// Follow-through: each posed bone chases its pose like a soft spring (a little lag, a little overshoot, then it
 	// settles), so arms and head flow from pose to pose instead of snapping. Hands lag most, the body least.
-	followThrough(dt) {
+	followThrough(h) {
 		this.follow ??= {};
 		for (const [joint] of Object.values(POSE)) {
 			const b = this.bones[joint];
 			if (!b) continue;
 			const [k, c] = FOLLOW[joint.replace(/[LR]$/, "")] ?? [300, 26], target = b.rotation.z, st = (this.follow[joint] ??= { a: target, w: 0 });
-			if (dt > 0.002 && dt < 0.25) { st.w += (k * (target - st.a) - c * st.w) * dt; st.a += st.w * dt; }
-			else { st.a = target; st.w = 0; } // paused or scrubbing: exactly the pose
+			if (h > 0) { st.w += (k * (target - st.a) - c * st.w) * h; st.a += st.w * h; }
+			else { st.a = target; st.w = 0; } // exactly the pose
 			b.rotation.z = st.a;
 		}
 	}
 
-	// Soft regions: each soft bone is carried by its parent; it lags behind the parent's acceleration and springs back.
-	softStep(dt) {
+	// Soft regions: each soft bone is carried by its parent; it lags behind as the parent moves and springs back.
+	softStep(h) {
 		if (!this.softs.length) return;
 		this.group.updateMatrixWorld(true);
 		const tmp = new THREE.Vector3();
 		for (const sf of this.softs) {
-			const b = this.bones[sf.name], p = this.group.worldToLocal(b.getWorldPosition(tmp.set(0, 0, 0))).clone();
-			if (!sf.prev || !(dt > 0.002 && dt < 0.25)) { sf.prev = p; sf.pv = new THREE.Vector3(); sf.o.set(0, 0, 0); sf.ov.set(0, 0, 0); continue; }
-			const v = p.clone().sub(sf.prev).divideScalar(dt), acc = v.clone().sub(sf.pv).divideScalar(dt);
-			sf.prev = p; sf.pv = v;
-			const { stiffness: k = 90, damping: c = 7, max = 0.035 } = sf.r.soft, cap = max * this.height;
-			sf.ov.addScaledVector(sf.o, -k * dt).addScaledVector(sf.ov, -c * dt).addScaledVector(acc, -dt);
-			sf.o.addScaledVector(sf.ov, dt);
-			if (sf.o.length() > cap) sf.o.setLength(cap);
-			const want = this.group.localToWorld(p.clone().add(sf.o));
-			b.position.copy(b.parent.worldToLocal(want));
+			const b = this.bones[sf.name], at = this.group.worldToLocal(b.getWorldPosition(tmp.set(0, 0, 0))).clone();
+			if (!sf.p || !(h > 0)) { sf.p = at.clone(); sf.v = new THREE.Vector3(); sf.at = at; continue; }
+			const { stiffness: k = 90, damping: c = 7, max = 0.035 } = sf.r.soft, carried = at.clone().sub(sf.at).divideScalar(h);
+			sf.at = at;
+			sf.v.addScaledVector(at.clone().sub(sf.p), k * h).addScaledVector(sf.v.clone().sub(carried), -c * h);
+			sf.p.addScaledVector(sf.v, h);
+			const o = sf.p.clone().sub(at), cap = max * this.height;
+			if (o.length() > cap) sf.p.copy(at).add(o.setLength(cap));
+			b.position.copy(b.parent.worldToLocal(this.group.localToWorld(sf.p.clone())));
 		}
 	}
 
@@ -528,25 +589,29 @@ export class Puppet {
 		}
 	}
 
-	// Spring chains (hair, tail): their points lag behind where the pose puts them and bounce back (Verlet with a pull
-	// to the posed shape, gravity, and fixed lengths); the bones are turned to point along them.
-	springsStep(dt) {
+	// Spring chains (hair, tail): their points lag behind where the pose puts them and bounce back (a pull to the posed
+	// shape, damping, gravity, fixed lengths); the bones are turned to point along them. Stiffness and damping are what
+	// the chains were tuned with at 60 fps, now the same at any frame rate.
+	springsStep(h) {
 		if (!this.springs.length) return;
 		this.group.updateMatrixWorld(true);
-		const v = new THREE.Vector3();
+		const v = new THREE.Vector3(), local = (n) => this.group.worldToLocal(this.bones[n].getWorldPosition(v.clone())).clone();
 		for (const s of this.springs) {
-			const target = s.names.map((n) => this.group.worldToLocal(this.bones[n].getWorldPosition(v.clone())).clone());
-			if (!s.pts || !dt) { s.pts = target.map((p) => ({ p: p.clone(), q: p.clone() })); continue; }
-			const k = s.stiffness ?? 40, damp = Math.exp(-(s.damping ?? 6) * dt), g = (s.gravity ?? 0.2) * this.height * 4;
+			const target = s.names.map(local);
+			if (!s.pts || !(h > 0)) { s.pts = target.map((p) => ({ p: p.clone(), v: new THREE.Vector3(), q: p.clone() })); continue; }
+			const K = (s.stiffness ?? 40) * 30, damp = Math.exp(-(s.damping ?? 6) * h), g = (s.gravity ?? 0.2) * this.height * 4;
 			for (let i = 1; i < target.length; i++) {
-				const pt = s.pts[i], vel = pt.p.clone().sub(pt.q).multiplyScalar(damp);
+				const pt = s.pts[i];
 				pt.q.copy(pt.p);
-				pt.p.add(vel).addScaledVector(target[i].clone().sub(pt.p), Math.min(1, k * dt * dt * 30)).add(new THREE.Vector3(0, -g * dt * dt, 0));
+				pt.v.multiplyScalar(damp).addScaledVector(target[i].clone().sub(pt.p), K * h);
+				pt.v.y -= g * h;
+				pt.p.addScaledVector(pt.v, h);
 			}
-			s.pts[0].p.copy(target[0]); s.pts[0].q.copy(target[0]);
-			for (let i = 1; i < target.length; i++) { // keep the lengths
-				const L = target[i].distanceTo(target[i - 1]), d = s.pts[i].p.clone().sub(s.pts[i - 1].p);
-				s.pts[i].p.copy(s.pts[i - 1].p).addScaledVector(d.normalize(), L);
+			s.pts[0].p.copy(target[0]);
+			for (let i = 1; i < target.length; i++) { // keep the lengths; what that moved is velocity too
+				const pt = s.pts[i], L = target[i].distanceTo(target[i - 1]), d = pt.p.clone().sub(s.pts[i - 1].p);
+				pt.p.copy(s.pts[i - 1].p).addScaledVector(d.normalize(), L);
+				pt.v.copy(pt.p).sub(pt.q).divideScalar(h);
 			}
 			for (let i = 0; i + 1 < target.length; i++) { // turn each bone by the angle between where its child should be and where it is
 				const want = Math.atan2(target[i + 1].y - target[i].y, target[i + 1].x - target[i].x), got = Math.atan2(s.pts[i + 1].p.y - s.pts[i].p.y, s.pts[i + 1].p.x - s.pts[i].p.x);
@@ -554,7 +619,7 @@ export class Puppet {
 				const lim = (s.limit ?? 60) * D;
 				this.bones[s.names[i]].rotation.z += Math.max(-lim, Math.min(lim, d));
 				this.group.updateMatrixWorld(true);
-				for (let j = i + 1; j < target.length; j++) target[j] = this.group.worldToLocal(this.bones[s.names[j]].getWorldPosition(v.clone())).clone();
+				for (let j = i + 1; j < target.length; j++) target[j] = local(s.names[j]);
 			}
 		}
 	}
