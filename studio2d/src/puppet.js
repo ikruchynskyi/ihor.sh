@@ -239,7 +239,7 @@ export class Puppet {
 				}
 				let best = null;
 				for (const sg of segs.filter((q) => q[3] === reg.spring)) { const [d, u] = segDist(x, y, sg[1], sg[2]); if (!best || d < best.d) best = { d, u, seg: sg }; }
-				if (best) { label[v] = best; continue; }
+				if (best) { label[v] = best; dist[v] = 0; pushH(0, v); continue; } // a tail or a lock of hair also takes the fur it touches (below)
 				fixed[v] = 0;
 			}
 			for (const sg of segs) {
@@ -282,8 +282,16 @@ export class Puppet {
 				const [x1, y1] = px[w];
 				let crosses = false;
 				for (const f of [0.2, 0.4, 0.6, 0.8, 1]) crosses ||= wall(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f);
+				if (crosses && label[v].seg[3]) continue; // a tail or lock of hair grows only through its own fur, never across an outline
 				const c2 = c0 + Math.hypot(di, dj) * (crosses ? 40 : 1);
-				if (c2 < dist[w]) { dist[w] = c2; const sg = label[v].seg, [d, u] = segDist(x1, y1, sg[1], sg[2]); label[w] = { d, u, seg: sg }; pushH(c2, w); }
+				if (c2 < dist[w]) {
+					dist[w] = c2;
+					let sg = label[v].seg;
+					if (sg[3]) { sg = segs.filter((q) => q[3] === sg[3]).reduce((a, q) => (segDist(x1, y1, q[1], q[2])[0] < segDist(x1, y1, a[1], a[2])[0] ? q : a)); regionLayer[w] = regionLayer[v]; } // fur joins its tail, nearest link
+					else regionLayer[w] = null;
+					const [d, u] = segDist(x1, y1, sg[1], sg[2]);
+					label[w] = { d, u, seg: sg }; pushH(c2, w);
+				}
 			}
 		}
 		// what the body reaches only across an outline, near a limb, is the limb's (spread fingers, the tip of a shoe)
@@ -418,24 +426,24 @@ export class Puppet {
 			for (let k = 0; k < t.length; k += 3) { const P = [v(t[k]), v(t[k + 1]), v(t[k + 2])]; rest.push(Math.max(1, area(P))); edges.push(longest(P)); }
 			return { mesh: m, all: t, rest, edges, area, longest, shown: new Uint32Array(t.length) };
 		}).filter(Boolean);
-		// The underlay: what was behind her arms and legs was never drawn, so under everything lies her trunk again, where
-		// the parts a limb covered (inside the trunk's outline closed over the limb) take the nearest plain trunk colour
-		// and move with the trunk. A limb moving away, or a seam hiding, shows coat there instead of a hole.
-		{
-			const r = Math.max(1, Math.round((rig.thickness?.upperArm ?? 0.032 * tall) / step)), disk = [];
+		// Underlays: what was behind her arms and legs was never drawn. Under her trunk lies her trunk again, where the parts
+		// a limb covered (inside the trunk's outline closed over the limb) take the nearest plain trunk colour and move
+		// with the trunk; a tail behind her legs gets the same. A limb moving away, or a seam hiding, shows coat or fur there
+		// instead of a hole.
+		const grid = (f) => { const g = new Uint8Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) g[j * nx + i] = f(i, j); return g; };
+		const cell = (g, i, j) => i >= 0 && j >= 0 && i < nx && j < ny && g[j * nx + i];
+		const alpha = (v) => A[(Math.min(H - 1, Math.round(px[v][1])) * W + Math.min(W - 1, Math.round(px[v][0]))) * 4 + 3];
+		const underlay = (isPart, covers, radius, order) => {
+			const r = Math.max(1, Math.round(radius / step)), disk = [];
 			for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if (di * di + dj * dj <= r * r) disk.push([di, dj]);
-			const isTrunk = (v) => TRUNK.includes(label[v]?.seg[0]);
-			const grid = (f) => { const g = new Uint8Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) g[j * nx + i] = f(i, j); return g; };
-			const cell = (g, i, j) => i >= 0 && j >= 0 && i < nx && j < ny && g[j * nx + i];
-			const trunk = grid((i, j) => vid[j * nx + i] >= 0 && isTrunk(vid[j * nx + i]));
-			const grown = grid((i, j) => disk.some(([di, dj]) => cell(trunk, i + di, j + dj)));
+			const part = grid((i, j) => vid[j * nx + i] >= 0 && isPart(vid[j * nx + i]));
+			const grown = grid((i, j) => disk.some(([di, dj]) => cell(part, i + di, j + dj)));
 			const closed = grid((i, j) => disk.every(([di, dj]) => cell(grown, i + di, j + dj)));
-			const alpha = (v) => A[(Math.min(H - 1, Math.round(px[v][1])) * W + Math.min(W - 1, Math.round(px[v][0]))) * 4 + 3];
 			const plain = [];
-			for (let v = 0; v < n; v++) if (isTrunk(v) && alpha(v) > 200 && !wall(...px[v])) plain.push(v);
+			for (let v = 0; v < n; v++) if (isPart(v) && alpha(v) > 200 && !wall(...px[v])) plain.push(v);
 			const from = new Map();
 			for (let v = 0; v < n; v++) {
-				if (isTrunk(v) || !LIMB.test(label[v]?.seg[0] ?? "") || !closed[ij[v][1] * nx + ij[v][0]]) continue;
+				if (isPart(v) || !covers(label[v]?.seg[0] ?? "") || !closed[ij[v][1] * nx + ij[v][0]]) continue;
 				let best = -1, bd = Infinity;
 				for (const w of plain) { const d = (px[w][0] - px[v][0]) ** 2 + (px[w][1] - px[v][1]) ** 2; if (d < bd) { bd = d; best = w; } }
 				if (best >= 0) from.set(v, best);
@@ -443,24 +451,28 @@ export class Puppet {
 			const under = [];
 			for (let j = 0; j + 1 < ny; j++) for (let i = 0; i + 1 < nx; i++) {
 				const a = at(i, j), b = at(i + 1, j), c2 = at(i, j + 1), d = at(i + 1, j + 1);
-				for (const t of [[a, b, c2], [b, d, c2]]) if (t.every((x) => x >= 0 && (isTrunk(x) || from.has(x))) && t.some((x) => from.has(x))) under.push(...t);
+				for (const t of [[a, b, c2], [b, d, c2]]) if (t.every((x) => x >= 0 && (isPart(x) || from.has(x))) && t.some((x) => from.has(x))) under.push(...t);
 			}
-			if (under.length) {
-				const uv2 = [...uv], si = [...skinIndex], sw = [...skinWeight];
-				for (const [v, w] of from) { uv2.splice(v * 2, 2, uv[w * 2], uv[w * 2 + 1]); si.splice(v * 4, 4, ...skinIndex.slice(w * 4, w * 4 + 4)); sw.splice(v * 4, 4, ...skinWeight.slice(w * 4, w * 4 + 4)); }
-				const g2 = geo.clone();
-				g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv2, 2));
-				g2.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
-				g2.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
-				g2.setIndex(under);
-				const m = new THREE.SkinnedMesh(g2, this.material);
-				m.renderOrder = 0.5; m.frustumCulled = false; // over a tail behind her, under her legs
-				this.group.add(m);
-				m.updateMatrixWorld(true);
-				m.bind(this.skeleton, m.matrixWorld);
-				this.meshes.push(m);
-				this.debug.under = from;
-			}
+			if (!under.length) return;
+			const uv2 = [...uv], si = [...skinIndex], sw = [...skinWeight];
+			for (const [v, w] of from) { uv2.splice(v * 2, 2, uv[w * 2], uv[w * 2 + 1]); si.splice(v * 4, 4, ...skinIndex.slice(w * 4, w * 4 + 4)); sw.splice(v * 4, 4, ...skinWeight.slice(w * 4, w * 4 + 4)); }
+			const g2 = geo.clone();
+			g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv2, 2));
+			g2.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
+			g2.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
+			g2.setIndex(under);
+			const m = new THREE.SkinnedMesh(g2, this.material);
+			m.renderOrder = order; m.frustumCulled = false;
+			this.group.add(m);
+			m.updateMatrixWorld(true);
+			m.bind(this.skeleton, m.matrixWorld);
+			this.meshes.push(m);
+		};
+		underlay((v) => TRUNK.includes(label[v]?.seg[0]), (b) => LIMB.test(b), rig.thickness?.upperArm ?? 0.032 * tall, 0.5); // over a tail behind her, under her legs
+		for (const s of this.springs) { // a tail behind her legs, under them
+			const mine = (v) => label[v]?.seg[3] === s.name;
+			if (!label.some((L, v) => mine(v) && regionLayer[v] === "back")) continue;
+			underlay(mine, (b) => /^(hip|knee|ankle)[LR]$/.test(b), (rig.thickness?.thigh ?? 0.04 * tall) * 1.25, -0.5);
 		}
 		this.restLocal = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.position.clone()]));
 		this.restRot = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.rotation.z]));
