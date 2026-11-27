@@ -267,6 +267,7 @@ export class Puppet {
 			for (const L of limbs) { const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]); if (u >= L.u0 && u <= 1.15 && d <= L.r && (!best || d / L.r < best.k)) best = { k: d / L.r, d, u: Math.max(0, u), u0: L.u0, seg: L.sg }; }
 			if (best) { label[v] = best; fixed[v] = 2; } // keeps its bone, and doesn't spread into the body
 		}
+		const inLimb = px.map(([x, y]) => limbs.some((L) => { const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]); return u >= 0 && u <= 1.15 && d <= L.r; }));
 		const at = (i, j) => (i >= 0 && j >= 0 && i < nx && j < ny ? vid[j * nx + i] : -1);
 		const ij = new Array(n);
 		for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (vid[j * nx + i] >= 0) ij[vid[j * nx + i]] = [i, j];
@@ -282,7 +283,7 @@ export class Puppet {
 				const [x1, y1] = px[w];
 				let crosses = false;
 				for (const f of [0.2, 0.4, 0.6, 0.8, 1]) crosses ||= wall(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f);
-				if (crosses && label[v].seg[3]) continue; // a tail or lock of hair grows only through its own fur, never across an outline
+				if (label[v].seg[3] && (crosses || inLimb[w])) continue; // a tail or lock of hair grows only through its own fur: not across an outline, not into an arm or a leg
 				const c2 = c0 + Math.hypot(di, dj) * (crosses ? 40 : 1);
 				if (c2 < dist[w]) {
 					dist[w] = c2;
@@ -294,12 +295,16 @@ export class Puppet {
 				}
 			}
 		}
-		// what the body reaches only across an outline, near a limb, is the limb's (spread fingers, the tip of a shoe)
+		// what the body reaches only across an outline, near a limb, is the limb's (spread fingers, the tip of a shoe, the
+		// underside of a puffy sleeve at the armpit)
 		for (let v = 0; v < n; v++) {
 			if (fixed[v] || dist[v] < 40) continue;
 			const [x, y] = px[v];
 			let best = null;
-			for (const L of limbs) { const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]); if (u >= L.u0 && u <= 1.7 && d <= L.r * 2.2 && (!best || d / L.r < best.k)) best = { k: d / L.r, d, u: Math.max(0, u), u0: L.u0, seg: L.sg }; }
+			for (const L of limbs) {
+				const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]), u0 = /^shoulder/.test(L.sg[0]) ? 0 : L.u0;
+				if (u >= u0 && u <= 1.7 && d <= L.r * 2.2 && (!best || d / L.r < best.k)) best = { k: d / L.r, d, u: Math.max(0, u), u0, seg: L.sg };
+			}
 			if (best) label[v] = best;
 		}
 		// the soft see-through edge around her takes the bone of its most solid neighbour (twice: two points deep), so an
@@ -312,7 +317,14 @@ export class Puppet {
 			for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const w = at(i + di, j + dj); if (w >= 0 && label[w] && (best < 0 || alphaV[w] > alphaV[best])) best = w; }
 			if (best >= 0 && alphaV[best] > alphaV[v]) { label[v] = label[best]; alphaV[v] = alphaV[best] - 1; }
 		}
-		// a point no bone reached (a dot walled in by outlines) takes its neighbours' bone
+		// a point no bone reached is the limb it sits inside if any (the top of a thigh under a skirt), else it takes its
+		// neighbours' bone (a dot walled in by outlines)
+		for (let v = 0; v < n; v++) {
+			if (label[v]) continue;
+			let best = null;
+			for (const L of limbs) { const [d, u] = segDistRaw(...px[v], L.sg[1], L.sg[2]); if (u >= 0 && u <= 1.15 && d <= L.r * 1.2 && (!best || d / L.r < best.k)) best = { k: d / L.r, d, u, u0: 0, seg: L.sg }; }
+			if (best) label[v] = best;
+		}
 		for (let grew = true; grew;) {
 			grew = false;
 			for (let v = 0; v < n; v++) if (!label[v]) {
@@ -426,10 +438,10 @@ export class Puppet {
 			for (let k = 0; k < t.length; k += 3) { const P = [v(t[k]), v(t[k + 1]), v(t[k + 2])]; rest.push(Math.max(1, area(P))); edges.push(longest(P)); }
 			return { mesh: m, all: t, rest, edges, area, longest, shown: new Uint32Array(t.length) };
 		}).filter(Boolean);
-		// Underlays: what was behind her arms and legs was never drawn. Under her trunk lies her trunk again, where the parts
-		// a limb covered (inside the trunk's outline closed over the limb) take the nearest plain trunk colour and move
-		// with the trunk; a tail behind her legs gets the same. A limb moving away, or a seam hiding, shows coat or fur there
-		// instead of a hole.
+		// The underlay: what was behind her arms and legs was never drawn, so under her trunk lies her trunk again, where
+		// the parts a limb covered (inside the trunk's outline closed over the limb) take the nearest plain trunk colour and
+		// move with the trunk. A limb moving away, or a seam hiding, shows coat there instead of a hole. (A tail filled the
+		// same way behind the legs looked like grey smears; a gap between the legs reads better.)
 		const grid = (f) => { const g = new Uint8Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) g[j * nx + i] = f(i, j); return g; };
 		const cell = (g, i, j) => i >= 0 && j >= 0 && i < nx && j < ny && g[j * nx + i];
 		const alpha = (v) => A[(Math.min(H - 1, Math.round(px[v][1])) * W + Math.min(W - 1, Math.round(px[v][0]))) * 4 + 3];
@@ -469,11 +481,6 @@ export class Puppet {
 			this.meshes.push(m);
 		};
 		underlay((v) => TRUNK.includes(label[v]?.seg[0]), (b) => LIMB.test(b), rig.thickness?.upperArm ?? 0.032 * tall, 0.5); // over a tail behind her, under her legs
-		for (const s of this.springs) { // a tail behind her legs, under them
-			const mine = (v) => label[v]?.seg[3] === s.name;
-			if (!label.some((L, v) => mine(v) && regionLayer[v] === "back")) continue;
-			underlay(mine, (b) => /^(hip|knee|ankle)[LR]$/.test(b), (rig.thickness?.thigh ?? 0.04 * tall) * 1.25, -0.5);
-		}
 		this.restLocal = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.position.clone()]));
 		this.restRot = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.rotation.z]));
 		// Poses are angles from one standard stance, the same on every character: upper arms 45° out from the body, forearms
