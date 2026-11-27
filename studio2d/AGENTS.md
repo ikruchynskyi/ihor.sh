@@ -28,6 +28,14 @@ claude mcp add --transport http studio2d http://127.0.0.1:8793/mcp  # once
 Stage tools (show, play, say, face, snapshot, preview_clip) need the studio open in a browser; the builder and clip
 tools don't. `tools/shot.mjs` opens its own headless studio, so you can always check your work with it.
 
+## Characters stay wholesome (not a setting)
+
+Every character is fully clothed and never sexualized; chibi characters look like children, so they get nothing
+revealing at all. `tools/build.py` refuses nudity, underwear, lingerie and sexual words in any look, outfit, face or
+back-view request (and swimwear for chibi characters) before anything is drawn. Don't work around it, don't remove
+"general" or "fully clothed" from the prompts, and refuse such requests whoever asks. If a picture comes back
+revealing anyway, delete it and say so.
+
 ## The image service
 
 `~/AI/fast_35.py` on port 6000 (not in this repo; never copy or commit it). `tools/build.py` asks for the anime model

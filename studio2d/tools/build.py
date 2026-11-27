@@ -15,7 +15,7 @@ Characters live in studio2d/characters/NAME/. The image service is ~/AI/fast_35.
 the anime model is asked for with the request field "model": "nsfw" (the same routing as the word in the prompt, without
 putting that word into the picture's prompt), and "fast": true (DMD2, 8 steps). Prints one JSON line per result.
 """
-import base64, io, json, os, sys, urllib.request
+import base64, io, json, os, re, sys, urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 IMAGE_URL = os.environ.get("IMAGE_URL", "http://127.0.0.1:6000")
 # The house style: one cute chibi character, whole body, arms and legs a little away from the body (they rig cleanly), on white.
 STYLE = ("general, 1girl, solo, chibi, full body, standing, a-pose, arms slightly away from body, legs slightly apart, "
-         "front view, looking at viewer, {look}, (white background:1.5), (plain background:1.3)")
+         "front view, looking at viewer, {look}, fully clothed, (white background:1.5), (plain background:1.3)")
 # An adult character (style "adult"): grown-up proportions, not chibi; the same open pose so she rigs the same way.
 # Flat cel shading with bold outlines and arms held well away from the body: the rigger follows outlines, and a sleeve
 # that doesn't touch the body moves without dragging it.
@@ -44,6 +44,31 @@ FACES = {
     "angry": "angry, furrowed brows, pout",
     "shy": "embarrassed, heavy blush, shy smile, eyes looking aside",
 }
+
+
+# Characters here stay dressed and wholesome. Every text that goes into a picture (a look, an outfit, a face, a back
+# view) is checked first: nudity, underwear and sexual words are refused for every character, and swimwear too for a
+# chibi one (chibi characters look like children). This is not a setting.
+BLOCKED = re.compile(r"\b(nsfw|nud(e|ity)|naked|topless|bottomless|nipples?|tits?|titties|boobs?|underboob|undeboon|sideboob|breasts?|"
+                     r"cleavage|bras?|panty|panties|pantsu|pants?u|underwear|undies|lingerie|thong|g-?string|garter|negligee|"
+                     r"see[- ]?through|transparent|sheer|sexy|seductive|lewd|ecchi|hentai|erotic|sex|sexual|porn|"
+                     r"undress(ed|ing)?|strip(ped|ping)?|bare (chest|breasts|skin)|no clothes|without clothes|unclothed|"
+                     r"loli|shota)\b", re.I)
+SWIMWEAR = re.compile(r"\b(bikini|swim ?suit|swimsuite|swimwear|bathing suit|school swimsuit|sukumizu|leotard|bodysuit)\b", re.I)
+
+
+def wholesome(text, chibi=True):
+    """Refuse a request for a picture that isn't wholesome (see BLOCKED)."""
+    t = str(text or "")
+    if BLOCKED.search(t) or (chibi and SWIMWEAR.search(t)):
+        raise ValueError("refused: characters here stay fully clothed and wholesome; no nudity, underwear or sexual "
+                         "content" + (", and no swimwear on a chibi character" if chibi else ""))
+    return t
+
+
+def is_chibi(d):
+    p = d / "prompt.json"
+    return not p.exists() or json.loads(p.read_text()).get("style", "chibi") != "adult"
 
 
 def char(name):
@@ -71,6 +96,7 @@ def b64(img):
 
 
 def generate(name, look, seed=None, style="chibi"):
+    wholesome(look, chibi=style != "adult")
     prompt = (STYLE_ADULT if style == "adult" else STYLE).format(look=look) + (f", seed {seed}" if seed else "")
     img, seed = call("/generate", {"prompt": prompt, "model": "nsfw", "fast": True, "width": 832, "height": 1216})
     d = char(name)
@@ -181,8 +207,9 @@ def faces(name, wanted):
     look = json.loads((d / "prompt.json").read_text())["look"] if (d / "prompt.json").exists() else ""
     (d / "faces").mkdir(exist_ok=True)
     alpha = Image.open(d / "base.png").getchannel("A")
+    wholesome(look + " " + " ".join(wanted or []), chibi=is_chibi(d))
     for face in wanted or FACES:
-        prompt = f"1girl, chibi, face close-up of the same character, {FACES.get(face, face)}, {look}, strength 0.75"
+        prompt = f"general, 1girl, chibi, face close-up of the same character, {FACES.get(face, face)}, {look}, strength 0.75"
         img, seed = call("/edit", {"prompt": prompt, "image": b64(src), "mask": b64(mask), "model": "nsfw", "fast": True})
         img = img.convert("RGB").resize(src.size)
         # keep the original outside the face box (the service blends its edge already), then the cut-out's alpha
@@ -205,6 +232,7 @@ def back(name, extra=""):
     """Her back view (for turning round): the image service's picture editor redraws her from behind, looking back over her
     shoulder; then the cut-out and the grid, in characters/NAME/back/ (rig it like the front)."""
     d = char(name)
+    wholesome(extra, chibi=is_chibi(d))
     src = Image.open(d / "source.png").convert("RGB")
     img, seed = call("/edit", {"prompt": BACK.format(extra=extra + "," if extra else ""), "image": b64(src)}, timeout=900)
     b = char(f"{name}/back")
@@ -222,7 +250,9 @@ OUTFIT = ("Change only her clothes to: {outfit}. Keep everything else exactly th
 def outfit(name, new, wear):
     """The same character in other clothes, as a new character NEW: the picture editor redraws her outfit in the same pose, so
     her rig (joints, regions, springs) is copied over; check its overlay and labels, then make her faces."""
-    d, n = char(name), char(new)
+    d = char(name)
+    wholesome(wear, chibi=is_chibi(d))  # before anything is drawn or a folder is made
+    n = char(new)
     src = Image.open(d / "source.png").convert("RGB")
     img, seed = call("/edit", {"prompt": OUTFIT.format(outfit=wear), "image": b64(src)}, timeout=900)
     img = img.convert("RGB")
