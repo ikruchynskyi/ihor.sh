@@ -26,6 +26,10 @@ In Claude Code, say for example:
 - "use the studio2d skill: make a new character, a sleepy bunny girl in pajamas"
 - "use the studio2d skill: copy the dance in ~/Downloads/dance.gif onto Mochi"
 - "use the studio2d skill: make Mochi wave and say hello"
+- "use the studio2d skill: make a new animation where she stretches and yawns"
+
+Characters now: Mochi (chibi catgirl) and her summer outfit, and Hana (an adult fox girl). Moves: cheer_dance (from
+your GIF), wave_hello, happy_jump, bow, shy, clap. They work on every character.
 
 To let an LLM direct the stage live (play, say, faces): `claude mcp add --transport http studio2d http://127.0.0.1:8793/mcp`,
 keep the studio open, and ask.

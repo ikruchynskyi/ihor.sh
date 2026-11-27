@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Character builder for the 2D studio: picture -> cut-out -> grid for placing joints -> rig overlay -> face variants.
 
-    python3 studio2d/tools/build.py generate NAME "look of the character"   picture from the image service (anime model)
+    python3 studio2d/tools/build.py generate NAME "look" [SEED] [adult]   picture from the image service (anime model; chibi, or adult)
     python3 studio2d/tools/build.py cutout NAME                             source.png -> base.png (background removed)
     python3 studio2d/tools/build.py grid NAME                               grid.png: base.png with coordinates, to read joints off
     python3 studio2d/tools/build.py overlay NAME                            overlay.png: the rig (bones, regions, face box) over the picture
@@ -27,6 +27,12 @@ IMAGE_URL = os.environ.get("IMAGE_URL", "http://127.0.0.1:6000")
 # The house style: one cute chibi character, whole body, arms and legs a little away from the body (they rig cleanly), on white.
 STYLE = ("general, 1girl, solo, chibi, full body, standing, a-pose, arms slightly away from body, legs slightly apart, "
          "front view, looking at viewer, {look}, (white background:1.5), (plain background:1.3)")
+# An adult character (style "adult"): grown-up proportions, not chibi; the same open pose so she rigs the same way.
+# Flat cel shading with bold outlines and arms held well away from the body: the rigger follows outlines, and a sleeve
+# that doesn't touch the body moves without dragging it.
+STYLE_ADULT = ("general, 1girl, solo, adult woman, mature female, (adult:1.2), full body, standing, (arms spread away from body:1.3), "
+               "legs slightly apart, front view, looking at viewer, {look}, fully clothed, anime coloring, flat color, cel shading, "
+               "(bold outlines:1.2), (white background:1.5), (plain background:1.3)")
 # Faces the studio uses: what to redraw inside the face box. "base" is the picture itself.
 FACES = {
     "blink": "eyes closed, closed eyes, gentle smile",
@@ -64,12 +70,12 @@ def b64(img):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def generate(name, look, seed=None):
-    prompt = STYLE.format(look=look) + (f", seed {seed}" if seed else "")
+def generate(name, look, seed=None, style="chibi"):
+    prompt = (STYLE_ADULT if style == "adult" else STYLE).format(look=look) + (f", seed {seed}" if seed else "")
     img, seed = call("/generate", {"prompt": prompt, "model": "nsfw", "fast": True, "width": 832, "height": 1216})
     d = char(name)
     img.convert("RGB").save(d / "source.png")
-    (d / "prompt.json").write_text(json.dumps({"look": look, "prompt": prompt, "seed": seed}, indent=1) + "\n")
+    (d / "prompt.json").write_text(json.dumps({"look": look, "style": style, "prompt": prompt, "seed": seed}, indent=1) + "\n")
     say(ok=True, step="generate", file=str(d / "source.png"), seed=seed)
 
 
@@ -176,7 +182,7 @@ def faces(name, wanted):
     (d / "faces").mkdir(exist_ok=True)
     alpha = Image.open(d / "base.png").getchannel("A")
     for face in wanted or FACES:
-        prompt = f"general, 1girl, chibi, face close-up of the same character, {FACES.get(face, face)}, {look}, strength 0.75"
+        prompt = f"1girl, chibi, face close-up of the same character, {FACES.get(face, face)}, {look}, strength 0.75"
         img, seed = call("/edit", {"prompt": prompt, "image": b64(src), "mask": b64(mask), "model": "nsfw", "fast": True})
         img = img.convert("RGB").resize(src.size)
         # keep the original outside the face box (the service blends its edge already), then the cut-out's alpha
@@ -299,8 +305,8 @@ def frames(path, every, start, count, out):
 if __name__ == "__main__":
     cmd, name, *rest = sys.argv[1:]
     try:
-        if cmd == "generate":
-            generate(name, rest[0], rest[1] if len(rest) > 1 else None)
+        if cmd == "generate":  # generate NAME "look" [seed] [chibi|adult]
+            generate(name, rest[0], rest[1] if len(rest) > 1 and rest[1] else None, rest[2] if len(rest) > 2 else "chibi")
         elif cmd == "cutout":
             cutout(name)
         elif cmd == "grid":

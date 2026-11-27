@@ -1,0 +1,94 @@
+{
+ "about": "Waves hello with her right hand, leaning in with a big smile, and says hi.",
+ "duration": 2.6,
+ "fade": 0.25,
+ "events": [
+  {
+   "t": 0.6,
+   "say": "Hi hi!"
+  }
+ ],
+ "keys": [
+  {
+   "t": 0,
+   "use": "rest",
+   "face": "base"
+  },
+  {
+   "t": 0.35,
+   "ease": "out",
+   "use": [
+    "wave_up_R",
+    "lean_L"
+   ],
+   "face": "joy",
+   "squash": [
+    0.98,
+    1.02
+   ]
+  },
+  {
+   "t": 0.6,
+   "pose": {
+    "foreArmR": 25,
+    "handR": -10
+   }
+  },
+  {
+   "t": 0.85,
+   "pose": {
+    "foreArmR": 72,
+    "handR": 10
+   }
+  },
+  {
+   "t": 1.1,
+   "pose": {
+    "foreArmR": 25,
+    "handR": -10
+   }
+  },
+  {
+   "t": 1.35,
+   "pose": {
+    "foreArmR": 72,
+    "handR": 10
+   }
+  },
+  {
+   "t": 1.6,
+   "pose": {
+    "foreArmR": 25,
+    "handR": -10
+   }
+  },
+  {
+   "t": 1.85,
+   "pose": {
+    "foreArmR": 72,
+    "handR": 10
+   }
+  },
+  {
+   "t": 2.1,
+   "use": [
+    "wave_up_R",
+    "lean_L"
+   ],
+   "face": "joy",
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 2.6,
+   "use": "rest",
+   "face": "base",
+   "pose": {
+    "body": 0,
+    "head": 0
+   }
+  }
+ ]
+}

@@ -2,7 +2,7 @@
 // say, and the link to server.mjs (an LLM's MCP calls arrive as commands). window.studio is the same API for scripts
 // (tools/shot.mjs): fast-forwarded commands, snapshots and contact sheets.
 import * as THREE from "three";
-import { Puppet } from "./puppet.js";
+import { Puppet, POSES } from "./puppet.js";
 
 const q = new URLSearchParams(location.search);
 const headless = q.has("headless");
@@ -29,6 +29,7 @@ function fit() {
 addEventListener("resize", fit);
 
 async function loadClips() {
+	Object.assign(POSES, await getJSON("api/poses")); // named poses clips can start from ("use")
 	clips = await getJSON("api/clips");
 	puppet?.setClips(clips);
 	$("clip").replaceChildren(...Object.keys(clips).filter((n) => n !== "idle").map((n) => new Option(n.replace(/_/g, " "), n)));

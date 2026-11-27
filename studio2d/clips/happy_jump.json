@@ -1,0 +1,97 @@
+{
+ "about": "A happy jump: dips, springs up with both arms in the air, lands with a bounce and fists up.",
+ "duration": 1.9,
+ "fade": 0.2,
+ "keys": [
+  {
+   "t": 0,
+   "use": [
+    "rest",
+    "stand_tall"
+   ],
+   "face": "base",
+   "lift": 0,
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.28,
+   "ease": "in",
+   "use": [
+    "crouch",
+    "fists_chest"
+   ],
+   "face": "talk"
+  },
+  {
+   "t": 0.5,
+   "ease": "out",
+   "use": "arms_up",
+   "pose": {
+    "thighL": 6,
+    "thighR": 6,
+    "shinL": [
+     -18,
+     0.86
+    ],
+    "shinR": [
+     -18,
+     0.86
+    ]
+   },
+   "lift": 0.12,
+   "squash": [
+    0.94,
+    1.07
+   ],
+   "face": "joy"
+  },
+  {
+   "t": 0.68,
+   "ease": "smooth",
+   "use": "arms_up",
+   "lift": 0.14,
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.88,
+   "ease": "in",
+   "use": [
+    "crouch",
+    "fists_chest"
+   ],
+   "lift": 0,
+   "squash": [
+    1.07,
+    0.93
+   ],
+   "face": "joy"
+  },
+  {
+   "t": 1.25,
+   "ease": "out",
+   "use": [
+    "knees_bent",
+    "fists_chest"
+   ],
+   "squash": [
+    1,
+    1
+   ],
+   "face": "joy"
+  },
+  {
+   "t": 1.9,
+   "use": [
+    "rest",
+    "stand_tall"
+   ],
+   "face": "base"
+  }
+ ]
+}

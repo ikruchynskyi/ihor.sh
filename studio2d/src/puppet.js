@@ -20,6 +20,10 @@ export const POSE = { body: ["hips", 0], waist: ["spine", 0], chest: ["chest", 0
 	thighL: ["hipL", 1], shinL: ["kneeL", 1], footL: ["ankleL", 1], thighR: ["hipR", -1], shinR: ["kneeR", -1], footR: ["ankleR", -1] };
 // which layer a bone's mesh draws in (low first)
 const LAYER_OF = (j) => (/^(hip|knee|ankle|toe)[LR]$/.test(j) ? 1 : /^(shoulder|elbow|wrist|hand)[LR]$/.test(j) ? 5 : j === "neck" || j === "head" ? 4 : 2);
+// follow-through springs per joint: [stiffness, damping] (lower stiffness lags more; damping under 2·√stiffness overshoots)
+const FOLLOW = { hips: [320, 28], spine: [320, 28], chest: [300, 26], neck: [220, 20], shoulder: [240, 21], elbow: [170, 15], wrist: [130, 12], hip: [320, 28], knee: [320, 28], ankle: [320, 28] };
+// named poses (poses.json) a clip key can start from: {"use": "fists_chest"} or {"use": ["fists_chest", "knees_bent"]}
+export const POSES = {};
 const LAYERS = { back: 0, legs: 1, body: 2, hair: 3, head: 4, arms: 5, front: 6 };
 
 export async function loadImage(url) {
@@ -34,7 +38,9 @@ export function compileClip(clip) {
 	const tracks = new Map(), push = (k, t, v, ease) => { if (!tracks.has(k)) tracks.set(k, []); tracks.get(k).push({ t, v, ease }); };
 	for (const k of clip.keys ?? []) {
 		const ease = EASE[k.ease] ?? EASE.smooth, t = Math.max(0, +k.t || 0);
-		for (const [b, v] of Object.entries(k.pose ?? {})) push("pose:" + b, t, Array.isArray(v) ? [+v[0] || 0, v[1] ?? 1] : [+v || 0, 1], ease);
+		const used = [k.use ?? []].flat().reduce((acc, n) => ({ ...acc, ...(POSES[n]?.pose ?? {}) }), {});
+		for (const f of ["face", "squash", "lift"]) if (k[f] === undefined && [k.use ?? []].flat().some((n) => POSES[n]?.[f] !== undefined)) k[f] = [k.use].flat().map((n) => POSES[n]?.[f]).filter((x) => x !== undefined).at(-1);
+		for (const [b, v] of Object.entries({ ...used, ...(k.pose ?? {}) })) push("pose:" + b, t, Array.isArray(v) ? [+v[0] || 0, v[1] ?? 1, v[2] ?? 0] : [+v || 0, 1, 0], ease);
 		for (const f of ["pos", "squash"]) if (k[f]) push(f, t, [...k[f]], ease);
 		for (const f of ["lift", "turn"]) if (k[f] !== undefined) push(f, t, +k[f], ease);
 		if (k.face) push("face", t, k.face, EASE.snap);
@@ -46,7 +52,7 @@ export function compileClip(clip) {
 	}
 	return { ...clip, duration, tracks, events: [...(clip.events ?? [])].sort((a, b) => a.t - b.t) };
 }
-const NEUTRAL = (k) => (k.startsWith("pose:") ? [0, 1] : k === "squash" ? [1, 1] : k === "pos" ? [0, 0] : k === "turn" ? 1 : 0);
+const NEUTRAL = (k) => (k.startsWith("pose:") ? [0, 1, 0] : k === "squash" ? [1, 1] : k === "pos" ? [0, 0] : k === "turn" ? 1 : 0);
 const lerp = (a, b, u) => (Array.isArray(a) ? a.map((x, i) => x + (b[i] - x) * u) : typeof a === "number" ? a + (b - a) * u : u < 1 ? a : b);
 export function sampleClip(c, t) {
 	const out = new Map();
@@ -105,19 +111,35 @@ export class Puppet {
 		this.toWorld = ([x, y]) => [x - gx, gy - y];
 		// bones: the joint tree, then the spring chains
 		this.bones = {}; this.rest = {};
-		const make = (name, at, parent) => {
+		// each bone points along its limb (toward its main child), so a length scale shortens the limb along itself
+		const ang = {};
+		const make = (name, at, parent, toward) => {
 			const b = new THREE.Bone(), [x, y] = this.toWorld(at);
 			b.name = name;
-			const p = parent ? this.rest[parent] : [0, 0];
-			b.position.set(x - p[0], y - p[1], 0);
+			const pa = parent ? ang[parent] : 0, [px, py] = parent ? this.rest[parent] : [0, 0];
+			const a = toward ? Math.atan2(this.toWorld(toward)[1] - y, this.toWorld(toward)[0] - x) : pa;
+			const dx = x - px, dy = y - py, c = Math.cos(-pa), sn = Math.sin(-pa);
+			b.position.set(dx * c - dy * sn, dx * sn + dy * c, 0);
+			b.rotation.z = a - pa;
 			(parent ? this.bones[parent] : this.group).add(b);
-			this.bones[name] = b; this.rest[name] = [x, y];
+			this.bones[name] = b; this.rest[name] = [x, y]; ang[name] = a;
 		};
-		for (const [j, p] of Object.entries(TREE)) if (J[j]) make(j, J[j], p && J[p] ? p : p ? TREE[p] : null);
+		const MAIN = { hips: "spine", chest: "neck" };
+		const childOf = (j) => MAIN[j] ?? Object.keys(TREE).find((c) => TREE[c] === j && J[c]);
+		for (const [j, p] of Object.entries(TREE)) if (J[j]) make(j, J[j], p && J[p] ? p : p ? TREE[p] : null, J[childOf(j)]);
 		this.springs = (rig.springs ?? []).map((s) => {
 			const parent = s.parent === "head" ? "neck" : s.parent, names = s.points.map((_, i) => `${s.name}${i}`);
-			s.points.forEach((pt, i) => make(names[i], pt, i ? names[i - 1] : parent));
+			s.points.forEach((pt, i) => make(names[i], pt, i ? names[i - 1] : parent, s.points[i + 1]));
 			return { ...s, names, pts: null };
+		});
+		// soft regions (a skirt hem, sleeves, ears, a chest): a bone at the region's middle that lags behind its parent and
+		// settles back; points inside follow it most at the middle and not at all at the edge
+		this.softs = (rig.regions ?? []).filter((r) => r.soft).map((r) => {
+			const n = r.poly.length, cx = r.poly.reduce((a, p) => a + p[0], 0) / n, cy = r.poly.reduce((a, p) => a + p[1], 0) / n;
+			const parent = POSE[r.soft.bone]?.[0] ?? (r.soft.bone === "head" ? "neck" : r.soft.bone);
+			const name = `soft_${r.name}`;
+			make(name, [cx, cy], parent);
+			return { r, name, o: new THREE.Vector3(), ov: new THREE.Vector3(), prev: null, pv: null };
 		});
 		const order = Object.keys(this.bones);
 		this.root.updateMatrixWorld(true); // the skeleton's bind pose is the picture's pose
@@ -248,6 +270,17 @@ export class Puppet {
 			skinWeight.push(1 - blend, blend, 0, 0);
 			vLayer[v] = regionLayer[v] !== null ? LAYERS[regionLayer[v]] : layerOf(L);
 		}
+		for (const sf of this.softs) { // points in a soft region: onto its bone, fading out toward the region's edge
+			const poly = sf.r.poly, edge = (x, y) => Math.min(...poly.map((p, i) => segDist(x, y, p, poly[(i + 1) % poly.length])[0]));
+			const inner = Math.max(...px.filter(([x, y]) => inPoly(x, y, poly)).map(([x, y]) => edge(x, y)), 1);
+			for (let v = 0; v < n; v++) {
+				const [x, y] = px[v];
+				if (!inPoly(x, y, poly)) continue;
+				const w = Math.min(1, edge(x, y) / (inner * 0.7)) * (sf.r.soft.amount ?? 1);
+				skinIndex[v * 4] = index[sf.name]; skinWeight[v * 4] = w;
+				skinIndex[v * 4 + 1] = index[label[v]?.seg[0] ?? "hips"]; skinWeight[v * 4 + 1] = 1 - w;
+			}
+		}
 		// triangles, sorted into layers by their vertices' layer
 		const tris = Array.from({ length: 7 }, () => []), seams = Array.from({ length: 7 }, () => []);
 		for (let j = 0; j + 1 < ny; j++) for (let i = 0; i + 1 < nx; i++) {
@@ -295,10 +328,29 @@ export class Puppet {
 			m.bind(this.skeleton, m.matrixWorld);
 			const area = (P) => Math.abs((P[1].x - P[0].x) * (P[2].y - P[0].y) - (P[2].x - P[0].x) * (P[1].y - P[0].y));
 			const v = (i) => new THREE.Vector3().fromBufferAttribute(g2.attributes.position, i);
-			const rest = []; for (let k = 0; k < t.length; k += 3) rest.push(Math.max(1, area([v(t[k]), v(t[k + 1]), v(t[k + 2])])));
-			return { mesh: m, all: t, rest, area, shown: new Uint32Array(t.length) };
+			const rest = [], edges = [], longest = (P) => Math.max(P[0].distanceTo(P[1]), P[1].distanceTo(P[2]), P[2].distanceTo(P[0]));
+			for (let k = 0; k < t.length; k += 3) { const P = [v(t[k]), v(t[k + 1]), v(t[k + 2])]; rest.push(Math.max(1, area(P))); edges.push(longest(P)); }
+			return { mesh: m, all: t, rest, edges, area, longest, shown: new Uint32Array(t.length) };
 		}).filter(Boolean);
 		this.restLocal = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.position.clone()]));
+		this.restRot = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.rotation.z]));
+		// Poses are angles from one standard stance, the same on every character: upper arms 45° out from the body, forearms
+		// straight, thighs 15° apart, shins straight. Each picture is drawn a little differently (arms level, arms down), so
+		// measure how far its limbs already are from that stance and take it off: "arms up" is arms up on everyone.
+		const STANCE = { upperArm: [45, "chestDown"], foreArm: [0, "shoulder"], thigh: [15, "hipsDown"], shin: [0, "hip"] };
+		const heading = (a, b) => Math.atan2(-(J[b][1] - J[a][1]), J[b][0] - J[a][0]);
+		this.offsets = {};
+		for (const side of ["L", "R"]) {
+			const s1 = side === "L" ? 1 : -1, back = opts.back ? -1 : 1;
+			const ref = { chestDown: heading("neck", "chest"), hipsDown: heading("spine", "hips"), shoulder: heading("shoulder" + side, "elbow" + side), hip: heading("hip" + side, "knee" + side) };
+			const limb = { upperArm: ["shoulder", "elbow"], foreArm: ["elbow", "wrist"], thigh: ["hip", "knee"], shin: ["knee", "ankle"] };
+			for (const [name, [a, b]] of Object.entries(limb)) {
+				if (!J[a + side] || !J[b + side]) continue;
+				let d = heading(a + side, b + side) - ref[STANCE[name][1]];
+				d = Math.atan2(Math.sin(d), Math.cos(d)) * 180 / Math.PI;
+				this.offsets[name + side] = back * s1 * d - STANCE[name][0]; // in pose units: + raises / opens
+			}
+		}
 		this.height = gy - Math.min(...px.map((p) => p[1])); // her height in picture pixels, ground to the top of her head
 		this.lowRest = this.lowestFoot();
 		// her back view (back/rig.json), drawn the same height, in the same place
@@ -380,15 +432,21 @@ export class Puppet {
 	// turn goes the other way round on screen.
 	apply(pose, dt, ground = true, backView = false) {
 		const flip = backView ? -1 : 1;
-		for (const [k, b] of Object.entries(this.bones)) { b.rotation.z = 0; b.scale.set(1, 1, 1); b.position.copy(this.restLocal[k]); }
+		for (const [k, b] of Object.entries(this.bones)) { b.rotation.z = this.restRot[k]; b.scale.set(1, 1, 1); b.position.copy(this.restLocal[k]); }
 		for (const [k, v] of pose) {
 			if (!k.startsWith("pose:")) continue;
 			const [joint, side] = POSE[k.slice(5)] ?? [];
 			const b = this.bones[joint];
 			if (!b) continue;
-			b.rotation.z = flip * (side === 0 ? -v[0] : side * v[0]) * D; // centre bones: + leans toward her left (screen right from the front)
-			if (v[1] !== 1) b.scale.y = v[1];
+			const a = v[0] - (this.offsets[k.slice(5)] ?? 0); // from the standard stance, not from this picture's pose
+			b.rotation.z = this.restRot[joint] + flip * (side === 0 ? -a : side * a) * D; // centre bones: + leans toward her left (screen right from the front)
+			if (v[1] !== 1) b.scale.x = v[1]; // along the bone: a forearm reaching toward us, a bent knee
+			// across the bone: -1 shows its other side. A forearm folded back over the upper arm (past 110°) turns over by
+			// itself, so a fist at her chest shows the sleeve the right way up instead of an upside-down cuff
+			const w = v[2] || (joint.startsWith("elbow") && Math.abs(v[0]) > 110 ? -1 : 1);
+			if (w !== 1) b.scale.y = w;
 		}
+		this.followThrough(dt);
 		// the whole of her: feet on the ground, then position, hop, squash and stretch, turning
 		const [px = 0, py = 0] = pose.get("pos") ?? [], lift = pose.get("lift") ?? 0, [sx = 1, sy = 1] = pose.get("squash") ?? [], turn = pose.get("turn") ?? 1;
 		this.group.position.set(0, 0, 0);
@@ -401,6 +459,7 @@ export class Puppet {
 		const width = Math.max(0.22, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
 		this.group.scale.set(sx * width * mirror * (this.facing ?? 1), sy, 1);
 		this.springsStep(dt);
+		this.softStep(dt);
 		// face: the clip's, else a mood set by a command; blinking and talking on top
 		let face = pose.get("face") ?? (this.faceUntil === 0 || this.time < this.faceUntil ? this.face : "base");
 		if (this.talk > 0) { this.talk -= dt; if (this.faces.talk && (face === "base" || face === "talk") && this.time % 0.24 < 0.12) face = "talk"; }
@@ -412,7 +471,41 @@ export class Puppet {
 		this.hideStretchedSeams();
 	}
 
-	// Seams between parts that move apart: show each one only while it's less than twice its size in the picture.
+	// Follow-through: each posed bone chases its pose like a soft spring (a little lag, a little overshoot, then it
+	// settles), so arms and head flow from pose to pose instead of snapping. Hands lag most, the body least.
+	followThrough(dt) {
+		this.follow ??= {};
+		for (const [joint] of Object.values(POSE)) {
+			const b = this.bones[joint];
+			if (!b) continue;
+			const [k, c] = FOLLOW[joint.replace(/[LR]$/, "")] ?? [300, 26], target = b.rotation.z, st = (this.follow[joint] ??= { a: target, w: 0 });
+			if (dt > 0.002 && dt < 0.25) { st.w += (k * (target - st.a) - c * st.w) * dt; st.a += st.w * dt; }
+			else { st.a = target; st.w = 0; } // paused or scrubbing: exactly the pose
+			b.rotation.z = st.a;
+		}
+	}
+
+	// Soft regions: each soft bone is carried by its parent; it lags behind the parent's acceleration and springs back.
+	softStep(dt) {
+		if (!this.softs.length) return;
+		this.group.updateMatrixWorld(true);
+		const tmp = new THREE.Vector3();
+		for (const sf of this.softs) {
+			const b = this.bones[sf.name], p = this.group.worldToLocal(b.getWorldPosition(tmp.set(0, 0, 0))).clone();
+			if (!sf.prev || !(dt > 0.002 && dt < 0.25)) { sf.prev = p; sf.pv = new THREE.Vector3(); sf.o.set(0, 0, 0); sf.ov.set(0, 0, 0); continue; }
+			const v = p.clone().sub(sf.prev).divideScalar(dt), acc = v.clone().sub(sf.pv).divideScalar(dt);
+			sf.prev = p; sf.pv = v;
+			const { stiffness: k = 90, damping: c = 7, max = 0.035 } = sf.r.soft, cap = max * this.height;
+			sf.ov.addScaledVector(sf.o, -k * dt).addScaledVector(sf.ov, -c * dt).addScaledVector(acc, -dt);
+			sf.o.addScaledVector(sf.ov, dt);
+			if (sf.o.length() > cap) sf.o.setLength(cap);
+			const want = this.group.localToWorld(p.clone().add(sf.o));
+			b.position.copy(b.parent.worldToLocal(want));
+		}
+	}
+
+	// Seams between parts that move apart: show each one only while it's less than about twice its size in the picture
+	// and none of its edges is drawn out (a sliver from an armpit when the arm goes up).
 	hideStretchedSeams() {
 		if (!this.seams.length) return;
 		this.group.updateMatrixWorld(true);
@@ -427,7 +520,7 @@ export class Puppet {
 					if (!pos.has(i)) pos.set(i, s.mesh.applyBoneTransform(i, new THREE.Vector3().fromBufferAttribute(at, i)));
 					P[c].copy(pos.get(i));
 				}
-				if (s.area(P) < s.rest[k / 3] * 2.2) { s.shown[n++] = s.all[k]; s.shown[n++] = s.all[k + 1]; s.shown[n++] = s.all[k + 2]; }
+				if (s.area(P) < s.rest[k / 3] * 2.2 && s.longest(P) < s.edges[k / 3] * 1.8) { s.shown[n++] = s.all[k]; s.shown[n++] = s.all[k + 1]; s.shown[n++] = s.all[k + 2]; }
 			}
 			g.index.array.set(s.shown.subarray(0, n));
 			g.index.needsUpdate = true;

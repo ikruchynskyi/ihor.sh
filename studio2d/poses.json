@@ -1,0 +1,282 @@
+{
+ "rest": {
+  "about": "standing as drawn: arms a little away from her body",
+  "pose": {
+   "upperArmL": 0,
+   "upperArmR": 0,
+   "foreArmL": 0,
+   "foreArmR": 0,
+   "handL": 0,
+   "handR": 0,
+   "thighL": 0,
+   "thighR": 0,
+   "shinL": 0,
+   "shinR": 0,
+   "footL": 0,
+   "footR": 0,
+   "body": 0,
+   "waist": 0,
+   "chest": 0,
+   "head": 0
+  }
+ },
+ "fists_chest": {
+  "about": "both fists up by her chest, elbows down (cheering, excited)",
+  "pose": {
+   "upperArmL": -40,
+   "upperArmR": -40,
+   "foreArmL": [
+    -150,
+    0.9
+   ],
+   "foreArmR": [
+    -150,
+    0.9
+   ],
+   "handL": 0,
+   "handR": 0
+  }
+ },
+ "heart_hands": {
+  "about": "hands together in a heart in front of her chest",
+  "pose": {
+   "upperArmL": -30,
+   "upperArmR": -30,
+   "foreArmL": [
+    -152,
+    0.88
+   ],
+   "foreArmR": [
+    -152,
+    0.88
+   ],
+   "handL": -10,
+   "handR": -10
+  }
+ },
+ "hands_cheeks": {
+  "about": "both hands up at her cheeks (cute surprise, delight)",
+  "pose": {
+   "upperArmL": 55,
+   "upperArmR": 55,
+   "foreArmL": [
+    95,
+    0.8
+   ],
+   "foreArmR": [
+    95,
+    0.8
+   ],
+   "handL": 0,
+   "handR": 0
+  }
+ },
+ "hand_cheek_R": {
+  "about": "her right hand up by her cheek",
+  "pose": {
+   "upperArmR": 55,
+   "foreArmR": [
+    95,
+    0.8
+   ],
+   "handR": 0
+  }
+ },
+ "peace_R": {
+  "about": "her right hand by her eye (a peace sign; the hand stays as drawn)",
+  "pose": {
+   "upperArmR": 85,
+   "foreArmR": [
+    70,
+    0.8
+   ],
+   "handR": 15
+  }
+ },
+ "wave_up_R": {
+  "about": "her right arm raised, hand up beside her head, ready to wave",
+  "pose": {
+   "upperArmR": 105,
+   "foreArmR": 45,
+   "handR": 0
+  }
+ },
+ "point_R": {
+  "about": "pointing sideways with her right hand at shoulder height",
+  "pose": {
+   "upperArmR": 28,
+   "foreArmR": 35,
+   "handR": 0
+  }
+ },
+ "arms_up": {
+  "about": "both arms up high (yay! banzai)",
+  "pose": {
+   "upperArmL": 145,
+   "upperArmR": 145,
+   "foreArmL": 10,
+   "foreArmR": 10,
+   "handL": 0,
+   "handR": 0
+  }
+ },
+ "arm_out_L": {
+  "about": "her left arm stretched out to the side",
+  "pose": {
+   "upperArmL": 40,
+   "foreArmL": 0,
+   "handL": 0
+  }
+ },
+ "hands_hips": {
+  "about": "both hands on her hips (proud, confident)",
+  "pose": {
+   "upperArmL": -10,
+   "upperArmR": -10,
+   "foreArmL": -100,
+   "foreArmR": -100
+  }
+ },
+ "hands_together_low": {
+  "about": "hands held together in front of her, low (polite, shy, bowing)",
+  "pose": {
+   "upperArmL": -42,
+   "upperArmR": -42,
+   "foreArmL": [
+    -35,
+    0.78
+   ],
+   "foreArmR": [
+    -35,
+    0.78
+   ],
+   "handL": 0,
+   "handR": 0
+  }
+ },
+ "knees_bent": {
+  "about": "knees a little bent and out (bouncy, ready)",
+  "pose": {
+   "thighL": 12,
+   "thighR": 12,
+   "shinL": [
+    -10,
+    0.88
+   ],
+   "shinR": [
+    -10,
+    0.88
+   ],
+   "footL": 0,
+   "footR": 0
+  }
+ },
+ "crouch": {
+  "about": "a deeper dip before a jump or on a landing",
+  "pose": {
+   "thighL": 16,
+   "thighR": 16,
+   "shinL": [
+    -14,
+    0.8
+   ],
+   "shinR": [
+    -14,
+    0.8
+   ]
+  },
+  "squash": [
+   1.05,
+   0.95
+  ]
+ },
+ "stand_tall": {
+  "about": "legs straight",
+  "pose": {
+   "thighL": 0,
+   "thighR": 0,
+   "shinL": 0,
+   "shinR": 0
+  }
+ },
+ "knees_together": {
+  "about": "knees together, toes in (shy, cute)",
+  "pose": {
+   "thighL": -6,
+   "thighR": -6,
+   "shinL": [
+    8,
+    0.92
+   ],
+   "shinR": [
+    8,
+    0.92
+   ]
+  }
+ },
+ "lunge_R": {
+  "about": "stepping out to her right, her left knee bent",
+  "pose": {
+   "thighR": 28,
+   "shinR": [
+    -4,
+    1
+   ],
+   "thighL": 4,
+   "shinL": [
+    -6,
+    0.86
+   ]
+  }
+ },
+ "lean_L": {
+  "about": "leaning toward her left, head tilted the same way",
+  "pose": {
+   "body": 6,
+   "head": 10
+  }
+ },
+ "lean_R": {
+  "about": "leaning toward her right, head tilted the same way",
+  "pose": {
+   "body": -6,
+   "head": -10
+  }
+ },
+ "nod_down": {
+  "about": "head tipped forward toward us (a nod or a bow; the head shortens)",
+  "pose": {
+   "head": [
+    0,
+    0.9
+   ]
+  }
+ },
+ "bow": {
+  "about": "a polite bow: chest and head tip forward, hands together low",
+  "pose": {
+   "chest": [
+    0,
+    0.9
+   ],
+   "head": [
+    0,
+    0.88
+   ],
+   "upperArmL": -42,
+   "upperArmR": -42,
+   "foreArmL": [
+    -35,
+    0.78
+   ],
+   "foreArmR": [
+    -35,
+    0.78
+   ]
+  },
+  "squash": [
+   1.02,
+   0.96
+  ]
+ }
+}

@@ -120,7 +120,7 @@ const num = (d) => ({ type: "number", description: d });
 const obj = (d) => ({ type: "object", description: d });
 export const TOOLS = [
   { name: "studio_state", description: "What's in the studio: the characters, the clips (dances and moves, with what each is), and what's on stage now. Call it first.", inputSchema: S({}) },
-  { name: "create_character", description: "Draw a new cute chibi character with the image service from a description of her look, cut her out, and return her picture on a coordinate grid. Next, read her joints off the grid and call rig_character.", inputSchema: S({ name: str("folder name, lowercase, e.g. luna"), look: str("her look in tags: hair, eyes, clothes, accessories, animal ears/tail… (e.g. 'silver twin tails, red eyes, black hoodie with bunny ears, pleated skirt, sneakers')"), seed: num("a seed to redo the same picture (optional)") }, ["name", "look"]) },
+  { name: "create_character", description: "Draw a new cute chibi character with the image service from a description of her look, cut her out, and return her picture on a coordinate grid. Next, read her joints off the grid and call rig_character.", inputSchema: S({ name: str("folder name, lowercase, e.g. luna"), look: str("her look in tags: hair, eyes, clothes, accessories, animal ears/tail… (e.g. 'silver twin tails, red eyes, black hoodie with bunny ears, pleated skirt, sneakers')"), seed: num("a seed to redo the same picture (optional)"), style: str("chibi (default: cute, big head) or adult (a grown woman, adult proportions)") }, ["name", "look"]) },
   { name: "rig_character", description: "Save a character's rig (merged into characters/NAME/rig.json; format in studio2d/AGENTS.md): joints, ground, face box, regions, spring chains, name and about. Returns the rig drawn over her picture so you can check it.", inputSchema: S({ name: str("character folder"), rig: obj("rig fields to set: joints {hips: [x,y], …}, ground, face [x0,y0,x1,y1], regions [...], springs [...], name, about") }, ["name", "rig"]) },
   { name: "make_faces", description: "Redraw a character's face box for each face (blink, talk, joy, wink, surprised, sad, angry, shy, or your own words) with the image service, so she can blink, talk and show feelings. Returns the faces side by side. Takes about 30 s a face.", inputSchema: S({ name: str("character folder"), faces: { type: "array", items: { type: "string" }, description: "face names (omit for all the usual ones)" } }, ["name"]) },
   { name: "make_back_view", description: "Draw a character from behind (looking back over her shoulder) so she can turn round and dance with her back to us: the picture editor redraws her, then the cut-out on a grid. Rig it like the front with rig_character {name: 'NAME/back'} (her left is on the picture's left from behind). Takes ~2 min.", inputSchema: S({ name: str("character folder") }, ["name"]) },
@@ -145,11 +145,13 @@ async function runTool(name, a = {}) {
       const cl = await clips();
       let stage = null;
       try { stage = pages.size ? await command("state") : null; } catch { /* no page */ }
-      return { characters: await characters(), clips: Object.fromEntries(Object.entries(cl).map(([k, v]) => [k, v.about ?? ""])), stage, studio: `http://127.0.0.1:${PORT}/` };
+      const poses = JSON.parse(await readFile(path.join(ROOT, "poses.json"), "utf8").catch(() => "{}"));
+      return { characters: await characters(), clips: Object.fromEntries(Object.entries(cl).map(([k, v]) => [k, v.about ?? ""])),
+        poses: Object.fromEntries(Object.entries(poses).map(([k, v]) => [k, v.about ?? ""])), stage, studio: `http://127.0.0.1:${PORT}/` };
     }
     case "create_character": {
       checkName(a.name);
-      await build("generate", a.name, a.look, ...(a.seed ? [a.seed] : []));
+      await build("generate", a.name, a.look, a.seed ?? "", a.style === "adult" ? "adult" : "chibi");
       await build("cutout", a.name);
       await build("grid", a.name);
       return image(path.join(charDir(a.name), "grid.png"));
@@ -272,6 +274,7 @@ async function handle(req, res) {
     catch (e) { return json(res, 400, { error: e.message }); }
   }
   if (url.pathname === "/api/clips") return json(res, 200, await clips());
+  if (url.pathname === "/api/poses") return json(res, 200, JSON.parse(await readFile(path.join(ROOT, "poses.json"), "utf8").catch(() => "{}")));
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).slice(1);
   const f = path.resolve(ROOT, rel);
   if (!f.startsWith(ROOT + path.sep) || !/^((index|pictures)\.html$|src\/|characters\/|clips\/)/.test(rel)) return res.writeHead(404).end();

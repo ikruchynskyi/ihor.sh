@@ -1,0 +1,53 @@
+{
+ "about": "A polite bow: hands together, she tips forward with her eyes closed, then straightens up smiling.",
+ "duration": 2.4,
+ "fade": 0.25,
+ "keys": [
+  {
+   "t": 0,
+   "use": "rest",
+   "face": "base",
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.4,
+   "use": "hands_together_low"
+  },
+  {
+   "t": 0.9,
+   "use": "bow",
+   "face": "blink"
+  },
+  {
+   "t": 1.5,
+   "use": "bow",
+   "face": "blink"
+  },
+  {
+   "t": 1.95,
+   "ease": "out",
+   "use": "hands_together_low",
+   "pose": {
+    "chest": 0,
+    "head": 0
+   },
+   "squash": [
+    0.99,
+    1.01
+   ],
+   "face": "joy"
+  },
+  {
+   "t": 2.4,
+   "use": "rest",
+   "squash": [
+    1,
+    1
+   ],
+   "face": "base"
+  }
+ ]
+}

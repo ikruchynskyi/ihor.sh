@@ -1,0 +1,69 @@
+{
+ "about": "Gets shy: knees together, hands held low, head down and tilted, swaying a little.",
+ "duration": 3.2,
+ "fade": 0.3,
+ "keys": [
+  {
+   "t": 0,
+   "use": "rest",
+   "face": "base"
+  },
+  {
+   "t": 0.5,
+   "use": [
+    "knees_together",
+    "hands_together_low"
+   ],
+   "pose": {
+    "head": [
+     -8,
+     0.95
+    ],
+    "body": -3
+   },
+   "face": "shy"
+  },
+  {
+   "t": 1.2,
+   "pose": {
+    "head": [
+     -12,
+     0.94
+    ],
+    "body": 3
+   }
+  },
+  {
+   "t": 1.9,
+   "pose": {
+    "head": [
+     -6,
+     0.95
+    ],
+    "body": -3
+   }
+  },
+  {
+   "t": 2.6,
+   "pose": {
+    "head": [
+     -10,
+     0.94
+    ],
+    "body": 0
+   }
+  },
+  {
+   "t": 3.2,
+   "use": [
+    "rest",
+    "stand_tall"
+   ],
+   "face": "base",
+   "pose": {
+    "head": 0,
+    "body": 0
+   }
+  }
+ ]
+}

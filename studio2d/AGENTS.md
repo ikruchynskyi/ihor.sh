@@ -38,8 +38,10 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
 
 ## Make a character
 
-1. `create_character {name, look}`: `look` is tags for her hair, eyes, clothes, ears, tail, accessories. It returns
-   her cut-out on a grid (25 px, labels every 100). Check she's whole and on a clean background (else a new seed).
+1. `create_character {name, look, style}`: `look` is tags for her hair, eyes, clothes, ears, tail, accessories;
+   `style` is `chibi` (default, cute, big head: Mochi) or `adult` (a grown woman, flat cel shading with bold outlines,
+   arms held out: Hana). It returns her cut-out on a grid (25 px, labels every 100). Check she's whole, on a clean
+   background, with her arms clear of her body (else a new seed): clean outlines and free arms are what rig well.
 2. Read her joints off the grid and `rig_character {name, rig}` with:
    - `joints` (picture pixels): `hips` (pelvis centre), `spine` (waist), `chest`, `neck` (where the head turns),
      `head` (top of the head), and per side (`L` = HER left = the right of the picture): `shoulder`, `elbow`, `wrist`,
@@ -49,6 +51,10 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
    - `regions`: polygons that override the automatic split (`"bone"`: any joint or pose name pins the area to it): `{"name": "head", "bone": "head", "poly": [...]}` for the
      head with hat and ears (everything above the chin), and spring regions for long hair, a tail, ribbons:
      `{"name": "hairR", "spring": "hairR", "poly": [...]}` (add `"layer": "back"` for a tail behind her).
+   - soft regions (lag and settle as she moves): `{"name": "hemL", "soft": {"bone": "hips", "stiffness": 80,
+     "damping": 6, "max": 0.03}, "poly": [...]}` for a skirt hem, ears (`bone: "head"`), sleeves; an adult character's
+     chest `{"bone": "chest", "stiffness": 120, "damping": 10, "max": 0.012}` (keep it subtle and natural; never on a
+     chibi or young-looking character).
    - `springs`: chains that swing: `{"name": "tail", "parent": "hips", "points": [[x,y], ...], "stiffness": 28,
      "damping": 5, "gravity": 0.15}` (hair: parent `head`, stiffer). Points go from the root to the tip.
    It returns the rig drawn over her. Then check what each pixel follows:
@@ -76,32 +82,53 @@ never a character drawn from scratch.
 Pose for rigging: the house style asks for arms and legs a little away from the body; that is what lets limbs move
 without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete example.
 
+## Make a new animation
+
+1. **Plan the beats** in words with times, like a choreographer: "0.0 stand, 0.3 dip (anticipation), 0.5 jump with
+   arms up, 0.9 land in a crouch (squash), 1.3 fists up, smiling, 1.9 back to standing". 1–3 s for a gesture, 5–7 s
+   for a routine; a dance loops.
+2. **Build each beat from named poses** (`poses.json`: `fists_chest`, `heart_hands`, `hands_cheeks`, `wave_up_R`,
+   `peace_R`, `point_R`, `arms_up`, `arm_out_L`, `hands_hips`, `hands_together_low`, `knees_bent`, `crouch`,
+   `knees_together`, `lunge_R`, `lean_L`, `lean_R`, `nod_down`, `bow`, `rest`, …) with `"use"`, and tweak on top with
+   `"pose"`. Missing a pose you'll reuse? Add it to `poses.json` (name, `about`, `pose`; `squash`/`face` optional).
+3. **Act it**: a face per beat; squash on landings `[1.05, 0.95]`, stretch on take-offs `[0.95, 1.06]`; `lift` for
+   hops; a small opposite move before a big one; `ease: "out"` into a pose, `"in"` out of it, `"back"` to overshoot.
+   Hair, ears, tails, hems and the arms' follow-through are automatic: don't animate them.
+4. **Look**: `preview_clip` (or shot.mjs `{"sheet": {"clip": "NAME"}}`) and fix what reads wrong; a video:
+   `{"video": {"clip": "NAME"}}`. Try it on two characters (Mochi, Hana): poses mean the same on everyone.
+
+Examples: `wave_hello`, `happy_jump`, `bow`, `shy`, `clap`, `cheer_dance` (a copied dance), `idle`.
+
 ## Clips (clips/NAME.json)
 
 ```json
-{ "about": "Waves hello with her right hand.", "duration": 2.4, "loop": false, "fade": 0.25,
+{ "about": "Waves hello with her right hand.", "duration": 2.6, "loop": false, "fade": 0.25,
   "keys": [
-    { "t": 0,   "pose": { "upperArmR": 0, "foreArmR": 0 }, "face": "base" },
-    { "t": 0.4, "ease": "out", "pose": { "upperArmR": 120, "foreArmR": 40 }, "face": "joy", "squash": [0.97, 1.03] }
+    { "t": 0,    "use": "rest", "face": "base" },
+    { "t": 0.35, "ease": "out", "use": ["wave_up_R", "lean_L"], "face": "joy", "squash": [0.98, 1.02] },
+    { "t": 0.6,  "pose": { "foreArmR": 25 } }, { "t": 0.85, "pose": { "foreArmR": 72 } }
   ],
-  "events": [ { "t": 0.5, "say": "Hi!" } ] }
+  "events": [ { "t": 0.6, "say": "Hi hi!" } ] }
 ```
 
 - Each pose name is its own track: keys glide between values (`ease`: `smooth` default, `linear`, `in`, `out`,
-  `back`, `snap`); a name a clip never keys stays at rest (the picture's pose).
-- Angles in degrees from the picture's pose. **Arms and legs: + raises / opens** (the way a lifted arm goes), mirrored
-  per side; **body, waist, chest, head: + leans toward her left**. Names: `body` (all of her, at the hips), `waist`,
-  `chest`, `head`, `upperArmL/R`, `foreArmL/R` (+ keeps turning the raising way: up beside her head; − folds it in
-  across her body: fists to her chest is about `upperArm -40, foreArm -150`), `handL/R`, `thighL/R` (+ spreads),
-  `shinL/R` (− tucks the foot in), `footL/R`.
-- `[angle, length]` shortens a bone: `"shinL": [-10, 0.85]` bends the knee toward the viewer; her feet stay on the
-  ground, so she dips. `"ground": false` on a clip lets her leave it.
+  `back`, `snap`); a name a clip never keys stays as the picture has it. `"use"` merges named poses; `"pose"` wins.
+- Angles are degrees **from one standard stance, the same on every character**: upper arms 45° out from the body,
+  forearms straight, thighs 15° apart (the engine measures each picture and corrects for it). **Arms and legs: +
+  raises / opens**, mirrored per side; **body, waist, chest, head: + leans toward her left**. Names: `body`, `waist`,
+  `chest`, `head`, `upperArmL/R` (0 = A-pose, 90 = level, 180 = straight up, − toward her body), `foreArmL/R` (+ keeps
+  turning the raising way, − folds it in across her body; past 110° it turns over by itself so a fist at her chest
+  shows the sleeve the right way up), `handL/R`, `thighL/R` (+ spreads), `shinL/R` (− tucks the foot in), `footL/R`.
+- `[angle, length, width]`: `length` shortens a bone along itself (a forearm reaching toward us `0.8`, a knee bending
+  toward us `0.85`; her feet stay on the ground so she dips); `width` -1 shows its other side. `"ground": false` on a
+  clip lets her leave the ground.
 - `pos [x, y]` (share of her height, x to the picture's right), `lift` (a hop, share of her height),
-  `squash [sx, sy]` (squash and stretch around her feet: `[1.04, 0.96]` on a landing), `turn` 1 → -1 (she turns round:
+  `squash [sx, sy]` (squash and stretch around her feet), `turn` 1 → -1 (she turns round:
   below 0 she shows her back view, or her front mirrored if she has none; a quick 0.1 s flip reads like an anime spin;
   -1 → 1 turns her back), `face` (a face name; held until the next one). Poses mean the same from behind: her right
   arm is her right arm, shown on the other side.
-- Hair, ears and tails swing by themselves; animate the body and let them follow.
+- Motion is softened for you: each bone follows its pose with a little lag and overshoot (hands most), and hair,
+  tails, ears and soft regions swing on their own.
 
 ## Copy a dance from a GIF or video
 

@@ -1,0 +1,327 @@
+{
+ "about": "Claps her hands in front of her chest, bouncing a little, beaming.",
+ "duration": 2.55,
+ "loop": true,
+ "fade": 0.2,
+ "keys": [
+  {
+   "t": 0,
+   "use": [
+    "knees_bent"
+   ],
+   "pose": {
+    "upperArmL": -40,
+    "upperArmR": -40,
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "face": "joy",
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.15,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": -5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 0.3,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.45,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": 5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 0.6,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 0.75,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": -5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 0.9,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 1.05,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": 5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 1.2,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 1.35,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": -5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 1.5,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 1.65,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": 5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 1.8,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 1.95,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": -5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 2.1,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  },
+  {
+   "t": 2.25,
+   "ease": "out",
+   "pose": {
+    "foreArmL": [
+     -125,
+     0.85
+    ],
+    "foreArmR": [
+     -125,
+     0.85
+    ],
+    "head": 5
+   },
+   "squash": [
+    1.02,
+    0.98
+   ]
+  },
+  {
+   "t": 2.4,
+   "ease": "smooth",
+   "pose": {
+    "foreArmL": [
+     -55,
+     0.78
+    ],
+    "foreArmR": [
+     -55,
+     0.78
+    ]
+   },
+   "squash": [
+    1,
+    1
+   ]
+  }
+ ]
+}
