@@ -25,6 +25,7 @@ const FOLLOW = { hips: [320, 28], spine: [320, 28], chest: [300, 26], neck: [220
 // named poses (poses.json) a clip key can start from: {"use": "fists_chest"} or {"use": ["fists_chest", "knees_bent"]}
 export const POSES = {};
 const LAYERS = { back: 0, legs: 1, body: 2, hair: 3, head: 4, arms: 5, front: 6 };
+const TRUNK = ["hips", "spine", "chest"], LIMB = /^(shoulder|elbow|wrist|hip|knee|ankle)[LR]$/;
 const STEP = 1 / 120, SETTLE = 1.5; // physics step (s); how far back a jump in time re-runs (s)
 
 export async function loadImage(url) {
@@ -262,17 +263,38 @@ export class Puppet {
 			for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const w = at(i + di, j + dj); if (w >= 0 && label[w] && (best < 0 || alphaV[w] > alphaV[best])) best = w; }
 			if (best >= 0 && alphaV[best] > alphaV[v]) { label[v] = label[best]; alphaV[v] = alphaV[best] - 1; }
 		}
-		// weights: the bone, blended with its parent near the joint it turns on (soft elbows, shoulders, knees); the layer
-		// from the far joint (arms in front, legs behind the coat, the head over the body) or the region
+		// a point no bone reached (a dot walled in by outlines) takes its neighbours' bone
+		for (let grew = true; grew;) {
+			grew = false;
+			for (let v = 0; v < n; v++) if (!label[v]) {
+				const [i, j] = ij[v], w = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([di, dj]) => at(i + di, j + dj)).find((w) => w >= 0 && label[w]);
+				if (w !== undefined) { label[v] = label[w]; grew = true; }
+			}
+		}
+		// weights: the bone, blended with its parent near the joint it turns on (soft elbows, shoulders, knees); the trunk
+		// (coat, dress) bends smoothly along the spine by height, so a bow or a lean never tears it; the layer from the far
+		// joint (arms in front, legs behind the coat, the head over the body) or the region
+		const chain = TRUNK.filter((b) => J[b] && J[childOf(b)]).map((b) => [b, J[b], J[childOf(b)]]);
+		const trunkWeights = (x, y) => {
+			let best = null;
+			chain.forEach(([, a, c], i) => { const [d, u] = segDistRaw(x, y, a, c); if (!best || d < best.d) best = { d, i, u: Math.max(0, Math.min(1, u)) }; });
+			const { i, u } = best, b = chain[i][0];
+			if (u < 0.5 && i > 0) return [b, chain[i - 1][0], 0.5 + u];
+			if (u >= 0.5 && i + 1 < chain.length) return [b, chain[i + 1][0], 1.5 - u];
+			return [b, b, 1];
+		};
 		const parentOf = (b) => (this.bones[b].parent?.isBone ? this.bones[b].parent.name : b);
 		const layerOf = (L) => L.layer ?? (L.seg[3] ? LAYERS.hair : /^(elbow|wrist|hand)[LR]$/.test(L.seg[4]) ? LAYERS.arms
 			: /^(knee|ankle|toe)[LR]$/.test(L.seg[4]) ? LAYERS.legs : L.seg[4] === "head" ? LAYERS.head : LAYERS.body);
 		const skinIndex = [], skinWeight = [], vLayer = new Array(n);
 		for (let v = 0; v < n; v++) {
 			const L = label[v] ?? { seg: ["hips", J.hips, J.spine, null, "spine"], u: 0.5 }, b = L.seg[0], u0 = Math.max(0, L.u0 ?? 0);
-			const blend = b !== "hips" && L.u < u0 + 0.25 ? 0.5 * (1 - Math.max(0, L.u - u0) / 0.25) : 0;
-			skinIndex.push(skin(b), skin(parentOf(b)), 0, 0);
-			skinWeight.push(1 - blend, blend, 0, 0);
+			if (TRUNK.includes(b) && fixed[v] !== 1 && chain.length) { const [b1, b2, w] = trunkWeights(...px[v]); skinIndex.push(skin(b1), skin(b2), 0, 0); skinWeight.push(w, 1 - w, 0, 0); }
+			else {
+				const blend = b !== "hips" && L.u < u0 + 0.25 ? 0.5 * (1 - Math.max(0, L.u - u0) / 0.25) : 0;
+				skinIndex.push(skin(b), skin(parentOf(b)), 0, 0);
+				skinWeight.push(1 - blend, blend, 0, 0);
+			}
 			vLayer[v] = regionLayer[v] !== null ? LAYERS[regionLayer[v]] : layerOf(L);
 		}
 		for (const sf of this.softs) { // points in a soft region: onto its bone, fading out toward the region's edge
@@ -299,10 +321,12 @@ export class Puppet {
 				const l = Math.max(...t.map((x) => vLayer[x])), lo = Math.min(...t.map((x) => vLayer[x]));
 				const layer = lo !== l && l === LAYERS.arms && lo <= LAYERS.body ? lo : l; // a seam between arm and body stays with the body
 				// a triangle joining two parts that don't bend together (arm and coat, thigh and shorts) is a seam: it's checked
-				// every frame and hidden while it's stretched (what was behind the arm was never drawn)
-				const bones = new Set(t.map((x) => label[x]?.seg[0]));
-				const linked = bones.size === 2 && [...bones].some((b) => [...bones].some((c) => b !== c && this.bones[b]?.parent?.name === c));
-				(bones.size > 1 && !linked ? seams : tris)[layer].push(...t);
+				// every frame and hidden while it's stretched (the underlay below shows instead). The trunk bends as one, and a
+				// limb bends with its own parts (upper arm and forearm), not with the trunk it hangs from.
+				const bones = [...new Set(t.map((x) => label[x]?.seg[0]))];
+				const linked = bones.length === 2 && bones.some((b) => bones.some((c) => b !== c && this.bones[b]?.parent?.name === c && !(TRUNK.includes(c) && LIMB.test(b))));
+				const together = bones.every((b) => TRUNK.includes(b) || b === "neck") || linked;
+				(bones.length > 1 && !together ? seams : tris)[layer].push(...t);
 			}
 		}
 		this.debug = { px, label, vLayer, W, H };
@@ -337,6 +361,50 @@ export class Puppet {
 			for (let k = 0; k < t.length; k += 3) { const P = [v(t[k]), v(t[k + 1]), v(t[k + 2])]; rest.push(Math.max(1, area(P))); edges.push(longest(P)); }
 			return { mesh: m, all: t, rest, edges, area, longest, shown: new Uint32Array(t.length) };
 		}).filter(Boolean);
+		// The underlay: what was behind her arms and legs was never drawn, so under everything lies her trunk again, where
+		// the parts a limb covered (inside the trunk's outline closed over the limb) take the nearest plain trunk colour
+		// and move with the trunk. A limb moving away, or a seam hiding, shows coat there instead of a hole.
+		{
+			const r = Math.max(1, Math.round((rig.thickness?.upperArm ?? 0.032 * tall) / step)), disk = [];
+			for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if (di * di + dj * dj <= r * r) disk.push([di, dj]);
+			const isTrunk = (v) => TRUNK.includes(label[v]?.seg[0]);
+			const grid = (f) => { const g = new Uint8Array(nx * ny); for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) g[j * nx + i] = f(i, j); return g; };
+			const cell = (g, i, j) => i >= 0 && j >= 0 && i < nx && j < ny && g[j * nx + i];
+			const trunk = grid((i, j) => vid[j * nx + i] >= 0 && isTrunk(vid[j * nx + i]));
+			const grown = grid((i, j) => disk.some(([di, dj]) => cell(trunk, i + di, j + dj)));
+			const closed = grid((i, j) => disk.every(([di, dj]) => cell(grown, i + di, j + dj)));
+			const alpha = (v) => A[(Math.min(H - 1, Math.round(px[v][1])) * W + Math.min(W - 1, Math.round(px[v][0]))) * 4 + 3];
+			const plain = [];
+			for (let v = 0; v < n; v++) if (isTrunk(v) && alpha(v) > 200 && !wall(...px[v])) plain.push(v);
+			const from = new Map();
+			for (let v = 0; v < n; v++) {
+				if (isTrunk(v) || !LIMB.test(label[v]?.seg[0] ?? "") || !closed[ij[v][1] * nx + ij[v][0]]) continue;
+				let best = -1, bd = Infinity;
+				for (const w of plain) { const d = (px[w][0] - px[v][0]) ** 2 + (px[w][1] - px[v][1]) ** 2; if (d < bd) { bd = d; best = w; } }
+				if (best >= 0) from.set(v, best);
+			}
+			const under = [];
+			for (let j = 0; j + 1 < ny; j++) for (let i = 0; i + 1 < nx; i++) {
+				const a = at(i, j), b = at(i + 1, j), c2 = at(i, j + 1), d = at(i + 1, j + 1);
+				for (const t of [[a, b, c2], [b, d, c2]]) if (t.every((x) => x >= 0 && (isTrunk(x) || from.has(x))) && t.some((x) => from.has(x))) under.push(...t);
+			}
+			if (under.length) {
+				const uv2 = [...uv], si = [...skinIndex], sw = [...skinWeight];
+				for (const [v, w] of from) { uv2.splice(v * 2, 2, uv[w * 2], uv[w * 2 + 1]); si.splice(v * 4, 4, ...skinIndex.slice(w * 4, w * 4 + 4)); sw.splice(v * 4, 4, ...skinWeight.slice(w * 4, w * 4 + 4)); }
+				const g2 = geo.clone();
+				g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv2, 2));
+				g2.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
+				g2.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
+				g2.setIndex(under);
+				const m = new THREE.SkinnedMesh(g2, this.material);
+				m.renderOrder = 0.5; m.frustumCulled = false; // over a tail behind her, under her legs
+				this.group.add(m);
+				m.updateMatrixWorld(true);
+				m.bind(this.skeleton, m.matrixWorld);
+				this.meshes.push(m);
+				this.debug.under = from;
+			}
+		}
 		this.restLocal = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.position.clone()]));
 		this.restRot = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.rotation.z]));
 		// Poses are angles from one standard stance, the same on every character: upper arms 45° out from the body, forearms
