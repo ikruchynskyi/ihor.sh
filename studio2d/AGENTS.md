@@ -1,0 +1,104 @@
+# 2D Studio: instructions for agents
+
+A local studio for cute 2D anime characters made from one picture. The image service draws a chibi character; the
+builder cuts her out; you place her joints by reading them off a grid; the engine bends her picture along that skeleton
+(hair, ears and tail on springs, faces swapped in for blinking, talking and feelings), and clips (dances and moves)
+pose her over time. Any clip works on any character. An LLM directs the stage through MCP.
+
+The owner can't code. They give one-line requests ("make a bunny girl", "copy the dance in ~/Downloads/x.gif",
+"make her wave"); you do the work, look at every picture the tools return, and hand over a link.
+
+```
+server.mjs        the page, the command link to open pages, MCP at /mcp, the builder's tools
+index.html, src/  the studio (studio.js) and the engine (puppet.js)
+tools/build.py    character builder: generate, cutout, grid, overlay, faces, facesheet, frames (Python: numpy, scipy, Pillow)
+tools/shot.mjs    headless pictures and videos: snapshots, contact sheets, labels, side-by-side videos
+characters/NAME/  source.png (generated), base.png (cut out), rig.json, faces/*.png, prompt.json
+clips/NAME.json   dances and moves; idle.json plays underneath everything
+```
+
+## Run
+
+```sh
+node studio2d/server.mjs                                           # http://127.0.0.1:8793/  (?character=NAME&clip=NAME)
+claude mcp add --transport http studio2d http://127.0.0.1:8793/mcp  # once
+```
+
+Stage tools (show, play, say, face, snapshot, preview_clip) need the studio open in a browser; the builder and clip
+tools don't. `tools/shot.mjs` opens its own headless studio, so you can always check your work with it.
+
+## The image service
+
+`~/AI/fast_35.py` on port 6000 (not in this repo; never copy or commit it). `tools/build.py` asks for the anime model
+with the request field `"model": "nsfw"` and for speed with `"fast": true` (8 steps). Those fields route exactly like
+the words in a prompt, and keep the word "nsfw" out of what the picture is drawn from: these are cute chibi characters,
+so every prompt stays wholesome (fully clothed, the "general" rating tag; the house style in `build.py` STYLE does
+this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the request.
+
+## Make a character
+
+1. `create_character {name, look}`: `look` is tags for her hair, eyes, clothes, ears, tail, accessories. It returns
+   her cut-out on a grid (25 px, labels every 100). Check she's whole and on a clean background (else a new seed).
+2. Read her joints off the grid and `rig_character {name, rig}` with:
+   - `joints` (picture pixels): `hips` (pelvis centre), `spine` (waist), `chest`, `neck` (where the head turns),
+     `head` (top of the head), and per side (`L` = HER left = the right of the picture): `shoulder`, `elbow`, `wrist`,
+     `hand` (fingertips), `hip`, `knee`, `ankle`, `toe` (bottom of the shoe).
+   - `ground`: the y of the soles. `face`: the box around eyes and mouth `[x0, y0, x1, y1]` (faces are redrawn inside it).
+   - `thickness`: half-widths in pixels `{upperArm, foreArm, hand, thigh, shin, foot}` (measure sleeves and legs).
+   - `regions`: polygons that override the automatic split: `{"name": "head", "bone": "head", "poly": [...]}` for the
+     head with hat and ears (everything above the chin), and spring regions for long hair, a tail, ribbons:
+     `{"name": "hairR", "spring": "hairR", "poly": [...]}` (add `"layer": "back"` for a tail behind her).
+   - `springs`: chains that swing: `{"name": "tail", "parent": "hips", "points": [[x,y], ...], "stiffness": 28,
+     "damping": 5, "gravity": 0.15}` (hair: parent `head`, stiffer). Points go from the root to the tip.
+   It returns the rig drawn over her. Then check what each pixel follows:
+   `node studio2d/tools/shot.mjs --query character=NAME '{"labels":"labels"}'` (a colour per bone). Fix thickness or
+   regions until arms, legs, head, hair and tail each have their own colour and the coat or dress is the body's.
+3. `make_faces {name}`: blink, talk, joy, wink, surprised, sad, angry, shy (or your own words), ~10 s each. Look at
+   the sheet: same face, only the expression changed.
+4. Try her with an existing dance: `preview_clip` (or shot.mjs `{"sheet": {"clip": "cheer_dance"}}`). Torn or
+   stretched bits mean a labels problem (step 2).
+
+Pose for rigging: the house style asks for arms and legs a little away from the body; that is what lets limbs move
+without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete example.
+
+## Clips (clips/NAME.json)
+
+```json
+{ "about": "Waves hello with her right hand.", "duration": 2.4, "loop": false, "fade": 0.25,
+  "keys": [
+    { "t": 0,   "pose": { "upperArmR": 0, "foreArmR": 0 }, "face": "base" },
+    { "t": 0.4, "ease": "out", "pose": { "upperArmR": 120, "foreArmR": 40 }, "face": "joy", "squash": [0.97, 1.03] }
+  ],
+  "events": [ { "t": 0.5, "say": "Hi!" } ] }
+```
+
+- Each pose name is its own track: keys glide between values (`ease`: `smooth` default, `linear`, `in`, `out`,
+  `back`, `snap`); a name a clip never keys stays at rest (the picture's pose).
+- Angles in degrees from the picture's pose. **Arms and legs: + raises / opens** (the way a lifted arm goes), mirrored
+  per side; **body, waist, chest, head: + leans toward her left**. Names: `body` (all of her, at the hips), `waist`,
+  `chest`, `head`, `upperArmL/R`, `foreArmL/R` (+ keeps turning the raising way: up beside her head; − folds it in
+  across her body: fists to her chest is about `upperArm -40, foreArm -150`), `handL/R`, `thighL/R` (+ spreads),
+  `shinL/R` (− tucks the foot in), `footL/R`.
+- `[angle, length]` shortens a bone: `"shinL": [-10, 0.85]` bends the knee toward the viewer; her feet stay on the
+  ground, so she dips. `"ground": false` on a clip lets her leave it.
+- `pos [x, y]` (share of her height, x to the picture's right), `lift` (a hop, share of her height),
+  `squash [sx, sy]` (squash and stretch around her feet: `[1.04, 0.96]` on a landing), `turn` 1 → -1 (she turns to
+  face the other way; a quick 0.1 s flip reads like an anime spin), `face` (a face name; held until the next one).
+- Hair, ears and tails swing by themselves; animate the body and let them follow.
+
+## Copy a dance from a GIF or video
+
+1. `reference_frames {path, every, start, count}`: frames with times and a 50 px grid.
+2. For each key moment, read the joint points off the frame and `pose_from_points {character, points}`: it returns
+   the pose (and `pos`) for that moment, in this character's terms. Use the frame's time for the key.
+3. Write the clip, add faces, squash and stretch, and the spins (2D shows her from the front: when the reference turns
+   her back, she turns to face the other way). `preview_clip`, then compare side by side:
+   `node studio2d/tools/shot.mjs --query character=NAME '{"video":{"clip":"NAME","reference":"/path/ref.gif"}}'`
+   writes `studio2d/shots/NAME-vs-reference.mp4` and `.gif`. Look at matching moments and fix the keys that differ.
+
+## Done means
+
+Every picture the tools returned was looked at; labels are clean (no torn or dragged pieces); a new clip was checked
+on a sheet; a copied dance was compared side by side with its reference. Give the owner the studio link
+(`http://127.0.0.1:8793/?character=NAME&clip=NAME`) and say in a sentence or two what you made. Commit only your
+files; `shots/` and the image service stay out of git.

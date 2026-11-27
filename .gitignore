@@ -25,5 +25,6 @@ ai/review/run-*/
 ai/review/.venv/
 .playwright-mcp/
 
-# Mochi Studio pictures from tools/shot.mjs
-mochi-studio/shots/
+# 2D Studio pictures and videos from tools/shot.mjs, reference frames
+studio2d/shots/
+studio2d/characters/.refs/
