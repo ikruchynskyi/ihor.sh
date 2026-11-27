@@ -94,7 +94,13 @@ const COMMANDS = {
 	},
 	say: ({ text, face }) => say(text, face),
 	async character({ name }) { await loadCharacter(name); return `on stage: ${name}`; },
-	reload: async () => { await loadClips(); await loadCharacter(puppet.name); return "reloaded"; },
+	reload: async () => { // a file changed: new characters join the picker, and clips and the one on stage load again
+		const names = await getJSON("api/characters");
+		$("character").replaceChildren(...names.map((n) => new Option(n, n)));
+		await loadClips();
+		await loadCharacter(names.includes(puppet.name) ? puppet.name : names[0]);
+		return "reloaded";
+	},
 	snapshot() { frame(0); return { image: renderer.domElement.toDataURL("image/png") }; },
 	sheet: (args) => ({ image: sheet(args) }),
 	state: () => ({ character: puppet.name, faces: Object.keys(puppet.faces), clips: Object.keys(clips), playing: puppet.action?.clip.name ?? (live ? null : chosen), saying: saying?.text ?? null }),
