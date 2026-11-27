@@ -239,7 +239,7 @@ export class Puppet {
 				}
 				let best = null;
 				for (const sg of segs.filter((q) => q[3] === reg.spring)) { const [d, u] = segDist(x, y, sg[1], sg[2]); if (!best || d < best.d) best = { d, u, seg: sg }; }
-				if (best) { label[v] = best; dist[v] = 0; pushH(0, v); continue; } // a tail or a lock of hair also takes the fur it touches (below)
+				if (best) { label[v] = best; continue; }
 				fixed[v] = 0;
 			}
 			for (const sg of segs) {
@@ -267,7 +267,6 @@ export class Puppet {
 			for (const L of limbs) { const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]); if (u >= L.u0 && u <= 1.15 && d <= L.r && (!best || d / L.r < best.k)) best = { k: d / L.r, d, u: Math.max(0, u), u0: L.u0, seg: L.sg }; }
 			if (best) { label[v] = best; fixed[v] = 2; } // keeps its bone, and doesn't spread into the body
 		}
-		const inLimb = px.map(([x, y]) => limbs.some((L) => { const [d, u] = segDistRaw(x, y, L.sg[1], L.sg[2]); return u >= 0 && u <= 1.15 && d <= L.r; }));
 		const at = (i, j) => (i >= 0 && j >= 0 && i < nx && j < ny ? vid[j * nx + i] : -1);
 		const ij = new Array(n);
 		for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (vid[j * nx + i] >= 0) ij[vid[j * nx + i]] = [i, j];
@@ -283,16 +282,8 @@ export class Puppet {
 				const [x1, y1] = px[w];
 				let crosses = false;
 				for (const f of [0.2, 0.4, 0.6, 0.8, 1]) crosses ||= wall(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f);
-				if (label[v].seg[3] && (crosses || inLimb[w])) continue; // a tail or lock of hair grows only through its own fur: not across an outline, not into an arm or a leg
 				const c2 = c0 + Math.hypot(di, dj) * (crosses ? 40 : 1);
-				if (c2 < dist[w]) {
-					dist[w] = c2;
-					let sg = label[v].seg;
-					if (sg[3]) { sg = segs.filter((q) => q[3] === sg[3]).reduce((a, q) => (segDist(x1, y1, q[1], q[2])[0] < segDist(x1, y1, a[1], a[2])[0] ? q : a)); regionLayer[w] = regionLayer[v]; } // fur joins its tail, nearest link
-					else regionLayer[w] = null;
-					const [d, u] = segDist(x1, y1, sg[1], sg[2]);
-					label[w] = { d, u, seg: sg }; pushH(c2, w);
-				}
+				if (c2 < dist[w]) { dist[w] = c2; const sg = label[v].seg, [d, u] = segDist(x1, y1, sg[1], sg[2]); label[w] = { d, u, seg: sg }; pushH(c2, w); }
 			}
 		}
 		// what the body reaches only across an outline, near a limb, is the limb's (spread fingers, the tip of a shoe, the
