@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pictures · 2D Studio</title>
+<style>
+	:root { --ink: #3b2a4d; --card: rgba(255, 255, 255, .9); --line: #e3c8f0; --accent: #ff7eb6; }
+	body { margin: 0; padding: 18px 16px 40px; font: 15px/1.45 system-ui, sans-serif; color: var(--ink);
+		background: radial-gradient(120% 90% at 50% 0%, #fff6fb 0%, #ffe3f1 45%, #e6dcff 100%) fixed; }
+	header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+	h1 { margin: 0; font-size: 20px; } h2 { font-size: 15px; margin: 18px 0 8px; color: #6b5580; }
+	a { color: #7a4ab8; }
+	select, input, button { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+	button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
+	button:disabled { opacity: .6; cursor: progress; }
+	.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 22px rgba(120, 60, 140, .1); }
+	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+	figure { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+	figure img { display: block; width: 100%; height: 230px; object-fit: contain; background: repeating-conic-gradient(#f6eefa 0 25%, #fff 0 50%) 0 0 / 18px 18px; }
+	figcaption { padding: 5px 8px; font-size: 13px; color: #6b5580; }
+	#about { margin: 4px 0 0; color: #6b5580; }
+	form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+	form input[name=outfit] { flex: 1 1 280px; }
+	#msg { margin-top: 8px; color: #7a6290; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Pictures</h1>
+	<select id="who" aria-label="Character"></select>
+	<a id="stage" href="./">open her on the stage ↗</a>
+</header>
+<div class="card">
+	<strong id="title"></strong><p id="about"></p>
+	<form id="outfit">
+		<label for="o">New outfit:</label>
+		<input id="o" name="outfit" placeholder="e.g. a light blue summer dress and a straw hat with a ribbon" maxlength="200" required>
+		<input name="new_name" placeholder="name, e.g. mochi-summer" pattern="[a-z0-9][a-z0-9_-]{0,40}" required aria-label="Name for the new look" size="18">
+		<button type="submit">Make it</button>
+	</form>
+	<div id="msg">She keeps her pose, so her rig and every dance carry over; it takes a few minutes (her picture, her back, her faces).</div>
+</div>
+<h2>What the generator drew, and the cut-outs</h2><div class="grid" id="front"></div>
+<h2>Her back (for turning round)</h2><div class="grid" id="back"></div>
+<h2>Her faces</h2><div class="grid" id="faces"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const LABEL = { "source.png": "drawn by the generator", "base.png": "cut out", "grid.png": "grid for her joints", "overlay.png": "her rig", "faces.jpg": "all faces" };
+async function show(name) {
+	const d = await (await fetch(`api/pictures?character=${encodeURIComponent(name)}`, { cache: "no-store" })).json();
+	$("title").textContent = d.title; $("about").textContent = d.about + (d.look ? `  Look: ${d.look}` : "");
+	$("stage").href = `./?character=${encodeURIComponent(name)}`;
+	$("outfit").new_name.value = `${name}-`;
+	const fill = (el, files) => {
+		el.replaceChildren(...files.map((f) => {
+			const fig = document.createElement("figure"), img = new Image(), cap = document.createElement("figcaption"), file = f.split("/").pop();
+			img.src = `characters/${name}/${f}?v=${Date.now()}`; img.alt = f; img.loading = "lazy";
+			cap.textContent = LABEL[file] ?? file.replace(/\.(png|jpg)$/, "");
+			const a = document.createElement("a"); a.href = img.src; a.target = "_blank"; a.append(img);
+			fig.append(a, cap);
+			return fig;
+		}));
+		if (!files.length) el.textContent = "none yet";
+	};
+	fill($("front"), d.front); fill($("back"), d.back); fill($("faces"), d.faces);
+	history.replaceState(null, "", `?character=${encodeURIComponent(name)}`);
+}
+(async () => {
+	const names = await (await fetch("api/characters")).json();
+	$("who").replaceChildren(...names.map((n) => new Option(n, n)));
+	const want = new URLSearchParams(location.search).get("character");
+	$("who").value = names.includes(want) ? want : names[0];
+	$("who").onchange = () => show($("who").value);
+	await show($("who").value);
+})();
+$("outfit").onsubmit = async (e) => {
+	e.preventDefault();
+	const f = e.target, b = f.querySelector("button");
+	b.disabled = true; $("msg").textContent = "Drawing her new outfit… (a few minutes; you can keep this page open)";
+	try {
+		const r = await (await fetch("api/outfit", { method: "POST", body: JSON.stringify({ name: $("who").value, new_name: f.new_name.value, outfit: f.outfit.value }) })).json();
+		if (r.error) throw new Error(r.error);
+		$("msg").innerHTML = `Done: <a href="./?character=${r.character}">see ${r.character} on the stage</a>.`;
+		const names = await (await fetch("api/characters")).json();
+		$("who").replaceChildren(...names.map((n) => new Option(n, n)));
+		$("who").value = r.character; show(r.character);
+	} catch (err) { $("msg").textContent = `That didn't work: ${err.message}`; }
+	b.disabled = false;
+};
+</script>
+</body>
+</html>

@@ -7,6 +7,8 @@
     python3 studio2d/tools/build.py overlay NAME                            overlay.png: the rig (bones, regions, face box) over the picture
     python3 studio2d/tools/build.py faces NAME [face ...]                   faces/<face>.png: the face redrawn (eyes closed, talking, ...)
     python3 studio2d/tools/build.py facesheet NAME                          faces.jpg: all the faces side by side
+    python3 studio2d/tools/build.py back NAME                               back/: her back view (cut out, on a grid) to rig for turning
+    python3 studio2d/tools/build.py outfit NAME NEW "outfit"                NEW: the same character in other clothes, rig copied
     python3 studio2d/tools/build.py frames _ PATH EVERY START COUNT OUTDIR   frames.jpg: a GIF's frames with times and a grid
 
 Characters live in studio2d/characters/NAME/. The image service is ~/AI/fast_35.py on port 6000 (IMAGE_URL overrides it):
@@ -187,6 +189,64 @@ def faces(name, wanted):
         say(ok=True, step="face", face=face, file=str(d / "faces" / f"{face}.png"), seed=seed)
 
 
+BACK = ("Show the same character from behind: back view, her back to the viewer, the back of her head and hair, the back of "
+        "her outfit, {extra} her head turned to look back over her right shoulder at the viewer with a cheerful smile. Same "
+        "character, same outfit, same colours, same cute chibi anime style, same size and position, standing with arms slightly "
+        "away from her body and legs slightly apart. Plain white background.")
+
+
+def back(name, extra=""):
+    """Her back view (for turning round): the image service's picture editor redraws her from behind, looking back over her
+    shoulder; then the cut-out and the grid, in characters/NAME/back/ (rig it like the front)."""
+    d = char(name)
+    src = Image.open(d / "source.png").convert("RGB")
+    img, seed = call("/edit", {"prompt": BACK.format(extra=extra + "," if extra else ""), "image": b64(src)}, timeout=900)
+    b = char(f"{name}/back")
+    img.convert("RGB").save(b / "source.png")
+    say(ok=True, step="back", file=str(b / "source.png"), seed=seed)
+    cutout(f"{name}/back")
+    grid(f"{name}/back")
+
+
+OUTFIT = ("Change only her clothes to: {outfit}. Keep everything else exactly the same: the same character, face, hair, ears and "
+          "tail, the same pose with arms slightly away from her body and legs slightly apart, the same size and position, the same "
+          "cute chibi anime style, fully clothed. Plain white background.")
+
+
+def outfit(name, new, wear):
+    """The same character in other clothes, as a new character NEW: the picture editor redraws her outfit in the same pose, so
+    her rig (joints, regions, springs) is copied over; check its overlay and labels, then make her faces."""
+    d, n = char(name), char(new)
+    src = Image.open(d / "source.png").convert("RGB")
+    img, seed = call("/edit", {"prompt": OUTFIT.format(outfit=wear), "image": b64(src)}, timeout=900)
+    img = img.convert("RGB")
+    if img.size != src.size:  # the editor may return another size: back to the original's, so the joints still fit
+        img = img.resize(src.size, Image.LANCZOS)
+    img.save(n / "source.png")
+    rig = json.loads((d / "rig.json").read_text())
+    rig.pop("faces", None)
+    who = rig.get("name", name).split(" (")[0]
+    rig["name"] = f"{who} ({new})"
+    rig["about"] = f"{who} in {wear}."
+    (n / "rig.json").write_text(json.dumps(rig, indent=1) + "\n")
+    (n / "prompt.json").write_text(json.dumps({"look": f"outfit: {wear}", "from": name, "seed": seed}, indent=1) + "\n")
+    say(ok=True, step="outfit", file=str(n / "source.png"), seed=seed)
+    cutout(new)
+    overlay(new)
+    if (d / "back" / "rig.json").exists():  # her back view in the same clothes, with the same back rig
+        bs = Image.open(d / "back" / "source.png").convert("RGB")
+        bimg, _ = call("/edit", {"prompt": OUTFIT.format(outfit=wear).replace("the same pose", "seen from behind, looking back over her shoulder, the same pose"), "image": b64(bs)}, timeout=900)
+        bimg = bimg.convert("RGB")
+        if bimg.size != bs.size:
+            bimg = bimg.resize(bs.size, Image.LANCZOS)
+        nb = char(f"{new}/back")
+        bimg.save(nb / "source.png")
+        (nb / "rig.json").write_text((d / "back" / "rig.json").read_text())
+        cutout(f"{new}/back")
+        overlay(f"{new}/back")
+        say(ok=True, step="outfit-back", file=str(nb / "source.png"))
+
+
 def facesheet(name):
     """All of a character's faces side by side (cropped around the face box), labelled."""
     d = char(name)
@@ -249,6 +309,10 @@ if __name__ == "__main__":
             overlay(name)
         elif cmd == "faces":
             faces(name, rest)
+        elif cmd == "back":
+            back(name, rest[0] if rest else "")
+        elif cmd == "outfit":
+            outfit(name, rest[0], rest[1])
         elif cmd == "facesheet":
             facesheet(name)
         elif cmd == "frames":

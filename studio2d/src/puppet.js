@@ -89,7 +89,7 @@ export class Puppet {
 		this.base = null; this.action = null;
 	}
 
-	async load(dir) {
+	async load(dir, opts = {}) {
 		this.dir = dir;
 		const rig = (this.rig = await (await fetch(`${dir}/rig.json`, { cache: "no-store" })).json());
 		const img = await loadImage(`${dir}/${rig.image ?? "base.png"}`);
@@ -163,7 +163,11 @@ export class Puppet {
 			if (reg) {
 				regionLayer[v] = reg.layer ?? (reg.spring ? (reg.name.startsWith("hair") ? "hair" : "back") : null);
 				fixed[v] = 1;
-				if (reg.bone) { label[v] = { seg: [reg.bone === "head" ? "neck" : reg.bone, J.neck, J.head, null, "head"] }; regionLayer[v] ??= reg.bone === "head" ? "head" : null; continue; }
+				if (reg.bone === "head") { label[v] = { seg: ["neck", J.neck, J.head, null, "head"] }; regionLayer[v] ??= "head"; continue; }
+				if (reg.bone) { // any other joint: this area follows it (e.g. a coat pinned to the chest so a sleeve can't take it)
+					const j = POSE[reg.bone]?.[0] ?? reg.bone;
+					if (J[j]) { label[v] = { seg: [j, J[j], J[j], null, "body"], u: 1 }; regionLayer[v] ??= "body"; continue; }
+				}
 				let best = null;
 				for (const sg of segs.filter((q) => q[3] === reg.spring)) { const [d, u] = segDist(x, y, sg[1], sg[2]); if (!best || d < best.d) best = { d, u, seg: sg }; }
 				if (best) { label[v] = best; continue; }
@@ -245,7 +249,7 @@ export class Puppet {
 			vLayer[v] = regionLayer[v] !== null ? LAYERS[regionLayer[v]] : layerOf(L);
 		}
 		// triangles, sorted into layers by their vertices' layer
-		const tris = Array.from({ length: 7 }, () => []);
+		const tris = Array.from({ length: 7 }, () => []), seams = Array.from({ length: 7 }, () => []);
 		for (let j = 0; j + 1 < ny; j++) for (let i = 0; i + 1 < nx; i++) {
 			const a = at(i, j), b = at(i + 1, j), c2 = at(i, j + 1), d = at(i + 1, j + 1);
 			for (const t of [[a, b, c2], [b, d, c2]]) {
@@ -255,7 +259,12 @@ export class Puppet {
 				const seeThrough = A[(Math.min(H - 1, Math.round(cy)) * W + Math.min(W - 1, Math.round(cx))) * 4 + 3] < 160;
 				if (seeThrough && new Set(t.map((x) => label[x]?.seg[0])).size > 1) continue;
 				const l = Math.max(...t.map((x) => vLayer[x])), lo = Math.min(...t.map((x) => vLayer[x]));
-				tris[lo !== l && l === LAYERS.arms && lo <= LAYERS.body ? lo : l].push(...t); // a seam between arm and body stays with the body
+				const layer = lo !== l && l === LAYERS.arms && lo <= LAYERS.body ? lo : l; // a seam between arm and body stays with the body
+				// a triangle joining two parts that don't bend together (arm and coat, thigh and shorts) is a seam: it's checked
+				// every frame and hidden while it's stretched (what was behind the arm was never drawn)
+				const bones = new Set(t.map((x) => label[x]?.seg[0]));
+				const linked = bones.size === 2 && [...bones].some((b) => [...bones].some((c) => b !== c && this.bones[b]?.parent?.name === c));
+				(bones.size > 1 && !linked ? seams : tris)[layer].push(...t);
 			}
 		}
 		this.debug = { px, label, vLayer, W, H };
@@ -275,9 +284,30 @@ export class Puppet {
 			m.bind(this.skeleton, m.matrixWorld);
 			return m;
 		}).filter(Boolean);
+		this.seams = seams.map((t, layer) => {
+			if (!t.length) return null;
+			const g2 = geo.clone();
+			g2.setIndex(new THREE.BufferAttribute(new Uint32Array(t), 1));
+			const m = new THREE.SkinnedMesh(g2, this.material);
+			m.renderOrder = layer; m.frustumCulled = false;
+			this.group.add(m);
+			m.updateMatrixWorld(true);
+			m.bind(this.skeleton, m.matrixWorld);
+			const area = (P) => Math.abs((P[1].x - P[0].x) * (P[2].y - P[0].y) - (P[2].x - P[0].x) * (P[1].y - P[0].y));
+			const v = (i) => new THREE.Vector3().fromBufferAttribute(g2.attributes.position, i);
+			const rest = []; for (let k = 0; k < t.length; k += 3) rest.push(Math.max(1, area([v(t[k]), v(t[k + 1]), v(t[k + 2])])));
+			return { mesh: m, all: t, rest, area, shown: new Uint32Array(t.length) };
+		}).filter(Boolean);
 		this.restLocal = Object.fromEntries(Object.entries(this.bones).map(([k, b]) => [k, b.position.clone()]));
 		this.height = gy - Math.min(...px.map((p) => p[1])); // her height in picture pixels, ground to the top of her head
 		this.lowRest = this.lowestFoot();
+		// her back view (back/rig.json), drawn the same height, in the same place
+		if (!opts.back && (await fetch(`${dir}/back/rig.json`, { method: "HEAD" })).ok) {
+			this.back = await new Puppet(this.scene).load(`${dir}/back`, { back: true });
+			this.root.add(this.back.root);
+			this.back.root.scale.setScalar(this.height / this.back.height);
+			this.back.group.visible = false;
+		}
 		return this;
 	}
 	// Which bone each mesh point follows, as a picture (each bone its own colour; layer as the dot size) — to check a rig.
@@ -314,6 +344,18 @@ export class Puppet {
 
 	update(dt) {
 		if (!this.meshes) return;
+		const pose = this.sample(dt);
+		this.apply(pose, dt, (this.pinned ?? this.action ?? this.base)?.clip.ground !== false);
+		if (this.back) { // her back view takes the same pose; she shows it while turned round (turn < 0)
+			this.back.time = this.time;
+			this.back.apply(pose, dt, (this.pinned ?? this.action ?? this.base)?.clip.ground !== false, true);
+			const behind = (pose.get("turn") ?? 1) < 0;
+			this.group.visible = !behind; this.back.group.visible = behind;
+		}
+	}
+
+	// The pose now: the base clip, then a clip held at one moment (sheets, the scrubber) or the action faded over it.
+	sample(dt) {
 		this.time += dt;
 		const pose = new Map(), fade = (c) => Math.max(0.05, c.fade ?? 0.25);
 		if (this.base) { this.base.t = (this.base.t + dt) % this.base.clip.duration; for (const [k, v] of sampleClip(this.base.clip, this.base.t)) pose.set(k, v); }
@@ -331,26 +373,33 @@ export class Puppet {
 			for (const [k, v] of sampleClip(c, lt)) pose.set(k, k === "face" ? (w > 0.5 ? v : pose.get(k)) : lerp(pose.get(k) ?? NEUTRAL(k), v, w));
 			if (a.w <= 0) { this.action = null; a.resolve("done"); }
 		}
-		// bones back to rest, then the pose
+		return pose;
+	}
+
+	// Put this view of her in a pose. The back view is the front mirrored (her left is on the picture's left), so every
+	// turn goes the other way round on screen.
+	apply(pose, dt, ground = true, backView = false) {
+		const flip = backView ? -1 : 1;
 		for (const [k, b] of Object.entries(this.bones)) { b.rotation.z = 0; b.scale.set(1, 1, 1); b.position.copy(this.restLocal[k]); }
 		for (const [k, v] of pose) {
 			if (!k.startsWith("pose:")) continue;
 			const [joint, side] = POSE[k.slice(5)] ?? [];
 			const b = this.bones[joint];
 			if (!b) continue;
-			b.rotation.z = (side === 0 ? -v[0] : side * v[0]) * D; // centre bones: + leans toward her left (screen right)
-			if (v[1] !== 1) { b.scale.y = v[1]; }
+			b.rotation.z = flip * (side === 0 ? -v[0] : side * v[0]) * D; // centre bones: + leans toward her left (screen right from the front)
+			if (v[1] !== 1) b.scale.y = v[1];
 		}
-		// the whole puppet: feet on the ground, then position, hop, squash and stretch, turning
+		// the whole of her: feet on the ground, then position, hop, squash and stretch, turning
 		const [px = 0, py = 0] = pose.get("pos") ?? [], lift = pose.get("lift") ?? 0, [sx = 1, sy = 1] = pose.get("squash") ?? [], turn = pose.get("turn") ?? 1;
 		this.group.position.set(0, 0, 0);
-		this.group.scale.set(this.facing ?? 1, 1, 1);
+		this.group.scale.set(1, 1, 1);
 		const hips = this.bones.hips;
-		if ((this.pinned ?? a ?? this.base)?.clip.ground !== false) hips.position.y += this.lowRest - this.lowestFoot();
+		if (ground) hips.position.y += this.lowRest - this.lowestFoot();
 		hips.position.x += px * this.height; hips.position.y += (py + lift) * this.height;
-		// turning round (turn 1 → -1): she narrows to a quarter, then flips, the way anime cuts a spin
-		const tw = Math.sign(turn || 1) * Math.max(0.22, Math.abs(turn));
-		this.group.scale.set(sx * tw * (this.facing ?? 1), sy, 1);
+		// turning round (turn 1 → -1): she narrows to a quarter, then shows her back (or, with no back view, her front
+		// mirrored), the way anime cuts a spin
+		const width = Math.max(0.22, Math.abs(turn)), mirror = this.back || backView ? 1 : Math.sign(turn || 1);
+		this.group.scale.set(sx * width * mirror * (this.facing ?? 1), sy, 1);
 		this.springsStep(dt);
 		// face: the clip's, else a mood set by a command; blinking and talking on top
 		let face = pose.get("face") ?? (this.faceUntil === 0 || this.time < this.faceUntil ? this.face : "base");
@@ -360,6 +409,30 @@ export class Puppet {
 			if (this.time > this.blinkAt) face = "blink";
 		}
 		this.material.map = this.faces[face] ?? this.faces.base;
+		this.hideStretchedSeams();
+	}
+
+	// Seams between parts that move apart: show each one only while it's less than twice its size in the picture.
+	hideStretchedSeams() {
+		if (!this.seams.length) return;
+		this.group.updateMatrixWorld(true);
+		const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], pos = new Map();
+		for (const s of this.seams) {
+			const g = s.mesh.geometry, at = g.attributes.position;
+			pos.clear();
+			let n = 0;
+			for (let k = 0; k < s.all.length; k += 3) {
+				for (let c = 0; c < 3; c++) {
+					const i = s.all[k + c];
+					if (!pos.has(i)) pos.set(i, s.mesh.applyBoneTransform(i, new THREE.Vector3().fromBufferAttribute(at, i)));
+					P[c].copy(pos.get(i));
+				}
+				if (s.area(P) < s.rest[k / 3] * 2.2) { s.shown[n++] = s.all[k]; s.shown[n++] = s.all[k + 1]; s.shown[n++] = s.all[k + 2]; }
+			}
+			g.index.array.set(s.shown.subarray(0, n));
+			g.index.needsUpdate = true;
+			g.setDrawRange(0, n);
+		}
 	}
 
 	// Spring chains (hair, tail): their points lag behind where the pose puts them and bounce back (Verlet with a pull

@@ -113,6 +113,8 @@ export const TOOLS = [
   { name: "create_character", description: "Draw a new cute chibi character with the image service from a description of her look, cut her out, and return her picture on a coordinate grid. Next, read her joints off the grid and call rig_character.", inputSchema: S({ name: str("folder name, lowercase, e.g. luna"), look: str("her look in tags: hair, eyes, clothes, accessories, animal ears/tail… (e.g. 'silver twin tails, red eyes, black hoodie with bunny ears, pleated skirt, sneakers')"), seed: num("a seed to redo the same picture (optional)") }, ["name", "look"]) },
   { name: "rig_character", description: "Save a character's rig (merged into characters/NAME/rig.json; format in studio2d/AGENTS.md): joints, ground, face box, regions, spring chains, name and about. Returns the rig drawn over her picture so you can check it.", inputSchema: S({ name: str("character folder"), rig: obj("rig fields to set: joints {hips: [x,y], …}, ground, face [x0,y0,x1,y1], regions [...], springs [...], name, about") }, ["name", "rig"]) },
   { name: "make_faces", description: "Redraw a character's face box for each face (blink, talk, joy, wink, surprised, sad, angry, shy, or your own words) with the image service, so she can blink, talk and show feelings. Returns the faces side by side. Takes about 30 s a face.", inputSchema: S({ name: str("character folder"), faces: { type: "array", items: { type: "string" }, description: "face names (omit for all the usual ones)" } }, ["name"]) },
+  { name: "make_back_view", description: "Draw a character from behind (looking back over her shoulder) so she can turn round and dance with her back to us: the picture editor redraws her, then the cut-out on a grid. Rig it like the front with rig_character {name: 'NAME/back'} (her left is on the picture's left from behind). Takes ~2 min.", inputSchema: S({ name: str("character folder") }, ["name"]) },
+  { name: "change_outfit", description: "The same character in other clothes, as a new character: the picture editor redraws her outfit in the same pose (and her back view, if she has one), and her rig is copied over. Check the returned overlay, fix with rig_character if needed, then make_faces. Takes ~3 min.", inputSchema: S({ name: str("the character to dress"), new_name: str("folder for the new look, e.g. mochi-summer"), outfit: str("the clothes, e.g. 'a light blue summer dress and a straw hat with a ribbon'") }, ["name", "new_name", "outfit"]) },
   { name: "show", description: "Put a character on the stage.", inputSchema: S({ character: str("character folder") }, ["character"]) },
   { name: "play", description: "The character on stage plays a clip (a dance or a move); returns when it ends (a looping clip plays `times` times).", inputSchema: S({ clip: str("clip name"), times: num("how many times (default 1)") }, ["clip"]) },
   { name: "stop", description: "Stop the clip playing on stage.", inputSchema: S({}) },
@@ -142,16 +144,28 @@ async function runTool(name, a = {}) {
       return image(path.join(charDir(a.name), "grid.png"));
     }
     case "rig_character": {
-      const file = path.join(charDir(a.name), "rig.json");
+      const [who, view] = String(a.name).split("/"); // "NAME" or "NAME/back"
+      if (view && view !== "back") throw new Error("name: NAME or NAME/back");
+      const file = path.join(charDir(who), view ?? "", "rig.json");
       const rig = { ...JSON.parse(await readFile(file, "utf8").catch(() => "{}")), ...a.rig };
       await writeFile(file, JSON.stringify(rig, null, 1) + "\n");
-      await build("overlay", a.name);
-      return image(path.join(charDir(a.name), "overlay.png"));
+      await build("overlay", view ? `${who}/back` : who);
+      return image(path.join(charDir(who), view ?? "", "overlay.png"));
     }
     case "make_faces": {
       await build("faces", a.name, ...(a.faces ?? []));
       await build("facesheet", a.name);
       return image(path.join(charDir(a.name), "faces.jpg"));
+    }
+    case "make_back_view": {
+      checkName(a.name);
+      await build("back", a.name);
+      return image(path.join(charDir(a.name), "back", "grid.png"));
+    }
+    case "change_outfit": {
+      checkName(a.name); checkName(a.new_name);
+      await build("outfit", a.name, a.new_name, a.outfit);
+      return image(path.join(charDir(a.new_name), "overlay.png"));
     }
     case "show": return command("character", { name: checkName(a.character) });
     case "play": return command("play", a, 300_000);
@@ -230,10 +244,21 @@ async function handle(req, res) {
     return !out || (Array.isArray(out) && !out.length) ? res.writeHead(202).end() : json(res, 200, out);
   }
   if (url.pathname === "/api/characters") return json(res, 200, await characters());
+  if (url.pathname === "/api/pictures") { // every picture a character has: what the generator drew, the cut-outs, faces, rigs
+    const name = checkName(url.searchParams.get("character")), dir = charDir(name), list = async (d) => (await readdir(path.join(dir, d)).catch(() => [])).filter((f) => /\.(png|jpg)$/.test(f)).map((f) => path.join(d, f));
+    const rig = JSON.parse(await readFile(path.join(dir, "rig.json"), "utf8").catch(() => "{}"));
+    const prompt = JSON.parse(await readFile(path.join(dir, "prompt.json"), "utf8").catch(() => "{}"));
+    return json(res, 200, { name, title: rig.name ?? name, about: rig.about ?? "", look: prompt.look ?? "", front: await list(""), back: await list("back"), faces: await list("faces") });
+  }
+  if (req.method === "POST" && url.pathname === "/api/outfit") { // the pictures page's form
+    const { name, new_name, outfit } = JSON.parse((await body(req)) || "{}");
+    try { await runTool("change_outfit", { name, new_name, outfit }); await build("faces", new_name); await build("facesheet", new_name); return json(res, 200, { ok: true, character: new_name }); }
+    catch (e) { return json(res, 400, { error: e.message }); }
+  }
   if (url.pathname === "/api/clips") return json(res, 200, await clips());
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).slice(1);
   const f = path.resolve(ROOT, rel);
-  if (!f.startsWith(ROOT + path.sep) || !/^(index\.html$|src\/|characters\/|clips\/)/.test(rel)) return res.writeHead(404).end();
+  if (!f.startsWith(ROOT + path.sep) || !/^((index|pictures)\.html$|src\/|characters\/|clips\/)/.test(rel)) return res.writeHead(404).end();
   const data = await readFile(f).catch(() => null);
   if (!data) return res.writeHead(404).end();
   res.writeHead(200, { "content-type": TYPES[path.extname(f)] ?? "application/octet-stream", "cache-control": "no-cache" }).end(data);

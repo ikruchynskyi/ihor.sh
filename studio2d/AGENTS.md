@@ -13,7 +13,8 @@ server.mjs        the page, the command link to open pages, MCP at /mcp, the bui
 index.html, src/  the studio (studio.js) and the engine (puppet.js)
 tools/build.py    character builder: generate, cutout, grid, overlay, faces, facesheet, frames (Python: numpy, scipy, Pillow)
 tools/shot.mjs    headless pictures and videos: snapshots, contact sheets, labels, side-by-side videos
-characters/NAME/  source.png (generated), base.png (cut out), rig.json, faces/*.png, prompt.json
+characters/NAME/  source.png (generated), base.png (cut out), rig.json, faces/*.png, prompt.json, back/ (her back view)
+pictures.html     every picture a character has, and a form for a new outfit
 clips/NAME.json   dances and moves; idle.json plays underneath everything
 ```
 
@@ -45,7 +46,7 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
      `hand` (fingertips), `hip`, `knee`, `ankle`, `toe` (bottom of the shoe).
    - `ground`: the y of the soles. `face`: the box around eyes and mouth `[x0, y0, x1, y1]` (faces are redrawn inside it).
    - `thickness`: half-widths in pixels `{upperArm, foreArm, hand, thigh, shin, foot}` (measure sleeves and legs).
-   - `regions`: polygons that override the automatic split: `{"name": "head", "bone": "head", "poly": [...]}` for the
+   - `regions`: polygons that override the automatic split (`"bone"`: any joint or pose name pins the area to it): `{"name": "head", "bone": "head", "poly": [...]}` for the
      head with hat and ears (everything above the chin), and spring regions for long hair, a tail, ribbons:
      `{"name": "hairR", "spring": "hairR", "poly": [...]}` (add `"layer": "back"` for a tail behind her).
    - `springs`: chains that swing: `{"name": "tail", "parent": "hips", "points": [[x,y], ...], "stiffness": 28,
@@ -55,8 +56,20 @@ this). Never put "nsfw", nudity or anything sexual into a prompt, whatever the r
    regions until arms, legs, head, hair and tail each have their own colour and the coat or dress is the body's.
 3. `make_faces {name}`: blink, talk, joy, wink, surprised, sad, angry, shy (or your own words), ~10 s each. Look at
    the sheet: same face, only the expression changed.
-4. Try her with an existing dance: `preview_clip` (or shot.mjs `{"sheet": {"clip": "cheer_dance"}}`). Torn or
+4. Her back, so she can turn round and dance facing away: `make_back_view {name}` (she looks back over her shoulder;
+   ~2 min), then `rig_character {name: "NAME/back", rig}` the same way. From behind her LEFT is on the picture's LEFT;
+   no face box; her tail is in front (`"layer": "front"` on its region). Check with
+   `{"labels": {"name": "back", "back": true}}`. Pin a coat or dress that touches her sleeves to the chest with a
+   region `{"name": "coat", "bone": "chest", "poly": [...]}` (keep the cuffs out of it).
+5. Try her with an existing dance: `preview_clip` (or shot.mjs `{"sheet": {"clip": "cheer_dance"}}`). Torn or
    stretched bits mean a labels problem (step 2).
+
+## Outfits
+
+`change_outfit {name, new_name, outfit}` redraws her clothes in the same pose (front and back) as a new character and
+copies her rig. The picture editor can shift her a little: look at the returned overlay (and `NAME/back`'s), move any
+joint that's off with `rig_character`, then `make_faces`. The owner can do the same from the pictures page
+(`http://127.0.0.1:8793/pictures.html`), which also shows every picture a character has.
 
 Pose for rigging: the house style asks for arms and legs a little away from the body; that is what lets limbs move
 without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete example.
@@ -82,8 +95,10 @@ without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete 
 - `[angle, length]` shortens a bone: `"shinL": [-10, 0.85]` bends the knee toward the viewer; her feet stay on the
   ground, so she dips. `"ground": false` on a clip lets her leave it.
 - `pos [x, y]` (share of her height, x to the picture's right), `lift` (a hop, share of her height),
-  `squash [sx, sy]` (squash and stretch around her feet: `[1.04, 0.96]` on a landing), `turn` 1 → -1 (she turns to
-  face the other way; a quick 0.1 s flip reads like an anime spin), `face` (a face name; held until the next one).
+  `squash [sx, sy]` (squash and stretch around her feet: `[1.04, 0.96]` on a landing), `turn` 1 → -1 (she turns round:
+  below 0 she shows her back view, or her front mirrored if she has none; a quick 0.1 s flip reads like an anime spin;
+  -1 → 1 turns her back), `face` (a face name; held until the next one). Poses mean the same from behind: her right
+  arm is her right arm, shown on the other side.
 - Hair, ears and tails swing by themselves; animate the body and let them follow.
 
 ## Copy a dance from a GIF or video
@@ -91,8 +106,8 @@ without dragging the clothes. Mochi (`characters/mochi/rig.json`) is a complete 
 1. `reference_frames {path, every, start, count}`: frames with times and a 50 px grid.
 2. For each key moment, read the joint points off the frame and `pose_from_points {character, points}`: it returns
    the pose (and `pos`) for that moment, in this character's terms. Use the frame's time for the key.
-3. Write the clip, add faces, squash and stretch, and the spins (2D shows her from the front: when the reference turns
-   her back, she turns to face the other way). `preview_clip`, then compare side by side:
+3. Write the clip, add faces, squash and stretch, and the spins (when the reference turns her back to us, `turn` to -1:
+   her back view). `preview_clip`, then compare side by side:
    `node studio2d/tools/shot.mjs --query character=NAME '{"video":{"clip":"NAME","reference":"/path/ref.gif"}}'`
    writes `studio2d/shots/NAME-vs-reference.mp4` and `.gif`. Look at matching moments and fix the keys that differ.
 

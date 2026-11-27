@@ -34,8 +34,9 @@
 	#time { font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
 	#faces { display: flex; flex-wrap: wrap; gap: 4px; }
 	#say { flex: 1 1 180px; }
-	#status { position: absolute; z-index: 2; right: 16px; top: 16px; font-size: 13px; color: #7a6290; }
-	body.headless #title, body.headless #bar, body.headless #status, body.ui0 #title, body.ui0 #bar, body.ui0 #status { display: none; }
+	#pics { position: absolute; z-index: 2; right: 16px; top: 14px; padding: 7px 12px; color: var(--ink); text-decoration: none; font-size: 14px; }
+	#status { position: absolute; z-index: 2; right: 16px; top: 56px; font-size: 13px; color: #7a6290; }
+	body.headless #title, body.headless #bar, body.headless #status, body.headless #pics, body.ui0 #pics, body.ui0 #title, body.ui0 #bar, body.ui0 #status { display: none; }
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js" } }
@@ -48,6 +49,7 @@
 <div id="bubble"></div>
 <div id="title" class="card"><h1 id="name">Loading…</h1><p id="about"></p></div>
 <div id="status"></div>
+<a id="pics" class="card" href="pictures.html">📷 Pictures &amp; outfits</a>
 <div id="bar" class="card">
 	<select id="character" aria-label="Character"></select>
 	<select id="clip" aria-label="Dance or move"></select>

@@ -7,7 +7,8 @@
 //   {"sheet": {"clip": "wave", "frames": 12}}   a contact sheet of a clip -> <out>/sheet-wave.jpg
 //   {"video": {"clip": "wave", "fps": 25, "reference": "/path/ref.gif"}}   <out>/wave.mp4, and with a reference GIF or
 //                                            video also <out>/wave-vs-reference.mp4 and .gif (side by side, same time)
-//   {"labels": "name"}                       which bone each part of the picture follows (a colour per bone)
+//   {"labels": "name"}                       which bone each part of the picture follows (a colour per bone);
+//                                            {"labels": {"name": "x", "back": true}} for her back view
 //   {"eval": "js"}                           run JavaScript in the page (window.studio) and print the result
 // Options: --out DIR (default studio2d/shots), --size WxH (default 720x900), --query "character=mochi" (page options).
 //   node studio2d/tools/shot.mjs --query character=mochi '{"sheet":{"clip":"cheer_dance"}}'
@@ -84,7 +85,7 @@ for (const step of steps) {
 	const [[cmd, args]] = Object.entries(step);
 	if (cmd === "snapshot") await save(args, await page.evaluate(() => studio.shot()));
 	else if (cmd === "video") await video(args);
-	else if (cmd === "labels") await save(args || "labels", await page.evaluate(() => studio.puppet.labelsImage()));
+	else if (cmd === "labels") await save(args?.name ?? (args || "labels"), await page.evaluate((back) => (back ? studio.puppet.back : studio.puppet).labelsImage(), !!args?.back));
 	else if (cmd === "sheet") await save(`sheet-${args.clip}${args.focus && args.focus !== "body" ? "-" + args.focus : ""}`, await page.evaluate((a) => studio.sheet(a), args));
 	else if (cmd === "eval") console.log(JSON.stringify(await page.evaluate((js) => eval(js), args)));
 	else if (cmd === "wait") await page.evaluate((s) => studio.fast(null, null, s), args);
