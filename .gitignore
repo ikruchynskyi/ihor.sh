@@ -25,6 +25,6 @@ ai/review/run-*/
 ai/review/.venv/
 .playwright-mcp/
 
-# 2D Studio pictures and videos from tools/shot.mjs, reference frames
+# 2D Studio pictures and videos from tools/shot.mjs, local characters
 studio2d/shots/
-studio2d/characters/.refs/
+studio2d/characters/
