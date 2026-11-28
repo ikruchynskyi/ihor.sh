@@ -12,9 +12,5 @@ ham lessons `radio/ham/`, electronics `learn/electronics/`, Yomu `yomu/`), read 
 - **Truthful:** every number comes from code you ran or a linked source; never invent data or results.
 - **Done:** the course's checks pass, a cold-learner read is clean, and the commit contains only your files.
 
-## 2D Studio (`studio2d/`)
-Local tool, not part of the site. Before you make or change characters or clips there, read
-[`studio2d/AGENTS.md`](studio2d/AGENTS.md) (the `studio2d` skill).
-
 ## Everything else
 See `README.md` for the layout, the deploy steps and the checks (`npm run check`). Keys live only in `.env`.

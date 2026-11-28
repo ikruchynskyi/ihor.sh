@@ -1,9 +1,0 @@
-{
- "about": "Standing and breathing: a soft bounce, her head swaying a little. Plays underneath everything else.",
- "duration": 3,
- "loop": true,
- "keys": [
-  { "t": 0, "pose": { "head": 0, "chest": 0, "upperArmL": 0, "upperArmR": 0 }, "squash": [1, 1] },
-  { "t": 1.5, "pose": { "head": 3, "chest": 1, "upperArmL": 3, "upperArmR": 3 }, "squash": [1.012, 0.988] }
- ]
-}
